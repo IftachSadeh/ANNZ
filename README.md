@@ -76,7 +76,7 @@ In order to check that ROOT is properly installed, do:
 
 ### Install ANNZ
 
-First download ANNZ from https://github.com/IftachSadeh/ANNZ2. For the following, let's assume the working directory is going to be `/home/work/annz`.
+First download ANNZ from https://github.com/IftachSadeh/ANNZ. For the following, let's assume the working directory is going to be `/home/work/annz`.
 
 Make a personal copy of the example-script directory:
 ```bash

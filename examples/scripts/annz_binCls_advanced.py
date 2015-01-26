@@ -24,7 +24,7 @@ log.info(whtOnBlck(" - "+time.strftime("%d/%m/%y %H:%M:%S")+" - starting ANNZ"))
 #   - PLEASE ALSO INSPECT generalSettings(), WHICH HAS BEEN RUN AS PART OF init(), FOR MORE OPTIONS
 # --------------------------------------------------------------------------------------------------
 # outDirName - set output directory name
-glob.annz["outDirName"] = "test_binCls_advanced___"
+glob.annz["outDirName"] = "test_binCls_advanced"
 
 # zTrg            - the name of the target variable of the regression
 # minValZ,maxValZ - the minimal and maximal values of the target variable (zTrg)
@@ -119,7 +119,7 @@ if glob.annz["doGenInputTrees"]:
   # - example use:
   #   set useWgtKNN as [True] to generate and use the weights
   # --------------------------------------------------------------------------------------------------
-  useWgtKNN = 1#False
+  useWgtKNN = False
 
   if useWgtKNN:
     glob.annz["useWgtKNN"]             = True
