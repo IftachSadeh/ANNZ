@@ -1,9 +1,11 @@
 # ANNZ
 
 ## Introduction
-ANNZ uses both regression and classification techniques for estimation of single-value photo-z (or any regression problem) solutions and PDFs. It uses the TMVA package (http://tmva.sourceforge.net/) which is based on ROOT (https://root.cern.ch/).
+ANNZ uses both regression and classification techniques for estimation of single-value photo-z (or any regression problem) solutions and PDFs. In addition it is suitable for classification problems, such as star/galaxy classification.
 
-The different configurations for regression problems (such as photometric redshift estimation) are referred to as *single regression*, *randomized regression* and *binned classification*. In addition, it is possible to run ANNZ in *single classification* and *randomized classification* modes, used for general classification problems (for instance, star/galaxy binnedClassification).
+ANZZ uses the TMVA package (http://tmva.sourceforge.net/) which is based on ROOT (https://root.cern.ch/). The current version is completely new implementation of the original ANNZ package.
+
+The different configurations for regression problems (such as photometric redshift estimation) are referred to as *single regression*, *randomized regression* and *binned classification*. In addition, it is possible to run ANNZ in *single classification* and *randomized classification* modes, used for general classification problems.
 
 The algorithm is described in the dedicated paper (**COMING SOON**).
 
