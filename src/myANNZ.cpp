@@ -181,8 +181,12 @@ myANNZ::myANNZ() {
   glob->NewOptC("weightVarNames_wgtKNN","");    // list of input variables for KNN weight computation
   glob->NewOptC("outAsciiVars_wgtKNN"  ,"");    // list of output variables to be written to the ascii output of the KNN weight computation
   glob->NewOptI("minNobjInVol_wgtKNN"  ,50);    // minimal number of objects to use per KNN-volume in the KNN weight computation
-  glob->NewOptC("refWeight_wgtKNN"     ,"");    // weight expression for reference kd-tree (function of the variables used in weightVarNames_wgtKNN)
-  glob->NewOptC("refCut_wgtKNN"        ,"");    // cut expression for reference kd-tree (function of the variables used in weightVarNames_wgtKNN)
+  glob->NewOptC("weightInp_wgtKNN"     ,"");    // weight expression for input     kd-tree (function of the variables used in weightVarNames_wgtKNN)
+  glob->NewOptC("weightRef_wgtKNN"     ,"");    // weight expression for reference kd-tree (function of the variables used in weightVarNames_wgtKNN)
+  glob->NewOptC("cutInp_wgtKNN"        ,"");    // cut expression for input     kd-tree (function of the variables used in weightVarNames_wgtKNN)
+  glob->NewOptC("cutRef_wgtKNN"        ,"");    // cut expression for reference kd-tree (function of the variables used in weightVarNames_wgtKNN)
+  glob->NewOptF("sampleFracInp_wgtKNN" ,1);     // fraction of the input sample to use for the kd-tree (positive number, smaller or equal to 1)
+  glob->NewOptF("sampleFracRef_wgtKNN" ,1);     // fraction of the input sample to use for the kd-tree (positive number, smaller or equal to 1)
 
   // -----------------------------------------------------------------------------------------------------------
   // general options (regression, binned-classification and classification)

@@ -148,25 +148,33 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
   TString outBaseName     = (TString)outDirNameFull+glob->GetOptC("treeName")+weightName;
   TString outAsciiVars    = glob->GetOptC("outAsciiVars_wgtKNN");
   TString weightVarNames  = glob->GetOptC("weightVarNames_wgtKNN");
+  TString indexName       = glob->GetOptC("indexName");
   TString plotExt         = glob->GetOptC("printPlotExtension");
   bool    doNormWeights   = glob->GetOptB("doNormWeights_wgtKNN");
+  double  sampleFracInp   = glob->GetOptF("sampleFracInp_wgtKNN");
+  double  sampleFracRef   = glob->GetOptF("sampleFracRef_wgtKNN");
   bool    doStoreToAscii  = glob->GetOptB("doStoreToAscii");
   bool    doPlots         = glob->GetOptB("doPlots");
   int     nObjectsToWrite = glob->GetOptI("nObjectsToWrite");
   int     minNobjInVol    = glob->GetOptI("minNobjInVol_wgtKNN");
+  int     minObjTrainTest = glob->GetOptI("minObjTrainTest");
   int     maxNobj         = 0;   maxNobj = glob->GetOptI("maxNobj"); // only allow limits in case of debugging !! 
-  
+
   TString wgtNormTreeName = "_normWgt";
 
-  vector <TString> chainWgtV(2,""); chainWgtV[1] = glob->GetOptC("refWeight_wgtKNN");
-  vector <TString> chainCutV(2,""); chainCutV[1] = glob->GetOptC("refCut_wgtKNN");
-  
+  vector <TString> chainWgtV(2); chainWgtV[0] = glob->GetOptC("weightInp_wgtKNN"); chainWgtV[1] = glob->GetOptC("weightRef_wgtKNN");
+  vector <TString> chainCutV(2); chainCutV[0] = glob->GetOptC("cutInp_wgtKNN");    chainCutV[1] = glob->GetOptC("cutRef_wgtKNN");
+
   vector <TString> varNames = utils->splitStringByChar(weightVarNames,';');
 
   int nVars = (int)varNames.size();
   VERIFY(LOCATION,(TString)"Did not find input variables for KNN weight computation [\"weightVarNames_wgtKNN\" ="
                           +weightVarNames+"] ... Something is horribly wrong !?!?",(nVars > 0));
 
+  VERIFY(LOCATION,(TString)"sampleFracInp_wgtKNN must be a positive number, smaller or equal to 1. Currently is set to "+utils->floatToStr(sampleFracInp)
+                 ,(sampleFracInp > 0 && sampleFracInp <= 1));
+  VERIFY(LOCATION,(TString)"sampleFracRef_wgtKNN must be a positive number, smaller or equal to 1. Currently is set to "+utils->floatToStr(sampleFracRef)
+                 ,(sampleFracRef > 0 && sampleFracRef <= 1));
   // -----------------------------------------------------------------------------------------------------------
   // setup the kd-trees for the two chains
   // -----------------------------------------------------------------------------------------------------------
@@ -184,7 +192,19 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
     // as this may cause seg-fault (perhaps due to closing of underlying TFile somwhere by ROOT)
     // -----------------------------------------------------------------------------------------------------------
     TChain * aChain = (nChainNow == 0) ? aChainInp : aChainRef;
-    aChainV[nChainNow] = (TChain*)aChain->Clone((TString)aChain->GetName()+nChainKNNname);  aChainV[nChainNow]->SetDirectory(0);
+    aChainV[nChainNow]   = (TChain*)aChain->Clone((TString)aChain->GetName()+nChainKNNname);  aChainV[nChainNow]->SetDirectory(0);
+
+    double  objFracNow   = (nChainNow == 0) ? sampleFracInp : sampleFracRef;
+    int     nTrainObj    = static_cast<int>(floor(aChainV[nChainNow]->GetEntries() * objFracNow));
+
+    VERIFY(LOCATION,(TString)"Following sampleFracInp_wgtKNN/sampleFracRef_wgtKNN cut, chain("+(TString)aChain->GetName()+") with initial "
+                            +utils->lIntToStr(aChainV[nChainNow]->GetEntries())+" objects, now has "+utils->lIntToStr(nTrainObj)
+                            +" objects (minimum is \"minObjTrainTest\" = "+utils->lIntToStr(minObjTrainTest)+") ...",(nTrainObj >= minObjTrainTest));
+
+    int     split0   = 20;
+    int     split1   = static_cast<int>(floor(split0/objFracNow));
+    TString fracCut  = (TString)indexName+" % "+TString::Format("%d < %d",split1,split0);
+    TCut    finalCut = ((TCut)fracCut) + ((TCut)chainCutV[nChainNow]);
 
     outFileDirKnnErrV[nChainNow] = outBaseName+"_weights"+nChainKNNname+"/";
     outFileNameKnnErr[nChainNow] = outBaseName+nChainKNNname+".root";
@@ -211,7 +231,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
     knnErrFactory[nChainNow]->AddRegressionTree(aChainV[nChainNow], 1, TMVA::Types::kTraining);
     knnErrFactory[nChainNow]->SetWeightExpression(chainWgtV[nChainNow],"Regression");
 
-    knnErrFactory[nChainNow]->PrepareTrainingAndTestTree((TCut)chainCutV[nChainNow],trainValidStr);
+    knnErrFactory[nChainNow]->PrepareTrainingAndTestTree(finalCut,trainValidStr);
 
     knnErrMethod[nChainNow] = dynamic_cast<TMVA::MethodKNN*>(knnErrFactory[nChainNow]->BookMethod(TMVA::Types::kKNN, weightName,(TString)optKNN+verbLvlM));
     knnErrModule[nChainNow] = knnErrMethod[nChainNow]->fModule;
@@ -222,7 +242,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
 
     aLOG(Log::INFO)  <<coutGreen<<" - "<<coutBlue<<aChainV[nChainNow]->GetName()<<coutGreen<<" - kd-tree ("<<knnErrMethod[nChainNow]->fEvent.size()
                      <<")"<<coutYellow<<" , opts = "<<coutRed<<optKNN<<coutYellow<<" , "<<coutRed<<trainValidStr
-                     <<coutYellow<<" , cuts = "<<coutRed<<chainCutV[nChainNow]<<coutYellow<<" , weights = "<<coutRed<<chainWgtV[nChainNow]
+                     <<coutYellow<<" , cuts = "<<coutRed<<finalCut<<coutYellow<<" , weights = "<<coutRed<<chainWgtV[nChainNow]
                      <<coutDef<<endl;
 
     // sanity check - if this is not true, the events in the binary tree will have the wrong "units"
@@ -258,13 +278,13 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
   // -----------------------------------------------------------------------------------------------------------
   // loop on the tree
   // -----------------------------------------------------------------------------------------------------------
-  double          weightSum(0);
-  vector <int>    distIndexV(2);
-  vector <double> distV(2), weightSumV(2);
-  TMVA::kNN::VarVec     objNowV(nVars,0);
+  double            weightSum(0);
+  vector <int>      distIndexV(2);
+  vector <double>   distV(2), weightSumV(2);
+  TMVA::kNN::VarVec objNowV(nVars,0);
 
+  int   nObjectsToPrint = min(static_cast<int>(aChainInp->GetEntries()/10.) , glob->GetOptI("nObjectsToPrint"));
   bool  breakLoop(false), mayWriteObjects(false);
-  int   nObjectsToPrint(aChainInp->GetEntries()/10.);
   var_0->clearCntr();
   for(Long64_t loopEntry=0; true; loopEntry++) {
     if(!var_0->getTreeEntry(loopEntry)) breakLoop = true;

@@ -1,9 +1,9 @@
-# ANNZ
+# ANNZ2
 
 ## Introduction
 ANNZ uses both regression and classification techniques for estimation of single-value photo-z (or any regression problem) solutions and PDFs. In addition it is suitable for classification problems, such as star/galaxy classification.
 
-ANZZ uses the TMVA package (http://tmva.sourceforge.net/) which is based on ROOT (https://root.cern.ch/). The current version is completely new implementation of the original ANNZ package.
+ANZZ uses the TMVA package (http://tmva.sourceforge.net/) which is based on ROOT (https://root.cern.ch/). The current version is a completely new implementation of the original ANNZ package.
 
 The different configurations for regression problems (such as photometric redshift estimation) are referred to as *single regression*, *randomized regression* and *binned classification*. In addition, it is possible to run ANNZ in *single classification* and *randomized classification* modes, used for general classification problems.
 
@@ -385,9 +385,9 @@ glob.annz["overwriteExistingTrain"] = True
 **An important note -** the choice to propagate the input variable uncertainties instead of using the KNN method must be made during the training phase of an MLM. This is done by setting the `inputVarErrors` parameter during training (see e.g., `scripts/annz_rndReg_advanced.py`). If set to a different value during optimization/verification or evaluation, it will have no affect.
 
 - It is possible to use ANNZ to generate object weights, based on a reference dataset. The weights are generated as part of the `--genInputTrees` phase, and are then used for training and optimization; they are also calculated during evaluation, and added as part of the per-object weight which is included in the output of the evaluation.
-This is feature is useful, if e.g., the target dataset for evaluation has a different distribution of input parameters, compared to the training dataset. For instance, for photo-z derivation, it is possible for the spectroscopic  training sample to have a different color distribution, compared to the target photometric sample. The derived weights in this case are calculated as the ratio between the number of objects in a given color-box in the reference sample, compared to the training sample. The procedure is implemented in `CatFormat::addWgtKNNtoTree()` (in `src/CatFormat_wgtKNN.cpp`), where a more detailed explanation is also given. See `scripts/annz_rndReg_advanced.py` for a use-example.
+This feature is useful, if e.g., the target dataset for evaluation has a different distribution of input parameters, compared to the training dataset. For instance, for photo-z derivation, it is possible for the spectroscopic  training sample to have a different color distribution, compared to the target photometric sample. The derived weights in this case are calculated as the ratio between the number of objects in a given color-box in the reference sample, compared to the training sample. The procedure is implemented in `CatFormat::addWgtKNNtoTree()` (in `src/CatFormat_wgtKNN.cpp`), where a more detailed explanation is also given. See `scripts/annz_rndReg_advanced.py` for a use-example.
 
-- It is possible to train/optimize MLMs using specific cuts and/or weights, based on any mathematical expression which uses the variables defined in the input dataset (not limited to the variables used for the training). The relevant variables are `userCuts_train`,`userCuts_valid`,`userWeights_train` and `userWeights_valid`. See the advanced scripts for use-examples.
+- It is possible to train/optimize MLMs using specific cuts and/or weights, based on any mathematical expression which uses the variables defined in the input dataset (not limited to the variables used for the training). The relevant variables are `userCuts_train`, `userCuts_valid`,`userWeights_train` and `userWeights_valid`. See the advanced scripts for use-examples.
 
 - By default, a progress bar is drawn during training. If one is writing the output to a log file, the progress bar is important to avoid, as it will cause the size of the log file to become very large. One can either add `--isBatch` while running the example scripts, or set in `generalSettings.py` (or elsewhere),
 ```python

@@ -345,8 +345,9 @@ void CatFormat::asciiToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
     // -----------------------------------------------------------------------------------------------------------
     // the loop
     // -----------------------------------------------------------------------------------------------------------
-    ifstream  inputFile(inFileNameNow,std::ios::in);
+    ifstream    inputFile(inFileNameNow,std::ios::in);
     std::string line;
+    var->NewCntr("nLineFile",0);
     while(!inputFile.eof()) {
       // get an object
       // -----------------------------------------------------------------------------------------------------------
@@ -360,7 +361,7 @@ void CatFormat::asciiToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
 
       if(var->GetCntr("nLine") % nObjectsToPrint == 0) {
         aLOG(Log::DEBUG) <<coutGreen<<" - "<<coutBlue<<glob->GetOptC("outDirName")<<coutGreen<<" - "<<coutBlue<<glob->GetOptC("baseName")<<coutGreen<<" - "
-        <<coutGreen<<" Objects in current file = "<<coutYellow<<TString::Format("%3.3g \t",(double)var->GetCntr("nLine"))
+        <<coutGreen<<" Objects in current file = "<<coutYellow<<TString::Format("%3.3g \t",(double)var->GetCntr("nLineFile"))
         <<coutRed<<" Total = "<<coutYellow<<TString::Format("%3.3g \t",(double)var->GetCntr("nObj"))<<coutDef<<endl;
       }
 
@@ -382,9 +383,8 @@ void CatFormat::asciiToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
       }
       
       // update counters
-      var->IncCntr("nObj"); mayWriteObjects = true; if(var->GetCntr("nObj") == maxNobj) breakLoop = true;
+      var->IncCntr("nObj"); var->IncCntr("nLineFile"); mayWriteObjects = true; if(var->GetCntr("nObj") == maxNobj) breakLoop = true;
     }
-
   }
   if(!breakLoop) { var->printCntr(treeName,Log::INFO); outputs->WriteOutObjects(false,true); outputs->ResetObjects(); }
 

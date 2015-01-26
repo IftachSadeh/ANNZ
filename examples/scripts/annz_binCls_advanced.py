@@ -107,31 +107,37 @@ if glob.annz["doGenInputTrees"]:
   # --------------------------------------------------------------------------------------------------
   #   - additional options:
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  #     minNobjInVol_wgtKNN - the minimal number of neighbours used for the KNN weight calc.
-  #     outAsciiVars_wgtKNN - is a list of variables (subset of inAsciiVars_wgtKNN) which will be written
-  #                           out to the output ascii file of the weights, along with the actual weight. This ascii file
-  #                           is not used by ANNZ, it is just for the user to inspect.
-  #     refWeight_wgtKNN    - a possible weight expression used for the kd-tree (each near-neighbour
-  #                           will have a weight according to this, where the sum of these weights stands as the
-  #                           effective number of near-neighbours in the calculated volume).
-  #     refCut_wgtKNN       - a possible cut expression used for the kd-tree (defines which entries
-  #                           from the reference sample are excluded from the calculation).
+  #     minNobjInVol_wgtKNN   - the minimal number of neighbours used for the KNN weight calc.
+  #     outAsciiVars_wgtKNN   - is a list of variables (subset of inAsciiVars_wgtKNN) which will be written
+  #                             out to the output ascii file of the weights, along with the actual weight. This ascii file
+  #                             is not used by ANNZ, it is just for the user to inspect.
+  #     sampleFracInp_wgtKNN,
+  #     sampleFracRef_wgtKNN  - instead of using the entire input/reference sample for the KNN search, a fraction
+  #                             of the sample may be used. This is important for large datasets, as the algorithm
+  #                             may become very slow if the kd-tree has too many objects. The subsample used
+  #                             after this cut is randomely selected from the entire input/reference sample.
+  #     weightRef_wgtKNN      - a possible weight expression used for the kd-tree (each near-neighbour
+  #                             will have a weight according to this, where the sum of these weights stands as the
+  #                             effective number of near-neighbours in the calculated volume).
+  #     cutRef_wgtKNN         - a possible cut expression used for the kd-tree (defines which entries
+  #                             from the reference sample are excluded from the calculation).
   # - example use:
   #   set useWgtKNN as [True] to generate and use the weights
   # --------------------------------------------------------------------------------------------------
   useWgtKNN = False
-
   if useWgtKNN:
     glob.annz["useWgtKNN"]             = True
-    glob.annz["minNobjInVol_wgtKNN"]   = 60
+    glob.annz["minNobjInVol_wgtKNN"]   = 50
     glob.annz["inAsciiFiles_wgtKNN"]   = "boss_dr10_colorCuts.csv"
     glob.annz["inAsciiVars_wgtKNN"]    = glob.annz["inAsciiVars"]
     glob.annz["weightVarNames_wgtKNN"] = "MAG_U;MAG_G;MAG_R;MAG_I;MAG_Z"
     
     # optional parameters (may leave empty as default value):
+    glob.annz["sampleFracInp_wgtKNN"]  = 0.1                                           # fraction of dataset to use (positive number, smaller or equal to 1)
+    glob.annz["sampleFracRef_wgtKNN"]  = 0.2                                           # fraction of dataset to use (positive number, smaller or equal to 1)
     glob.annz["outAsciiVars_wgtKNN"]   = "MAG_U;MAG_G;MAGERR_U"                        # write out two additional variables to the output file
-    glob.annz["refWeight_wgtKNN"]      = "(MAGERR_R<0.7)*1 + (MAGERR_R>=0.7)/MAGERR_R" # down-weight objects with high MAGERR_R
-    glob.annz["refCut_wgtKNN"]         = "MAGERR_U<200"                                # only use objects which have small MAGERR_U
+    glob.annz["weightRef_wgtKNN"]      = "(MAGERR_R<0.7)*1 + (MAGERR_R>=0.7)/MAGERR_R" # down-weight objects with high MAGERR_R
+    glob.annz["cutRef_wgtKNN"]         = "MAGERR_U<200"                                # only use objects which have small MAGERR_U
 
   # run ANNZ with the current settings
   runANNZ()
