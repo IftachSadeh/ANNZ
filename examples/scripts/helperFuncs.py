@@ -45,7 +45,9 @@ def initParse():
 
   parser.add_argument("--maxNobj",    type=float, default=0)
   parser.add_argument("--trainIndex", type=float, default=-1)
-  parser.add_argument("--unitTest",   type=float, default=-1)
+
+  parser.add_argument("--fitsToAscii",         action='store_true')
+  parser.add_argument("--asciiToFits",         action='store_true')
 
   glob.pars = vars(parser.parse_args())
 
@@ -70,8 +72,10 @@ def initParse():
     if glob.pars["optimize"]:      nModes += 1
     if glob.pars["verify"]:        nModes += 1
     if glob.pars["evaluate"]:      nModes += 1
+    if glob.pars["fitsToAscii"]:   nModes += 1
+    if glob.pars["asciiToFits"]:   nModes += 1
 
-    Assert("Must define exactly one of --genInputTrees --train , --optimize --verify and --evaluate !",(nModes == 1 or hasMake))
+    Assert("Must define exactly one of --genInputTrees --train , --optimize --verify, --evaluate, --fitsToAscii, --asciiToFits !",(nModes == 1 or hasMake))
 
   glob.pars["onlyMake"] = (((nSetups == 0) or (nModes == 0)) and hasMake)
 
@@ -96,7 +100,9 @@ def initParse():
 
   glob.annz["maxNobj"]          = int(floor(glob.pars["maxNobj"]))    # limit number of used objects - used for debugging
   glob.annz["trainIndex"]       = int(floor(glob.pars["trainIndex"])) # used for python batch-job submision
-  glob.pars["unitTest"]         = int(floor(glob.pars["unitTest"]))   # used for unit-tests selection and debugging
+
+  glob.annz["doFitsToAscii"]    = glob.pars["fitsToAscii"]
+  glob.annz["doAsciiToFits"]    = glob.pars["asciiToFits"]
 
   # default values for options which should be overridden in generalSettings()
   # --------------------------------------------------------------------------------------------------

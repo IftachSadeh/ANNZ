@@ -116,9 +116,11 @@ if glob.annz["doGenInputTrees"]:
   #                             of the sample may be used. This is important for large datasets, as the algorithm
   #                             may become very slow if the kd-tree has too many objects. The subsample used
   #                             after this cut is randomely selected from the entire input/reference sample.
+  #     weightInp_wgtKNN,
   #     weightRef_wgtKNN      - a possible weight expression used for the kd-tree (each near-neighbour
   #                             will have a weight according to this, where the sum of these weights stands as the
   #                             effective number of near-neighbours in the calculated volume).
+  #     cutInp_wgtKNN,
   #     cutRef_wgtKNN         - a possible cut expression used for the kd-tree (defines which entries
   #                             from the reference sample are excluded from the calculation).
   # - example use:

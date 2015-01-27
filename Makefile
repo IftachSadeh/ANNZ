@@ -37,7 +37,9 @@ endif
 # ---------------------------------------------------------------------------------------------------
 CXXFLAGS += -g -I../ -I./ -I../src/ -I../include/
 VPATH    += ./:../:../src:../include
-LD       += $(shell $(RC) --libs) -lMinuit -lTMVA -lXMLIO -lTreePlayer
+MORELIBS  = -lMinuit -lTMVA -lXMLIO -lTreePlayer
+LD       += $(shell $(RC) --libs) $(MORELIBS)
+LIBS     += $(MORELIBS)
 
 # ---------------------------------------------------------------------------------------------------
 # Added -std=c++0x to enable c++11 support for e.g., stoi()

@@ -1,4 +1,4 @@
-# ANNZ2
+# ANNZ 2.0.0
 
 ## Introduction
 ANNZ uses both regression and classification techniques for estimation of single-value photo-z (or any regression problem) solutions and PDFs. In addition it is suitable for classification problems, such as star/galaxy classification.
@@ -60,7 +60,6 @@ cd /home/work
 wget http://root.cern.ch/download/root_v5.34.25.macosx64-10.10-i386.tar.gz
 tar xvfz root_v5.34.25.macosx64-10.10-i386.tar.gz
 ```
-
 2. Alternatively, one may download the source files and compile from scratch. This would require something like:
 ```bash
 cd /home/work
@@ -130,17 +129,14 @@ python scripts/annz_singleReg_quick.py --singleRegression --evaluate
 ```bash
 python scripts/annz_singleReg_quick.py --singleRegression --genInputTrees
 ```
-
 2. **train**: Perform training of a single MLM.
 ```bash
 python scripts/annz_singleReg_quick.py --singleRegression --train
 ```
-
 3. **optimize**: Verify that the training was successful and create some performance plots.
 ```bash
 python scripts/annz_singleReg_quick.py --singleRegression --optimize
 ```
-
 4. **evaluate**: Evaluate an input dataset using the trained MLM.
 ```bash
 python scripts/annz_singleReg_quick.py --singleRegression --evaluate
@@ -152,17 +148,14 @@ python scripts/annz_singleReg_quick.py --singleRegression --evaluate
 ```bash
 python scripts/annz_rndReg_quick.py --randomRegression --genInputTrees
 ```
-
 2. **train**: Perform training of multiple MLMs, where each has a different configuration (type of MLM, algorithm-parameter choices, input-parameter sets).
 ```bash
 python scripts/annz_rndReg_quick.py --randomRegression --train
 ```
-
 3. **optimize**: Using all trained MLMs, rank the different solutions by their performance metrics (bias, scatter and outlier-fractions); generate up to two types of PDF solutions using the distribution of MLM solutions, convoluted with the corresponding error estimates. Performance plots are also created.
 ```bash
 python scripts/annz_rndReg_quick.py --randomRegression --optimize
 ```
-
 4. **evaluate**: Evaluate an input dataset using the derived estimators: the *best* MLM, the PDF(s) and the average of the weighted and the un-weighted PDF solutions.
 ```bash
 python scripts/annz_rndReg_quick.py --randomRegression --evaluate
@@ -175,17 +168,14 @@ python scripts/annz_rndReg_quick.py --randomRegression --evaluate
 ```bash
 python scripts/annz_binCls_quick.py --binnedClassification --genInputTrees
 ```
-
 2. **train**: Perform training of an MLM for each one of the classification bins. In each bin multiple MLM candidates are trained, where each has a different configuration (type of MLM, algorithm-parameter choices, input-parameter sets); only the candidate with the *best* performance (highest separation between classification signal and background) is kept.
 ```bash
 python scripts/annz_binCls_quick.py --binnedClassification --train
 ```
-
 3. **verify**: Verification that each classification bin has a corresponding trained MLM, and that the training is self-consistent. Performance plots are also created.
 ```bash
 python scripts/annz_binCls_quick.py --binnedClassification --verify
 ```
-
 4. **evaluate**: Evaluate an input dataset using the derived estimators: the PDF and the average of the PDF solution.
 ```bash
 python scripts/annz_binCls_quick.py --binnedClassification --evaluate
@@ -198,17 +188,14 @@ python scripts/annz_binCls_quick.py --binnedClassification --evaluate
 ```bash
 python scripts/annz_singleCls_quick.py --singleClassification --genInputTrees
 ```
-
 2. **train**: Perform training of a single MLM.
 ```bash
 python scripts/annz_singleCls_quick.py --singleClassification --train
 ```
-
 3. **optimize**: Verify that the training was successful and create some performance plots.
 ```bash
 python scripts/annz_singleCls_quick.py --singleClassification --optimize
 ```
-
 4. **evaluate**: Evaluate an input dataset using the trained MLM.
 ```bash
 python scripts/annz_singleCls_quick.py --singleClassification --evaluate
@@ -220,17 +207,14 @@ python scripts/annz_singleCls_quick.py --singleClassification --evaluate
 ```bash
 python scripts/annz_rndCls_quick.py --randomClassification --genInputTrees
 ```
-
 2. **train**: Perform training of multiple MLMs, where each has a different configuration (type of MLM, algorithm-parameter choices, input-parameter sets).
 ```bash
 python scripts/annz_rndCls_quick.py --randomClassification --train
 ```
-
 3. **optimize**: Using all trained MLMs, rank the different solutions by separation parameter between classification signal and background. Performance plots are also created.
 ```bash
 python scripts/annz_rndCls_quick.py --randomClassification --optimize
 ```
-
 4. **evaluate**: Evaluate an input dataset using selected MLMs from the ranked list of estimators.
 ```bash
 python scripts/annz_rndCls_quick.py --randomClassification --evaluate
@@ -254,7 +238,6 @@ python scripts/annz_rndReg_advanced.py --randomRegression --evaluate
 The `scripts/generalSettings.py` script includes the following two functions:
 
 1. **generalSettings()**: set additional options, which are then used for all example scripts, for all operational modes (training, optimization etc.). In addition to the given examples, any of the options defined in `myMain::myMain()` (in `src/myMain.cpp`) may be used.
-
 2. **genRndOpts**: an example for setting specific randomization options for MLM during training. In general, during submission of training jobs, the variable, `userMLMopts`, holds the MLM settings. If left empty, either an ANN or a BDT is generated, using the randomization procedure defined in `ANNZ::generateOptsMLM()` (in `src/ANNZ_train.cpp`). See e.g., `scripts/annz_rndReg_advanced.py`, for a use-example.
 
 #### Running on a batch farm
@@ -270,13 +253,9 @@ Two PDFs may be generated, derived by choosing a weighting for the trained MLMs,
 We define the following name-tags:
 
 1. **ANNZ best**: The *best* MLM solution, that is, the solution which achieved the best combination of performance metrics (bias, scatter and outlier fractions).
-
 2. **ANNZ MLM average 0**: The un-weighted average of all MLMs which are included in the first PDF. In general, the PDF is composed by setting relative weights for the various MLMs, and convolving the MLM solutions with the corresponding uncertainty estimators. In this context, *un-weighted* means that the PDF weights are not used and that the MLMs are not convolved with the uncertainty estimators. In essence, this solution corresponds to the average solution of all MLMs which have non-zero PDF weights (the subset of the MLMs that have good performance metrics).
-
 3. **ANNZ PDF average 0**: The average of the first PDF (using the full weighted set of MLMs, convolved with uncertainty estimators).
-
 4. **ANNZ PDF 0**: The full PDF solution.
-
 5. **ANNZ MLM average 1, ANNZ PDF average 1, ANNZ PDF 1**: The corresponding estimators for the second PDF.
 
 #### Optimization
@@ -284,7 +263,6 @@ We define the following name-tags:
 The following data-products are produced during optimization (using, for example, `scripts/annz_rndReg_quick.py`):
 
 1. **output/test_randReg_quick/regres/optim/eval/ANNZ_randomReg_0000.csv**: an ascii file with the derived estimators.
-
 2. **output/test_randReg_quick/regres/optim/eval/plots/**: A directory with root scripts and pictures of performance plots (picture-format defined by `printPlotExtension`, as e.g., in `scripts/generalSettings.py`).
 
 The first line of the output ascii file contains a list of the column names in the file.
@@ -299,7 +277,6 @@ In this example, `scripts/annz_rndReg_quick.py` was used. Here `Z` is the regres
 There are two ways to define the PDF bins:
 
 1. The PDF is defined within `nPDFbins` equal-width bins between `minValZ` and `maxValZ` (the minimal and maximal defined values of the regression target). The `nPDFbins`, `minValZ` and `maxValZ` variables are mandatory settings for ANNZ, as defined in the example scripts.
-
 2. A specific set of bins of arbitrary with may defined by setting the variable, `userPdfBins` (in which case `nPDFbins` is ignored). The only constrain is that the first and last bin edges be within the range defined by `minValZ` and `maxValZ`. This can e.g., be
 ```python
 glob.annz["userPdfBins"] = "0.05;0.1;0.2;0.24;0.3;0.52;0.6;0.7;0.8"
@@ -350,7 +327,6 @@ glob.annz["addClsKNNerr"] = True
 The weights for the different estimators which were mentioned above (`ANNZ_8_wgt`, `ANNZ_best_wgt`, `ANNZ_MLM_avg_0_wgt` etc.) serve two purposes:
 
 1. **numerical weights:** the numerical value of the weight is composed of the weight-definition provided by the user through the `userWeights_train` and `userWeights_valid` variables, combined with the reference dataset weight, which can be added using `useWgtKNN` (see the advanced example scripts).
-
 2. **binary cuts:** objects which do not pass the cuts end up with a zero weight. A trivial example of a cut, is an object which has a value of the regression target for which `zTrg < minValZ` or `zTrg > maxValZ`. Cut may also be defined by using the `userCuts_train` and `userCuts_valid` variables (see the advanced example scripts).
 
 A few notes:
@@ -387,7 +363,7 @@ glob.annz["overwriteExistingTrain"] = True
 - It is possible to use ANNZ to generate object weights, based on a reference dataset. The weights are generated as part of the `--genInputTrees` phase, and are then used for training and optimization; they are also calculated during evaluation, and added as part of the per-object weight which is included in the output of the evaluation.
 This feature is useful, if e.g., the target dataset for evaluation has a different distribution of input parameters, compared to the training dataset. For instance, for photo-z derivation, it is possible for the spectroscopic  training sample to have a different color distribution, compared to the target photometric sample. The derived weights in this case are calculated as the ratio between the number of objects in a given color-box in the reference sample, compared to the training sample. The procedure is implemented in `CatFormat::addWgtKNNtoTree()` (in `src/CatFormat_wgtKNN.cpp`), where a more detailed explanation is also given. See `scripts/annz_rndReg_advanced.py` for a use-example.
 
-- It is possible to train/optimize MLMs using specific cuts and/or weights, based on any mathematical expression which uses the variables defined in the input dataset (not limited to the variables used for the training). The relevant variables are `userCuts_train`, `userCuts_valid`,`userWeights_train` and `userWeights_valid`. See the advanced scripts for use-examples.
+- It is possible to train/optimize MLMs using specific cuts and/or weights, based on any mathematical expression which uses the variables defined in the input dataset (not limited to the variables used for the training). The relevant variables are `userCuts_train`, `userCuts_valid`, `userWeights_train` and `userWeights_valid`. See the advanced scripts for use-examples.
 
 - By default, a progress bar is drawn during training. If one is writing the output to a log file, the progress bar is important to avoid, as it will cause the size of the log file to become very large. One can either add `--isBatch` while running the example scripts, or set in `generalSettings.py` (or elsewhere),
 ```python
