@@ -9,7 +9,7 @@ if not glob.annz["doSingleReg"]:
   log.info(red(" - "+time.strftime("%d/%m/%y %H:%M:%S")+" - This scripts is only designed for singleRegression...")) ; sys.exit(0)
 
 # ==================================================================================================
-# The main code - randomized regression -
+# The main code - single regression -
 # --------------------------------------------------------------------------------------------------
 #   - run the following:
 #     python annz_singleReg.py --singleRegression --genInputTrees

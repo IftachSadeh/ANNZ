@@ -9,7 +9,7 @@ if not glob.annz["doSingleCls"]:
   log.info(red(" - "+time.strftime("%d/%m/%y %H:%M:%S")+" - This scripts is only designed for singleClassification...")) ; sys.exit(0)
 
 # ==================================================================================================
-# The main code - randomized regression -
+# The main code - single classification -
 # --------------------------------------------------------------------------------------------------
 #   - run the following:
 #     python annz_singleCls.py --singleClassification --genInputTrees

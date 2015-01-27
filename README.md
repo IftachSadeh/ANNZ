@@ -109,7 +109,6 @@ python scripts/annz_singleReg_quick.py --make --clean
 ```
 
 
-
 ## Examples
 
 ### Quickstart guide
@@ -249,7 +248,7 @@ python scripts/annz_rndReg_advanced.py --randomRegression --evaluate
 ```
 
 
-#### generalSettings.py
+#### Global options (`generalSettings.py`)
 
 The `scripts/generalSettings.py` script includes the following two functions:
 
@@ -260,6 +259,16 @@ The `scripts/generalSettings.py` script includes the following two functions:
 #### Running on a batch farm
 
 It is advisable to run ANNZ on a batch farm, especially during the training phase. An example of how this may be done is given in `scripts/annz_qsub.py`. Please note that this only serves as a guideline, and should probably be customized for a particular cluster.
+
+
+#### FITS file support
+
+The nominal input/output of ANNZ is in the format of ascii files. In order to avoid additional dependencies, FITS format support is not incorporated directly into ANNZ. Instead, two functions, `fitsToAscii()` and `asciiToFits()`, are available in `scripts/fitsFunc.py` (and require the python package, `astropy.io`). These may be used for creating ascii files in the format accepted by ANNZ from a FITS input file, and vise versa. Examples are given in `scripts/annz_fits_quick.py`. They can be run with:
+```bash
+python scripts/annz_fits_quick.py --fitsToAscii
+python scripts/annz_fits_quick.py --asciiToFits
+```
+
 
 ## The outputs of ANNZ
 

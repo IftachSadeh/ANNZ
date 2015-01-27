@@ -9,7 +9,7 @@ if not glob.annz["doRandomCls"]:
   log.info(red(" - "+time.strftime("%d/%m/%y %H:%M:%S")+" - This scripts is only designed for randomClassification...")) ; sys.exit(0)
 
 # ==================================================================================================
-# The main code - randomized regression -
+# The main code - randomized classification -
 # --------------------------------------------------------------------------------------------------
 #   - run the following:
 #     python annz_rndCls_advanced.py --randomClassification --genInputTrees

@@ -61,10 +61,12 @@ def initParse():
   if glob.pars["singleRegression"]:     nSetups += 1
   if glob.pars["randomRegression"]:     nSetups += 1
   if glob.pars["binnedClassification"]: nSetups += 1
-  
+  if glob.pars["fitsToAscii"]:          nSetups += 1
+  if glob.pars["asciiToFits"]:          nSetups += 1
+
   goodSetup = ((nSetups == 1) or (nSetups == 0 and (hasMake or glob.pars["qsub"])))
   Assert("Must define exactly one of --singleClassification --randomClassification , --singleRegression " \
-         +"--randomRegression and --binnedClassification !",goodSetup)
+         +"--randomRegression, --binnedClassification, --fitsToAscii, --asciiToFits !",goodSetup)
 
   if nSetups == 1:
     if glob.pars["genInputTrees"]: nModes += 1

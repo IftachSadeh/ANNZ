@@ -9,7 +9,7 @@ if not glob.annz["doBinnedCls"]:
   log.info(red(" - "+time.strftime("%d/%m/%y %H:%M:%S")+" - This scripts is only designed for binnedClassification...")) ; sys.exit(0)
 
 # ==================================================================================================
-# The main code - randomized regression -
+# The main code - binned classification -
 # --------------------------------------------------------------------------------------------------
 #   - run the following:
 #     python annz_binCls_quick.py --binnedClassification --genInputTrees
