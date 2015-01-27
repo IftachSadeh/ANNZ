@@ -14,7 +14,7 @@ printFreq           = 5000
 stringColLen        = 250
 prefix_csv          = ".csv"
 prefix_fits         = ".fits.gz"
-maxLinesOutFile     = int(2e6) #int(5e6) #int(5e5)
+maxLinesOutFile     = int(2e6)
 splitNamePattern    = "_%04d"
 
 # --------------------------------------------------------------------------------------------------

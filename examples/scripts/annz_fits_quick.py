@@ -1,5 +1,5 @@
 from helperFuncs import *
-from fitsFunc    import fitsToAscii,asciiToFits
+from fitsFuncs   import fitsToAscii,asciiToFits
 
 # command line arguments and basic settings
 # --------------------------------------------------------------------------------------------------
