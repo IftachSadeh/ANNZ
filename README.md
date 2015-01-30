@@ -3,7 +3,7 @@
 ## Introduction
 ANNZ uses both regression and classification techniques for estimation of single-value photo-z (or any regression problem) solutions and PDFs. In addition it is suitable for classification problems, such as star/galaxy classification.
 
-ANZZ uses the [TMVA package](http://tmva.sourceforge.net/){:target="_blank"} which is based on [ROOT](https://root.cern.ch/){:target="_blank"}. The current version is a completely new implementation of the original ANNZ package.
+ANZZ uses the [TMVA package](http://tmva.sourceforge.net/) which is based on [ROOT](https://root.cern.ch/). The current version is a completely new implementation of the original ANNZ package.
 
 The different configurations for regression problems (such as photometric redshift estimation) are referred to as *single regression*, *randomized regression* and *binned classification*. In addition, it is possible to run ANNZ in *single classification* and *randomized classification* modes, used for general classification problems.
 
@@ -25,12 +25,12 @@ While any of the MLMs available through TMVA may be used, ANN/BDT generally achi
 #### Randomized regression
 An ensemble of regression methods is automatically generated. The randomized MLMs differ from each other in several ways. This includes setting unique random seed initializations, as well as changing the configuration parameters of a given algorithm (e.g., number of hidden layers in an ANN), or the set of input parameters used for the training.
 
-Once training is complete, optimization takes place. In this stage, a distribution of photo-z solutions for each galaxy is derived.  A selection procedure is then applied to the ensemble of answers, choosing the subset of methods which achieve optimal performance. The selected MLMs are then folded with their respective uncertainty estimates, which are derived using a KNN-uncertainty estimator (see [Oyaizu et al, 2007](http://arxiv.org/abs/0711.0962){:target="_blank"}). A set of PDF candidates is generated, where each candidate is constructed by a different set of relative weights associated with the various MLM components. Two  selection schemes which optimize the performance of the PDF candidates are currently implemented in ANNZ. In this way, the PDFs which best describe the target of the regression are chosen, resulting in two alternative PDF solutions.
+Once training is complete, optimization takes place. In this stage, a distribution of photo-z solutions for each galaxy is derived.  A selection procedure is then applied to the ensemble of answers, choosing the subset of methods which achieve optimal performance. The selected MLMs are then folded with their respective uncertainty estimates, which are derived using a KNN-uncertainty estimator (see [Oyaizu et al, 2007](http://arxiv.org/abs/0711.0962)). A set of PDF candidates is generated, where each candidate is constructed by a different set of relative weights associated with the various MLM components. Two  selection schemes which optimize the performance of the PDF candidates are currently implemented in ANNZ. In this way, the PDFs which best describe the target of the regression are chosen, resulting in two alternative PDF solutions.
 
 The final products are the *best* solution out of all the randomized MLMs, the full binned PDF(s) and the weighted and un-weighted average of the PDF(s), each also having a corresponding uncertainty estimator. (More details below.)
 
 #### Binned classification
-ANNZ may also be run in binned classification mode, employing an algorithm similar to that used by [Gerdes et al, 2010](http://arxiv.org/abs/0908.4085){:target="_blank"}. The first step of the calculation involves dividing the redshift range of the input samples into many small *classification bins*. Within the redshift bounds of a given bin, the *signal* sample is defined as the collection of galaxies for which the spec-z is within the bin. Similarly, the *background* sample includes all galaxies with spec-z outside the confines of the bin.
+ANNZ may also be run in binned classification mode, employing an algorithm similar to that used by [Gerdes et al, 2010](http://arxiv.org/abs/0908.4085). The first step of the calculation involves dividing the redshift range of the input samples into many small *classification bins*. Within the redshift bounds of a given bin, the *signal* sample is defined as the collection of galaxies for which the spec-z is within the bin. Similarly, the *background* sample includes all galaxies with spec-z outside the confines of the bin.
 
 The algorithm proceeds by training a different classification MLM for each redshift bin. The output of a trained method in a given bin, is translated to the probability for a galaxy to have a redshift which falls inside that bin. The distribution of probabilities from all of the bins is normalized to unity, accounting for possible varying bin width. It then stands as the photo-z PDF of the galaxy.
 
@@ -50,7 +50,7 @@ Randomized classification may be used for general classification problems. In th
 
 ### Download (and if needed install) ROOT
 
-ROOT is available [here](https://root.cern.ch/drupal/content/downloading-root){:target="_blank"}. Version 5.34/25 was used for development, though later versions should be backward compatible (please report any issues).
+ROOT is available [here](https://root.cern.ch/drupal/content/downloading-root). Version 5.34/25 was used for development, though later versions should be backward compatible (please report any issues).
 
 Lets assume we want to install ROOT at `/home/work/root`. We can get ROOT, in one of two ways (as explained on the ROOT site):
 
@@ -78,7 +78,7 @@ In order to check that ROOT is properly installed, do:
 
 ### Install ANNZ
 
-First download [ANNZ](https://github.com/IftachSadeh/ANNZ){:target="_blank"}. For the following, let's assume the working directory is going to be `/home/work/annz`.
+First download [ANNZ](https://github.com/IftachSadeh/ANNZ). For the following, let's assume the working directory is going to be `/home/work/annz`.
 
 Make a personal copy of the example-script directory:
 ```bash
@@ -258,7 +258,7 @@ The `scripts/generalSettings.py` script includes the following two functions:
 
 #### MLM algorithm options
 
-The syntax for defining MLM options is explained in the [TMVA manuall](http://tmva.sourceforge.net/docu/TMVAUsersGuide.pdf){:target="_blank"} in the chapter, *The TMVA Methods*. It may be specified by the user with the `glob.annz["userMLMopts"]` variable.
+The syntax for defining MLM options is explained in the [TMVA manuall](http://tmva.sourceforge.net/docu/TMVAUsersGuide.pdf) in the chapter, *The TMVA Methods*. It may be specified by the user with the `glob.annz["userMLMopts"]` variable.
 
   - For instance we can define a BDT with 110 decision trees, using the AdaBoost (adaptive boost) algorithm:
   ```python
@@ -413,7 +413,7 @@ A few notes:
 
   - It is possible to train/optimize MLMs using specific cuts and/or weights, based on any mathematical expression which uses the variables defined in the input dataset (not limited to the variables used for the training). The relevant variables are `userCuts_train`, `userCuts_valid`, `userWeights_train` and `userWeights_valid`. See the advanced scripts for use-examples.
 
-  - The syntax for math expressions is defined using the ROOT conventions (see e.g., [TMath](https://root.cern.ch/root/html/TMath.html){:target="_blank"} and [TFormula](https://root.cern.ch/root/html/TFormula.html){:target="_blank"}). Acceptable expressions may for instance be the following ridiculous choice:
+  - The syntax for math expressions is defined using the ROOT conventions (see e.g., [TMath](https://root.cern.ch/root/html/TMath.html) and [TFormula](https://root.cern.ch/root/html/TFormula.html)). Acceptable expressions may for instance be the following ridiculous choice:
   ```python
   glob.annz["userCuts_train"]    = "(MAG_R > 22)/MAG_R + (MAG_R <= 22)*1"
   glob.annz["userCuts_valid"]    = "pow(MAG_G,3) + exp(MAG_R)*MAG_I/20. + abs(sin(MAG_Z))"
@@ -437,11 +437,11 @@ A few notes:
 
 ---
 
-The example scripts use the data stored in `examples/data/` as the input for training, validation and evaluation. The data for the regression examples (`examples/data/photoZ/`) were derived from the [catalogues](http://www.sdss3.org/dr10/spectro/spectro_access.php){:target="_blank"}. These include spectroscopic data, taken with the Baryon Oscillation Spectroscopic Survey (BOSS). The data for classification (`examples/data/sgSeparation/`) were derived from the Sloan Digital Sky Survey (SDSS) dataset, following the procedure used by [Vasconcellos et al., (2010)](http://arxiv.org/abs/1011.1951){:target="_blank"}. (Please also see [SDSS](https://www.sdss3.org/collaboration/boiler-plate.php){:target="_blank"}.)
+The example scripts use the data stored in `examples/data/` as the input for training, validation and evaluation. The data for the regression examples (`examples/data/photoZ/`) were derived from the [catalogues](http://www.sdss3.org/dr10/spectro/spectro_access.php). These include spectroscopic data, taken with the Baryon Oscillation Spectroscopic Survey (BOSS). The data for classification (`examples/data/sgSeparation/`) were derived from the Sloan Digital Sky Survey (SDSS) dataset, following the procedure used by [Vasconcellos et al., (2010)](http://arxiv.org/abs/1011.1951). (Please also see [SDSS](https://www.sdss3.org/collaboration/boiler-plate.php).)
 
 ---
 
-The license for ANNZ is the GNU General Public License (v3), as given in LICENSE.txt and available [here](http://www.gnu.org/licenses){:target="_blank"}.
+The license for ANNZ is the GNU General Public License (v3), as given in LICENSE.txt and available [here](http://www.gnu.org/licenses).
 
 ---
 
