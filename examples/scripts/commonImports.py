@@ -42,4 +42,5 @@ def whtOnGreen (message): return ColWhiteOnGreen           +str(message)+ColDef
 # --------------------------------------------------------------------------------------------------
 def Assert(message,state):
   if not state:
-    log.critical(whtOnRed(message)) ; assert(False)
+    log.critical(whtOnRed(message)) ; log.critical(whtOnRed("Will terminate !!!!"))
+    exit(1)

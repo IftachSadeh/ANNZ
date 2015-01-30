@@ -10,7 +10,6 @@ from    commonImports   import bluOnBlck, yellOnBlck, whtOnRed, yellowOnRed, wht
 # --------------------------------------------------------------------------------------------------
 def init():
   initParse()
-  initLogger()
   setCols()
   generalSettings()
   initROOT()
@@ -51,6 +50,8 @@ def initParse():
 
   glob.pars = vars(parser.parse_args())
 
+  initLogger()
+
   # sanity check of user options
   # --------------------------------------------------------------------------------------------------
   hasMake = (glob.pars["make"] or glob.pars["clean"])
@@ -64,9 +65,9 @@ def initParse():
   if glob.pars["fitsToAscii"]:          nSetups += 1
   if glob.pars["asciiToFits"]:          nSetups += 1
 
-  goodSetup = ((nSetups == 1) or (nSetups == 0 and (hasMake or glob.pars["qsub"])))
-  Assert("Must define exactly one of --singleClassification --randomClassification , --singleRegression " \
-         +"--randomRegression, --binnedClassification, --fitsToAscii, --asciiToFits !",goodSetup)
+  if not ((nSetups == 1) or (nSetups == 0 and (hasMake or glob.pars["qsub"]))):
+    log.warning("Should define exactly one of --singleClassification --randomClassification , --singleRegression " \
+         +"--randomRegression, --binnedClassification, --fitsToAscii, --asciiToFits !")
 
   if nSetups == 1:
     if glob.pars["genInputTrees"]: nModes += 1
@@ -77,7 +78,8 @@ def initParse():
     if glob.pars["fitsToAscii"]:   nModes += 1
     if glob.pars["asciiToFits"]:   nModes += 1
 
-    Assert("Must define exactly one of --genInputTrees --train , --optimize --verify, --evaluate, --fitsToAscii, --asciiToFits !",(nModes == 1 or hasMake))
+    if not (nModes == 1 or hasMake):
+      log.warning("Should define exactly one of --genInputTrees --train , --optimize --verify, --evaluate, --fitsToAscii, --asciiToFits !")
 
   glob.pars["onlyMake"] = (((nSetups == 0) or (nModes == 0)) and hasMake)
 

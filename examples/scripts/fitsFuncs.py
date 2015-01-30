@@ -12,8 +12,8 @@ dataExt             = 1
 nAddCharToStr       = 5
 printFreq           = 5000
 stringColLen        = 250
-prefix_csv          = ".csv"
-prefix_fits         = ".fits.gz"
+postfix_csv         = ".csv"
+postfix_fits        = ".fits.gz"
 maxLinesOutFile     = int(2e6)
 splitNamePattern    = "_%04d"
 
@@ -42,7 +42,7 @@ def fitsToAscii():
   # --------------------------------------------------------------------------------------------------
   for fitsFileNow in fitsFiles:
     fitsFileName  = inDirName+"/"+fitsFileNow
-    asciiFileName = outDirNameFull+fitsFileNow+prefix_csv
+    asciiFileName = outDirNameFull+fitsFileNow+postfix_csv
     log.info(green(" - will read from file: ")+red(fitsFileName))
 
     hdulist = fits.open(fitsFileName,memmap=True)    
@@ -88,14 +88,14 @@ def fitsToAscii():
       # --------------------------------------------------------------------------------------------------
       if line % maxLinesOutFile == 0:
         if line > 0:
-          asciFile.close()
-          cmnd = "mv "+asciiFileName+" "+asciiFileName.replace(prefix_csv,str(splitNamePattern % nOutFile)+prefix_csv)
+          asciiFile.close()
+          cmnd = "mv "+asciiFileName+" "+asciiFileName.replace(postfix_csv,str(splitNamePattern % nOutFile)+postfix_csv)
           log.info(purple(" - sys-cmnd: ")+green(cmnd)) ; os.system(cmnd)
           nOutFile += 1
         
         log.info(yellow(" - will write to new file: ")+purple(asciiFileName))
-        asciFile = open(asciiFileName,'w')
-        asciFile.write(varList+"\n")
+        asciiFile = open(asciiFileName,'w')
+        asciiFile.write(varList+"\n")
 
       # some output along
       # --------------------------------------------------------------------------------------------------
@@ -118,13 +118,13 @@ def fitsToAscii():
             for nVnow in range(colVsize[nColNow]):
               outLine += [ arrTypes[nColNow](scidata[line][nColNow][nVnow]) ]
     
-      asciFile.write(delimData.join([str(ele) for ele in outLine])+"\n")
+      asciiFile.write(delimData.join([str(ele) for ele in outLine])+"\n")
 
     log.info(green(" -- Went through ")+yellow(str(line+1).rjust(len(str(nLines))))+green(" / "+str(nLines)+" lines."))
 
-    asciFile.close()
+    asciiFile.close()
     if nOutFile > 1:
-      cmnd = "mv "+asciiFileName+" "+asciiFileName.replace(prefix_csv,str(splitNamePattern % nOutFile)+prefix_csv)
+      cmnd = "mv "+asciiFileName+" "+asciiFileName.replace(postfix_csv,str(splitNamePattern % nOutFile)+postfix_csv)
       log.info(yellow(" - sys-cmnd: ")+green(cmnd)) ; os.system(cmnd)
 
   return
@@ -153,8 +153,8 @@ def asciiToFits():
   # --------------------------------------------------------------------------------------------------
   for asciiFileNow in asciiFiles:
     asciiFileName = inDirName+"/"+asciiFileNow
-    asciFile      = open(asciiFileName,'r')
-    fileReader    = csv.reader(asciFile, delimiter=delimData)
+    asciiFile     = open(asciiFileName,'r')
+    fileReader    = csv.reader(asciiFile, delimiter=delimData)
     log.info(green(" - will read from file: ")+red(asciiFileName))
 
     # derive the number of lines in the file
@@ -217,7 +217,7 @@ def asciiToFits():
 
     # write the fits file
     # --------------------------------------------------------------------------------------------------
-    fitsFileName = outDirNameFull+asciiFileNow+prefix_fits
+    fitsFileName = outDirNameFull+asciiFileNow+postfix_fits
     log.info(yellow(" - will write to file: ")+purple(fitsFileName))
     tbhdu = fits.new_table(fits.ColDefs(cols))
     tbhdu.writeto(fitsFileName,clobber=True)
