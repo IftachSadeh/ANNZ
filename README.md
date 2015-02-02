@@ -258,7 +258,9 @@ The `scripts/generalSettings.py` script includes the following two functions:
 
 #### MLM algorithm options
 
-The syntax for defining MLM options is explained in the [TMVA manuall](http://tmva.sourceforge.net/docu/TMVAUsersGuide.pdf) in the chapter, *The TMVA Methods*. It may be specified by the user with the `glob.annz["userMLMopts"]` variable.
+The syntax for defining MLM options is explained in the [TMVA wiki](http://tmva.sourceforge.net/optionRef.html) and in the [TMVA manuall](http://tmva.sourceforge.net/docu/TMVAUsersGuide.pdf) (in the chapter, *The TMVA Methods*). It may be specified by the user with the `glob.annz["userMLMopts"]` variable. The only requirement not defined nominally in TMVA is `ANNZ_MLM`. This is an internal variable in ANNZ which specifies the type of MLM requested by the user. 
+
+Here are a couple of examples:
 
   - For instance we can define a BDT with 110 decision trees, using the AdaBoost (adaptive boost) algorithm:
   ```python
@@ -269,6 +271,8 @@ The syntax for defining MLM options is explained in the [TMVA manuall](http://tm
   ```python
   glob.annz["userMLMopts"] = "ANNZ_MLM=ANN:HiddenLayers=N+4,N+9:NeuronType=tanh:TrainingMethod=BFGS"
   ```
+
+See the advanced scripts for additional details.
 
 #### Running on a batch farm
 

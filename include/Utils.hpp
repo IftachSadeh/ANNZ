@@ -89,16 +89,13 @@ public:
   inline TString  floatToStr (double   input, TString format = "%f"   ) { return TString::Format(format,input); };
   inline TString  doubleToStr(double   input, TString format = "%.10g") { return TString::Format(format,input); };
 
-  inline Int_t     strToInt   (TString input) { return stoi  ((std::string)input); }
-  inline Long64_t  strToLong  (TString input) { return stoll ((std::string)input); }
-  inline UInt_t    strToUint  (TString input) { return stoul ((std::string)input); }
-  inline ULong64_t strToUlong (TString input) { return stoull((std::string)input); }
-  inline Float_t   strToFloat (TString input) { return stof  ((std::string)input); }
-  inline Double_t  strToDouble(TString input) { return stod  ((std::string)input); }
-  inline Bool_t    strToBool  (TString input) { if     (input == "1" || input.EqualTo("true" ,TString::kIgnoreCase)) return true;
-                                                else if(input == "0" || input.EqualTo("false",TString::kIgnoreCase)) return false;
-                                                else VERIFY(LOCATION,(TString)"Unsupported input in strToBool(input = \""+input+"\")",false);
-                                              };
+  Int_t     strToInt   (TString input);
+  Long64_t  strToLong  (TString input);
+  UInt_t    strToUint  (TString input);
+  ULong64_t strToUlong (TString input);
+  Float_t   strToFloat (TString input);
+  Double_t  strToDouble(TString input);
+  Bool_t    strToBool  (TString input);
 
   inline TString  getFilePath(TString fileName) { return (TString)fileName(0,fileName.Last('/'))+"/"; };
 

@@ -107,11 +107,62 @@ void Utils::setColors() {
   return;
 }
 
-// ===========================================================================================================
-//bool Utils::tlvOrderByPt(TLorentzVector * tlv1, TLorentzVector * tlv2) {
-//  return tlv1->Pt() > tlv2->Pt();
-//}
 
+// ===========================================================================================================
+Int_t Utils::strToInt(TString input) {
+// ===================================
+  Int_t val(0);
+  try         { val = stoi((std::string)input);                                                                             }
+  catch (...) { VERIFY(LOCATION,(TString)" - Could not perform conversion from string to int for stoi("+input+")",false); }
+  return val;
+}
+// ===========================================================================================================
+Long64_t Utils::strToLong(TString input) {
+// =======================================
+  Long64_t val(0);
+  try         { val = stoll((std::string)input);                                                                             }
+  catch (...) { VERIFY(LOCATION,(TString)" - Could not perform conversion from string to long for stoll("+input+")",false); }
+  return val;
+}
+// ===========================================================================================================
+UInt_t Utils::strToUint(TString input) {
+// =====================================
+  UInt_t val(0);
+  try         { val = stoul((std::string)input);                                                                             }
+  catch (...) { VERIFY(LOCATION,(TString)" - Could not perform conversion from string to insigned-int for stoul("+input+")",false); }
+  return val;
+}
+// ===========================================================================================================
+ULong64_t Utils::strToUlong(TString input) {
+// =========================================
+  ULong64_t val(0);
+  try         { val = stoull((std::string)input);                                                                             }
+  catch (...) { VERIFY(LOCATION,(TString)" - Could not perform conversion from string to insigned-long for stoull("+input+")",false); }
+  return val;
+}
+// ===========================================================================================================
+Float_t Utils::strToFloat(TString input) {
+// =======================================
+  Float_t val(0);
+  try         { val = stof((std::string)input);                                                                             }
+  catch (...) { VERIFY(LOCATION,(TString)" - Could not perform conversion from string to float for stof("+input+")",false); }
+  return val;
+}
+// ===========================================================================================================
+Double_t Utils::strToDouble(TString input) {
+// =========================================
+  Double_t val(0);
+  try         { val = stod((std::string)input);                                                                             }
+  catch (...) { VERIFY(LOCATION,(TString)" - Could not perform conversion from string to double for stod("+input+")",false); }
+  return val;
+}
+// ===========================================================================================================
+Bool_t Utils::strToBool(TString input) {
+// =====================================
+  if     (input == "1" || input.EqualTo("true" ,TString::kIgnoreCase)) return true;
+  else if(input == "0" || input.EqualTo("false",TString::kIgnoreCase)) return false;
+  else VERIFY(LOCATION,(TString)"Unsupported input in strToBool(input = \""+input+"\")",false);
+};
 
 // ===========================================================================================================
 void Utils::findObjPatternInCurrentDir(vector <TString> & patternV, vector <TString> & matchedObjV, TString clasType) {
@@ -145,7 +196,6 @@ void Utils::findObjPatternInCurrentDir(vector <TString> & patternV, vector <TStr
 
   return;
 }
-
 
 // ===========================================================================================================
 vector<std::string> & Utils::splitStringByChar(const std::string &s, char delim, vector<std::string> &elems) {
