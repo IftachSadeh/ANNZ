@@ -112,7 +112,7 @@ void Utils::setColors() {
 Int_t Utils::strToInt(TString input) {
 // ===================================
   Int_t val(0);
-  try         { val = stoi((std::string)input);                                                                             }
+  try         { val = stoi((std::string)input);                                                                           }
   catch (...) { VERIFY(LOCATION,(TString)" - Could not perform conversion from string to int for stoi("+input+")",false); }
   return val;
 }
@@ -120,7 +120,7 @@ Int_t Utils::strToInt(TString input) {
 Long64_t Utils::strToLong(TString input) {
 // =======================================
   Long64_t val(0);
-  try         { val = stoll((std::string)input);                                                                             }
+  try         { val = stoll((std::string)input);                                                                            }
   catch (...) { VERIFY(LOCATION,(TString)" - Could not perform conversion from string to long for stoll("+input+")",false); }
   return val;
 }
@@ -128,7 +128,7 @@ Long64_t Utils::strToLong(TString input) {
 UInt_t Utils::strToUint(TString input) {
 // =====================================
   UInt_t val(0);
-  try         { val = stoul((std::string)input);                                                                             }
+  try         { val = stoul((std::string)input);                                                                                    }
   catch (...) { VERIFY(LOCATION,(TString)" - Could not perform conversion from string to insigned-int for stoul("+input+")",false); }
   return val;
 }
@@ -136,7 +136,7 @@ UInt_t Utils::strToUint(TString input) {
 ULong64_t Utils::strToUlong(TString input) {
 // =========================================
   ULong64_t val(0);
-  try         { val = stoull((std::string)input);                                                                             }
+  try         { val = stoull((std::string)input);                                                                                     }
   catch (...) { VERIFY(LOCATION,(TString)" - Could not perform conversion from string to insigned-long for stoull("+input+")",false); }
   return val;
 }
@@ -152,7 +152,7 @@ Float_t Utils::strToFloat(TString input) {
 Double_t Utils::strToDouble(TString input) {
 // =========================================
   Double_t val(0);
-  try         { val = stod((std::string)input);                                                                             }
+  try         { val = stod((std::string)input);                                                                              }
   catch (...) { VERIFY(LOCATION,(TString)" - Could not perform conversion from string to double for stod("+input+")",false); }
   return val;
 }
