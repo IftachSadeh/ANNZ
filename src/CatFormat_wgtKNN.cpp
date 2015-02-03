@@ -495,7 +495,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
       TString branchName = branchNameV_0[nBranchNow];
       TString branchType = var_0->GetVarType(branchName);
 
-      if(branchType == "C" || branchType == "FM")                             continue;
+      if(branchType != "F" && branchType != "D" && branchType != "I")         continue;
       if(branchName.BeginsWith(glob->GetOptC("baseName_ANNZ")))               continue;
       if(find(varNames.begin(),varNames.end(), branchName) != varNames.end()) continue;
 
