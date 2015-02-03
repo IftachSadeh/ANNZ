@@ -175,7 +175,6 @@ myANNZ::myANNZ() {
   // KNN weights from a reference dataset
   // -----------------------------------------------------------------------------------------------------------
   glob->NewOptB("useWgtKNN"            ,false); // add KNN weights based on an input cataloge, defined in inAsciiFiles_wgtKNN
-  glob->NewOptB("doNormWeights_wgtKNN" ,true);  // wether or not to normalize individual weights to the sum of weights in the entire dataset
   glob->NewOptC("inAsciiFiles_wgtKNN"  ,"");    // list of input files for KNN weight computation
   glob->NewOptC("inAsciiVars_wgtKNN"   ,"");    // list of input variables and variable-types as they appear in inAsciiFiles_wgtKNN
   glob->NewOptC("weightVarNames_wgtKNN","");    // list of input variables for KNN weight computation

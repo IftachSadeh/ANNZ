@@ -102,7 +102,7 @@ if glob.annz["doGenInputTrees"]:
 # --------------------------------------------------------------------------------------------------
 if glob.annz["doTrain"]:
   # for each MLM, run ANNZ
-  for nMLMnow in range(glob.annz["nMLMs"]): #[0,1,2,3,4]:
+  for nMLMnow in range(glob.annz["nMLMs"]): 
     glob.annz["nMLMnow"] = nMLMnow
     if glob.annz["trainIndex"] >= 0 and glob.annz["trainIndex"] != nMLMnow: continue
 

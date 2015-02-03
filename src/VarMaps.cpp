@@ -226,15 +226,6 @@ void VarMaps::SetVarF(TString aName, TString input) {
 }
 
 
-
-
-
-
-
-
-
-
-
 // ===========================================================================================================
 void VarMaps::SetForm(TString aName, TString input) {
 // ==================================================
@@ -1238,6 +1229,7 @@ void VarMaps::storeTreeToAscii(TString outFilePrefix, TString outFileDir, int ma
       TString brnchType = GetVarType(brnchName);
 
       varNames.push_back(brnchName); varTypes.push_back(brnchType);
+      acceptedBranches += (TString)coutGreen+brnchName+coutYellow+",";
     }
   }
   else {

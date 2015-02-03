@@ -43,7 +43,7 @@ def initParse():
   parser.add_argument("--logLevel",   type=str,   default="INFO")
 
   parser.add_argument("--maxNobj",    type=float, default=0)
-  parser.add_argument("--trainIndex", type=float, default=-1)
+  parser.add_argument("--trainIndex", type=int,   default=-1)
 
   parser.add_argument("--fitsToAscii",         action='store_true')
   parser.add_argument("--asciiToFits",         action='store_true')
