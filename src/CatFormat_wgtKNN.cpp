@@ -301,7 +301,8 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
   TTree * outTree = new TTree(outTreeName,outTreeName); outTree->SetDirectory(0); outputs->TreeMap[outTreeName] = outTree;
   var_1->createTreeBranches(outTree); 
 
-  
+  aLOG(Log::INFO) <<coutBlue<<" - Will write weights to "<<coutYellow<<(TString)outDirNameFull+outTreeName<<coutBlue<<" ... "<<coutDef<<endl;
+
   // -----------------------------------------------------------------------------------------------------------
   // loop on the tree
   // -----------------------------------------------------------------------------------------------------------
@@ -414,6 +415,9 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
 
   TChain * aChainNormWgt = new TChain(outTreeName,outTreeName); aChainNormWgt->SetDirectory(0); aChainNormWgt->Add(fileNameNow);
 
+  aLOG(Log::INFO) <<coutBlue<<" - Will move previous results into "<<coutPurple<<outDirNameTMP<<coutBlue
+                  <<", and write normalized weights to "<<coutYellow<<fileNameNow<<coutBlue<<" ... "<<coutDef<<endl;
+
   // create the vars to read/write trees
   // -----------------------------------------------------------------------------------------------------------
   var_0 = new VarMaps(glob,utils,"treeWeightsKNNvar_0");
@@ -480,7 +484,6 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
     DELNULL(var_2); outVarNames.clear();
   }
 
-
   // -----------------------------------------------------------------------------------------------------------
   // some histograms to asses the weights
   // -----------------------------------------------------------------------------------------------------------
@@ -498,6 +501,18 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
       if(branchType != "F" && branchType != "D" && branchType != "I")         continue;
       if(branchName.BeginsWith(glob->GetOptC("baseName_ANNZ")))               continue;
       if(find(varNames.begin(),varNames.end(), branchName) != varNames.end()) continue;
+
+      // only accept branches common to all chains
+      int hasBranch(0);
+      for(int nChainNow=0; nChainNow<3; nChainNow++) {
+        TChain  * aChain(NULL);
+        if     (nChainNow == 0) { aChain = aChainRef; }
+        else if(nChainNow == 1) { aChain = aChainInp; }
+        else if(nChainNow == 2) { aChain = aChainOut; }
+
+        if(aChain->FindBranch(branchName)) hasBranch++;
+      }
+      if(hasBranch < 3) continue;      
 
       branchNameV.push_back(branchName);
     }
