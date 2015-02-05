@@ -144,7 +144,7 @@ private:
   void     getBestANNZ(map < int,vector<int> >    & zRegQnt_nANNZ,   map < int,vector<double> > & zRegQnt_bias,
                        map < int,vector<double> > & zRegQnt_sigma68, map < int,vector<double> > & zRegQnt_fracSig68,
                        vector < int >             & bestMLMsV,       bool                       onlyInclusiveBin = true);
-  void     getRndMethodBestPDF(TTree * aChain, int bestANNZindex, vector<int>  & zRegQnt_nANNZ,
+  void     getRndMethodBestPDF(TTree * aChain, int bestANNZindex, vector<int>  & zRegQnt_nANNZ, vector<double> & zRegQnt_bias, 
                                vector<double> & zRegQnt_sigma68, vector<double> & zRegQnt_fracSig68, vector < vector<double> > & bestWeightsV);
   void     doEvalReg(TChain * inChain = NULL, TString outDirName = "", vector <TString> * selctVarV = NULL);
   void     doMetricPlots(TChain * inChain = NULL, vector <TString> * selctMLMv = NULL);

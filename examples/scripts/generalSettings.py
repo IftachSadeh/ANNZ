@@ -51,9 +51,6 @@ def generalSettings():
   #   the metric which is more significant in deciding which MLM performs "best".
   # glob.annz["optimCondReg"] = "bias"
 
-  # option to only generate randomized PDFs based on the scatter metric, not considering outlier fractions
-  # glob.annz["doNotUseOutFracPdfWeights"] = True
-
   # number of random MLM weighting schemes to generate as part of getRndMethodBestPDF()
   # glob.annz["nRndPdfWeightTries"] = 50
 

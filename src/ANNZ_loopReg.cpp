@@ -140,7 +140,7 @@ void ANNZ::optimReg() {
       aLOG(Log::INFO) <<coutBlue<<" - The \"best\" MLM is: "<<coutRed<<getTagName(bestANNZindex)<<coutDef<<endl;
 
       vector < vector<double> > bestWeightsV;
-      getRndMethodBestPDF(aChainMerged,bestANNZindex,zRegQnt_nANNZ[-1],zRegQnt_sigma68[-1],zRegQnt_fracSig68[-1],bestWeightsV);
+      getRndMethodBestPDF(aChainMerged,bestANNZindex,zRegQnt_nANNZ[-1],zRegQnt_bias[-1],zRegQnt_sigma68[-1],zRegQnt_fracSig68[-1],bestWeightsV);
 
       VERIFY(LOCATION,(TString)"After getRndMethodBestPDF(), found [bestWeightsV.size() = "+utils->intToStr((int)bestWeightsV.size())+"] - but expected "
                                +"this to be [= "+utils->intToStr(nPDFs)+"] ... Something is horribly wrong !!!",((int)bestWeightsV.size() == nPDFs));
@@ -628,17 +628,18 @@ void  ANNZ::getBestANNZ( map < int,vector<int> >    & zRegQnt_nANNZ,   map < int
  * @param aChain             - Input chain, for which to do the PDF derivation.
  * @param bestANNZindex      - Index of the "best" MLM.
  * @param zRegQnt_nANNZ      - Map of vector, which is filled with the index of MLMs, corresponding to the order of the
- *                           entries of the metrics in the other vectors (zRegQnt_sigma68 and zRegQnt_fracSig68).
+ *                           entries of the metrics in the other vectors (zRegQnt_sigma68 and zRegQnt_bias).
+ * @param zRegQnt_bias       - Map of vector, which is filled with the claculated bias metric.
  * @param zRegQnt_sigma68    - Map of vector, which is filled with the claculated sigma68 metric.
  * @param zRegQnt_fracSig68  - Map of vector, which is filled with the claculated combined outlier-fraction metric.
  * @param bestWeightsV       - Vector into which the results of the PDF derivation are stored (as weights for
  *                           each MLM).
  */
 // ===========================================================================================================
-void  ANNZ::getRndMethodBestPDF(TTree          * aChain,             int                       bestANNZindex,
-                                vector<int>    & zRegQnt_nANNZ,     vector<double>            & zRegQnt_sigma68,
-                                vector<double> & zRegQnt_fracSig68, vector < vector<double> > & bestWeightsV) {
-// ============================================================================================================
+void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int            bestANNZindex,     vector<int>    & zRegQnt_nANNZ, 
+                                vector<double>            & zRegQnt_bias, vector<double> & zRegQnt_sigma68, vector<double> & zRegQnt_fracSig68, 
+                                vector < vector<double> > & bestWeightsV) {
+// ========================================================================
   aLOG(Log::INFO) <<coutWhiteOnBlack<<coutYellow<<" - starting ANNZ::getRndMethodBestPDF() ... "<<coutDef<<endl;
   VERIFY(LOCATION,(TString)"Memory leak ?! ",(dynamic_cast<TChain*>(aChain)));
 
@@ -657,9 +658,11 @@ void  ANNZ::getRndMethodBestPDF(TTree          * aChain,             int        
   double  closHisL           = glob->GetOptF("closHisL");
   double  closHisH           = glob->GetOptF("closHisH");
   int     minAcptMLMsForPDFs = glob->GetOptI("minAcptMLMsForPDFs");
-  bool    noOutFracWeights   = glob->GetOptB("doNotUseOutFracPdfWeights");
   double  minPdfWeight       = glob->GetOptF("minPdfWeight");
   int     nPDFs              = glob->GetOptI("nPDFs");
+  double  max_sigma68_PDF    = glob->GetOptF("max_sigma68_PDF");
+  double  max_bias_PDF       = glob->GetOptF("max_bias_PDF");
+  double  max_frac68_PDF     = glob->GetOptF("max_frac68_PDF");
 
   TString MLMnameBest        = getTagName(bestANNZindex);
   TString MLMnameBest_e      = getTagError(bestANNZindex);
@@ -678,7 +681,7 @@ void  ANNZ::getRndMethodBestPDF(TTree          * aChain,             int        
   vector < TH1* >                   hisIntgrZtrgV(nTryPDFs,NULL), hisIntgrZregV(nTryPDFs,NULL);
   vector < TGraphErrors* >          weightGrphV;
   vector < double >                 fitMetric(nTryPDFs);
-  vector < pair<int,double> >       sigm68V, frac68V, fitMetric_nPDF(nTryPDFs);
+  vector < pair<int,double> >       sigm68V, biasV, fitMetric_nPDF(nTryPDFs);
   vector < vector<double> >         weightsM(nTryPDFs,vector<double>(nMLMs,0));
   map    < int,vector < double > >  scaleFactorModel;
   vector < double >                 bestWeightsV_Ztrg, bestWeightsV_Zreg;
@@ -725,14 +728,34 @@ void  ANNZ::getRndMethodBestPDF(TTree          * aChain,             int        
   }
 
   // -----------------------------------------------------------------------------------------------------------
-  // sort all accepted MLMs by their sigm68 and frac68 metrics
+  // sort all accepted MLMs by their sigm68 and bias metrics
   // -----------------------------------------------------------------------------------------------------------
   int nAcptMLMs = (int)zRegQnt_nANNZ.size();
   for(int nAcptMLMnow=0; nAcptMLMnow<nAcptMLMs; nAcptMLMnow++) {
     if(zRegQnt_sigma68[nAcptMLMnow] < 0) continue; // has been initialized, such that no entries in this bin
 
-    sigm68V.push_back(pair<int,double>(zRegQnt_nANNZ[nAcptMLMnow],zRegQnt_sigma68  [nAcptMLMnow]));
-    frac68V.push_back(pair<int,double>(zRegQnt_nANNZ[nAcptMLMnow],zRegQnt_fracSig68[nAcptMLMnow]));
+    // check if the metrics are not above threshold (if defined by the user)
+    if(max_sigma68_PDF > 0 && zRegQnt_sigma68[nAcptMLMnow] > max_sigma68_PDF) {
+     aLOG(Log::INFO) <<coutRed<<" - "<<coutYellow<<getTagName(zRegQnt_nANNZ[nAcptMLMnow])<<coutRed<<" has sigma68 = "
+                     <<coutYellow<<zRegQnt_sigma68[nAcptMLMnow]<<coutRed<<" which is above threshold ("<<coutBlue<<max_sigma68_PDF
+                     <<coutRed<<") -> it will be rejected from the PDF ..." <<coutDef<<endl;
+     continue;
+    }
+    if(max_bias_PDF > 0 && zRegQnt_bias[nAcptMLMnow] > max_bias_PDF) {
+      aLOG(Log::INFO) <<coutRed<<" - "<<coutYellow<<getTagName(zRegQnt_nANNZ[nAcptMLMnow])<<coutRed<<" has bias = "
+                      <<coutYellow<<zRegQnt_bias[nAcptMLMnow]<<coutRed<<" which is above threshold ("<<coutBlue<<max_bias_PDF
+                      <<coutRed<<") -> it will be rejected from the PDF ..." <<coutDef<<endl;
+      continue;
+    }
+    if(max_frac68_PDF > 0 && zRegQnt_fracSig68[nAcptMLMnow] > max_frac68_PDF) {
+      aLOG(Log::INFO) <<coutRed<<" - "<<coutYellow<<getTagName(zRegQnt_nANNZ[nAcptMLMnow])<<coutRed<<" has combined outlier-fraction = "
+                      <<coutYellow<<zRegQnt_fracSig68[nAcptMLMnow]<<coutRed<<" which is above threshold ("<<coutBlue<<max_frac68_PDF
+                      <<coutRed<<") -> it will be rejected from the PDF ..." <<coutDef<<endl;
+      continue;
+    }
+
+    sigm68V.push_back(pair<int,double>(zRegQnt_nANNZ[nAcptMLMnow],zRegQnt_sigma68[nAcptMLMnow]));
+    biasV  .push_back(pair<int,double>(zRegQnt_nANNZ[nAcptMLMnow],zRegQnt_bias   [nAcptMLMnow]));
   }
   nAcptMLMs = (int)sigm68V.size();
   
@@ -740,7 +763,7 @@ void  ANNZ::getRndMethodBestPDF(TTree          * aChain,             int        
                           +utils->intToStr(minAcptMLMsForPDFs)+" ...",(nAcptMLMs >= minAcptMLMsForPDFs));
 
   sort(sigm68V.begin(),sigm68V.end(),sortFunctors::pairIntDouble_descendSecond); // sort so that the smallest element is first
-  sort(frac68V.begin(),frac68V.end(),sortFunctors::pairIntDouble_descendSecond); // sort so that the smallest element is first
+  sort(biasV.begin(),  biasV.end(),  sortFunctors::pairIntDouble_descendSecond); // sort so that the smallest element is first
 
 
   // -----------------------------------------------------------------------------------------------------------
@@ -750,7 +773,7 @@ void  ANNZ::getRndMethodBestPDF(TTree          * aChain,             int        
     if(seed > 0) { seed++; } rnd = new TRandom3(seed);
 
     // -----------------------------------------------------------------------------------------------------------
-    // reject worst ?% out of hand, demanding that enough MLMs have both good sigm68 and good frac68 metrics
+    // reject worst ?% out of hand, demanding that enough MLMs have both good sigm68 and good bias metrics
     // - make sure what remains is at least minAcptMLMsForPDFs methods
     // -----------------------------------------------------------------------------------------------------------
     int             nNonZeroWeights(0);
@@ -758,25 +781,25 @@ void  ANNZ::getRndMethodBestPDF(TTree          * aChain,             int        
     map <int,bool>  acceptV_sigm, acceptV_both;
 
     for(int nRelaxReject=0; nRelaxReject<100; nRelaxReject++) {
-      int     minRejConst_sigm(1), maxRejConst_sigm(6), minRejConst_frac(0), maxRejConst_frac(3);
+      int     minRejConst_sigm(1), maxRejConst_sigm(6), minRejConst_bias(0), maxRejConst_bias(3);
       int     maxAcptMLMs(0);
       double  rndNow(0), rejectionFrac(0);
 
       if(nRelaxReject > 0) {
         maxRejConst_sigm -= 0.5 * nRelaxReject;
-        maxRejConst_frac -= 0.5 * nRelaxReject;
+        maxRejConst_bias -= 0.5 * nRelaxReject;
         if(maxRejConst_sigm <= minRejConst_sigm) break;
-        if     (maxRejConst_frac <= minRejConst_frac && maxRejConst_sigm <= minRejConst_sigm) break;
-        else if(maxRejConst_frac <= minRejConst_frac                                        ) maxRejConst_frac = minRejConst_frac + 1;
+        if     (maxRejConst_bias <= minRejConst_bias && maxRejConst_sigm <= minRejConst_sigm) break;
+        else if(maxRejConst_bias <= minRejConst_bias                                        ) maxRejConst_bias = minRejConst_bias + 1;
 
         aLOG(Log::DEBUG_2) <<coutLightBlue<<nPDFnow<<"("<<nRelaxReject
-                           <<") Reduced rejectionFrac for sigma,frac to: "<<maxRejConst_sigm<<" , "<<maxRejConst_frac<<coutDef<<endl;
+                           <<") Reduced rejectionFrac for sigma,bias to: "<<maxRejConst_sigm<<" , "<<maxRejConst_bias<<coutDef<<endl;
       }
       acceptV_sigm.clear(); acceptV_both.clear();
 
       // first check accepted methods by minimal sigma_68
       // -----------------------------------------------------------------------------------------------------------
-      for(int nRjctFrc=0; nRjctFrc<100; nRjctFrc++) {
+      for(int nRjctFarcNow=0; nRjctFarcNow<100; nRjctFarcNow++) {
         rndNow        = rnd->Rndm();
         rejectionFrac = 0.1 * (minRejConst_sigm + int(ceil(rndNow * (maxRejConst_sigm-minRejConst_sigm))));
         maxAcptMLMs   = static_cast<int>(floor(nAcptMLMs * (1-rejectionFrac)));
@@ -797,7 +820,7 @@ void  ANNZ::getRndMethodBestPDF(TTree          * aChain,             int        
           }
         }
         // check the number of accepted methods after the rejection cuts
-        aLOG(Log::DEBUG_2) <<coutYellow<<"SIGM - nRjctFrc,rejectionFrac,maxAcptMLMs,nNonZeroWeights - "<<nRjctFrc<<CT
+        aLOG(Log::DEBUG_2) <<coutYellow<<"SIGM - nRjctFarcNow,rejectionFrac,maxAcptMLMs,nNonZeroWeights - "<<nRjctFarcNow<<CT
                            <<rejectionFrac<<CT<<maxAcptMLMs<<CT<<nNonZeroWeights<<coutDef<<endl;
         
         if(nNonZeroWeights >= minAcptMLMsForPDFs) {
@@ -805,44 +828,39 @@ void  ANNZ::getRndMethodBestPDF(TTree          * aChain,             int        
         }
       }
 
-      // do no other checks if decided to only use the sigma_68 metric
+      // check the accepted methods by minimal bias (requiring to already also be accepted by sigma_68)
       // -----------------------------------------------------------------------------------------------------------
-      if(noOutFracWeights) {
-        acceptV_both = acceptV_sigm;
-      }
-      // check the accepted methods by minimal frac_68 (requiring also accepted by sigma_68 already)
-      // -----------------------------------------------------------------------------------------------------------
-      else if(foundGoodSetup) {
+      if(foundGoodSetup) {
         foundGoodSetup = false;
 
-        for(int nRjctFrc=0; nRjctFrc<100; nRjctFrc++) {
+        for(int nRjctFarcNow=0; nRjctFarcNow<100; nRjctFarcNow++) {
           rndNow        = rnd->Rndm();
-          rejectionFrac = 0.1 * (minRejConst_frac + int(ceil(rndNow * (maxRejConst_frac-minRejConst_frac))));
+          rejectionFrac = 0.1 * (minRejConst_bias + int(ceil(rndNow * (maxRejConst_bias-minRejConst_bias))));
           maxAcptMLMs   = static_cast<int>(floor(nAcptMLMs * (1-rejectionFrac)));
           
           // set the flag for accepted/rejected methods
           nNonZeroWeights = 0;
           for(int nAcptMLMnow=0; nAcptMLMnow<nAcptMLMs; nAcptMLMnow++) {
-            int nANNZ_frac = frac68V[nAcptMLMnow].first;
+            int nANNZ_bias = biasV[nAcptMLMnow].first;
             
             if(nAcptMLMnow > maxAcptMLMs) {
-              acceptV_both[nANNZ_frac] = false;
-              aLOG(Log::DEBUG_3) <<coutRed<<"Reject FRAC for "<<nAcptMLMnow<<CT<<nANNZ_frac<<coutDef<<endl;
+              acceptV_both[nANNZ_bias] = false;
+              aLOG(Log::DEBUG_3) <<coutRed<<"Reject BIAS for "<<nAcptMLMnow<<CT<<nANNZ_bias<<coutDef<<endl;
             }
             else {
-              if(acceptV_sigm[nANNZ_frac]) {
-                acceptV_both[nANNZ_frac] = true;
+              if(acceptV_sigm[nANNZ_bias]) {
+                acceptV_both[nANNZ_bias] = true;
                 nNonZeroWeights++;
-                aLOG(Log::DEBUG_3) <<coutBlue<<"Accept FRAC for "<<nAcptMLMnow<<CT<<nANNZ_frac<<coutDef<<endl;
+                aLOG(Log::DEBUG_3) <<coutBlue<<"Accept BIAS for "<<nAcptMLMnow<<CT<<nANNZ_bias<<coutDef<<endl;
               }
               else {
-                acceptV_both[nANNZ_frac] = false;
-                aLOG(Log::DEBUG_3) <<coutPurple<<"Reject SIGM for "<<nAcptMLMnow<<CT<<nANNZ_frac<<coutDef<<endl;
+                acceptV_both[nANNZ_bias] = false;
+                aLOG(Log::DEBUG_3) <<coutPurple<<"Reject SIGM for "<<nAcptMLMnow<<CT<<nANNZ_bias<<coutDef<<endl;
               }
             }
           }
           // check the number of accepted methods after the rejection cuts
-          aLOG(Log::DEBUG_2) <<coutYellow<<"FRAC - nRjctFrc,rejectionFrac,maxAcptMLMs,nNonZeroWeights - "<<nRjctFrc<<CT
+          aLOG(Log::DEBUG_2) <<coutYellow<<"BIAS - nRjctFarcNow,rejectionFrac,maxAcptMLMs,nNonZeroWeights - "<<nRjctFarcNow<<CT
                              <<rejectionFrac<<CT<<maxAcptMLMs<<CT<<nNonZeroWeights<<coutDef<<endl;
           
           if(nNonZeroWeights >= minAcptMLMsForPDFs) {
@@ -859,12 +877,11 @@ void  ANNZ::getRndMethodBestPDF(TTree          * aChain,             int        
     }
     // shouldn't happen...
     VERIFY(LOCATION,(TString)" --- Cant find a rejectionFrac which leavs "+utils->intToStr(minAcptMLMsForPDFs)
-                             +" accepted methods ... Something is horribly wrong !!!"
-                             +" Try setting a lower value of minAcptMLMsForPDFs, increasing the number of trained MLMs"
-                             +" or setting [\"doNotUseOutFracPdfWeights\" to true] ...",foundGoodSetup);
+                             +" accepted methods ... Something is horribly wrong !!! Try setting a lower value"
+                             +" of minAcptMLMsForPDFs or increasing the number of trained MLMs ...",foundGoodSetup);
 
 
-    // finally, set the initial weights to zero/one based on the accepted methods by both sigma and frac
+    // finally, set the initial weights to zero/one based on the accepted methods by both sigma and bias
     // -----------------------------------------------------------------------------------------------------------
     nNonZeroWeights = 0;
     TString acceptedMLMs(""), rejectedMLMs("");
@@ -893,7 +910,7 @@ void  ANNZ::getRndMethodBestPDF(TTree          * aChain,             int        
     TString funcName  = TString::Format("TMath::Power(1 - x*%1.6g , %d)",funcSlope,funcPower);
     
     TF1 * pdfWeight_sigm  = new TF1("pdfWeight_sigm",funcName,0,nAcptMLMs);
-    TF1 * pdfWeight_frac  = new TF1("pdfWeight_frac",funcName,0,nAcptMLMs);
+    TF1 * pdfWeight_bias  = new TF1("pdfWeight_bias",funcName,0,nAcptMLMs);
  
     aLOG(Log::DEBUG_1) <<coutPurple<<" - Optim-stats: #,nNonZeroWeights,func: "<<coutYellow<<nPDFnow<<CT<<nNonZeroWeights<<CT<<funcName<<coutDef<<endl;
 
@@ -901,22 +918,17 @@ void  ANNZ::getRndMethodBestPDF(TTree          * aChain,             int        
     // -----------------------------------------------------------------------------------------------------------
     for(int nAcptMLMnow=0; nAcptMLMnow<nAcptMLMs; nAcptMLMnow++) {
       int     nANNZ_sigm = sigm68V[nAcptMLMnow].first;
-      int     nANNZ_frac = frac68V[nAcptMLMnow].first;
+      int     nANNZ_bias = biasV[nAcptMLMnow].first;
 
       // derive weights for the methods according to the current PDF variation
       double  weight_sigm = max(pdfWeight_sigm->Eval(nAcptMLMnow),0.);
-      double  weight_frac = max(pdfWeight_frac->Eval(nAcptMLMnow),0.);
+      double  weight_bias = max(pdfWeight_bias->Eval(nAcptMLMnow),0.);
 
-      if(noOutFracWeights) {
-        weightsM[nPDFnow][nANNZ_sigm] *= weight_sigm;
-      }
-      else {
-        if(weight_sigm > EPS) weight_sigm = sqrt(weight_sigm);
-        if(weight_frac > EPS) weight_frac = sqrt(weight_frac);
-        
-        weightsM[nPDFnow][nANNZ_sigm] *= weight_sigm;
-        weightsM[nPDFnow][nANNZ_frac] *= weight_frac;
-      }
+      if(weight_sigm > EPS) weight_sigm = sqrt(weight_sigm);
+      if(weight_bias > EPS) weight_bias = sqrt(weight_bias);
+      
+      weightsM[nPDFnow][nANNZ_sigm] *= weight_sigm;
+      weightsM[nPDFnow][nANNZ_bias] *= weight_bias;
     }
 
     funcNameV.push_back((TString)" = "+funcName);
@@ -1015,7 +1027,7 @@ void  ANNZ::getRndMethodBestPDF(TTree          * aChain,             int        
     }
 
     // cleanup
-    DELNULL(pdfWeight_sigm); DELNULL(pdfWeight_frac); DELNULL(rnd);
+    DELNULL(pdfWeight_sigm); DELNULL(pdfWeight_bias); DELNULL(rnd);
   }
 
 
@@ -1570,7 +1582,7 @@ void  ANNZ::getRndMethodBestPDF(TTree          * aChain,             int        
   }
   hisIntgrZtrgV.clear(); hisIntgrZregV.clear(); hisIntgrZtrgFirstFewV.clear();
   his1_N.clear(); his2_N.clear(); his1_d.clear(); his1_s.clear(); hisIntgrZtrgSimV.clear();
-  weightGrphV.clear(); sigm68V.clear(); frac68V.clear(); weightsM.clear(); funcNameV.clear();
+  weightGrphV.clear(); sigm68V.clear(); biasV.clear(); weightsM.clear(); funcNameV.clear();
   his1PlotV.clear(); his1PlotVV.clear(); bestWeightsV_Ztrg.clear(); bestWeightsV_Zreg.clear();
   fitMetric_nPDF.clear(); fitMetric.clear(); scaleFactorModel.clear(); fitTitleV.clear();
 

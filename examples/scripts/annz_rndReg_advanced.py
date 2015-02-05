@@ -352,6 +352,16 @@ if glob.annz["doOptim"] or glob.annz["doEval"]:
   # -----------------------------------------------------------------------------------------------------------
   glob.annz["addOutputVars"] = "MAG_U;MAGERR_I"
 
+  # -----------------------------------------------------------------------------------------------------------
+  # max_sigma68_PDF, max_bias_PDF, max_frac68_PDF
+  #   - if max_sigma68_PDF,max_bias_PDF are positive, they put thresholds on the maximal value of
+  #     the scatter (max_sigma68_PDF), bias (max_bias_PDF) or outlier-fraction (max_frac68_PDF) of an
+  #     MLM which may be included in the PDF created in randomized regression
+  # -----------------------------------------------------------------------------------------------------------
+  glob.annz["max_sigma68_PDF"] = 0.044
+  glob.annz["max_bias_PDF"]    = 0.01
+  glob.annz["max_frac68_PDF"]  = 0.08
+
 
   # --------------------------------------------------------------------------------------------------
   # optimization

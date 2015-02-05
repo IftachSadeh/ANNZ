@@ -301,9 +301,6 @@ myANNZ::myANNZ() {
   // -----------------------------------------------------------------------------------------------------------
   glob->NewOptC("optimCondReg","sig68");
 
-  // option to only generate randomized PDFs based on the scatter metric, not considering outlier fractions
-  glob->NewOptB("doNotUseOutFracPdfWeights",false);
-
   // -----------------------------------------------------------------------------------------------------------
   // evaluation (regression, binned-classification and classification)
   // -----------------------------------------------------------------------------------------------------------
@@ -337,13 +334,19 @@ myANNZ::myANNZ() {
   // number of PDF bins (equal distance bins in the range [minValZ,maxValZ]). If userPdfBins is defined, this value is ignored
   glob->NewOptI("nPDFbins"          ,0);
   // number of random MLM weighting schemes to generate as part of getRndMethodBestPDF()
-  glob->NewOptI("nRndPdfWeightTries",30);  
+  glob->NewOptI("nRndPdfWeightTries",30);
   // number of random smearing to perform when folding uncertainty estimates into MLM solutions for PDF generation
   glob->NewOptI("nSmearsRnd"        ,50);
   // a lower acceptance bound to check if too few MLMs are trained or if something went wrong with the optimization procedure
   // (e.g., not enough trained MLMs have 'good' combinations of scatter, bias and outlier-fraction metrics).
   glob->NewOptI("minAcptMLMsForPDFs",5);
 
+  // if max_sigma68_PDF,max_bias_PDF are positive, they put thresholds on the maximal value of the
+  // scatter/bias/outlier-fraction of an MLM which may be included in the PDF created in randomized regression
+  glob->NewOptF("max_sigma68_PDF"   ,-1); // maximal value of the scatter          of an MLM included in the PDF
+  glob->NewOptF("max_bias_PDF"      ,-1); // maximal value of the bias             of an MLM included in the PDF
+  glob->NewOptF("max_frac68_PDF"    ,-1); // maximal value of the outlier-fraction of an MLM included in the PDF
+  
   // -----------------------------------------------------------------------------------------------------------
   // general stuff
   // -----------------------------------------------------------------------------------------------------------
