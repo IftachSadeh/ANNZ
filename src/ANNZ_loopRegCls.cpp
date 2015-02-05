@@ -537,7 +537,7 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
 
     // create MLM, MLM-eror and MLM-weight variables for the output vars
     var_1->NewVarF(MLMname); var_1->NewVarF(MLMname_w); var_1->NewVarI(MLMname_i);
-    if(isCls)                   { var_1->NewVarF(MLMname_v); var_1->NewVarB(isSigName); }
+    if(isCls)                   { var_1->NewVarF(MLMname_v);  var_1->NewVarB(isSigName);                            }
     if(!isCls || needBinClsErr) { var_1->NewVarF(MLMname_eN); var_1->NewVarF(MLMname_e); var_1->NewVarF(MLMname_eP);}
 
     // setup cuts for the vars we loop on for sig/bck determination in case of classification
@@ -651,6 +651,9 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
       // create the chain from the output which has just been created
       TString outFileName = (TString)postTrainDirName+inTreeName+"*.root";
 
+      aLOG(Log::INFO) <<coutBlue<<" - Will compute separation parameter for "<<coutGreen<<inTreeName<<coutBlue
+                      <<" from "<<coutYellow<<outFileName<<coutDef<<endl;
+
       // prepare the chain and input variables. Set cuts to match the TMVAs
       TChain * aChainOut = new TChain(inTreeName,inTreeName); aChainOut->SetDirectory(0); aChainOut->Add(outFileName); 
       aLOG(Log::DEBUG) <<coutRed<<" - added chain "<<coutGreen<<inTreeName<<"("<<aChainOut->GetEntries()<<")"<<" from "<<coutBlue<<outFileName<<coutDef<<endl;
@@ -662,9 +665,12 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
         
         TString hisName    = (TString)"sepHis"+sigBckName;
         TH1     * his1_sb  = new TH1D(hisName,hisName,100,0,1); 
-        TString cutExprs   = (TString)"("+MLMname_w+" > 0) && ("+isSigName+sigBckCut+") && ("+(TString)var_0->getTreeCuts("_train")+")";
         TString drawExprs  = (TString)MLMname+">>+"+hisName;
-        
+
+        TString trainCut   = (TString)var_0->getTreeCuts("_train");
+        TString cutExprs   = (TString)"("+MLMname_w+" > 0) && ("+isSigName+sigBckCut+")";
+        if(trainCut != "") cutExprs += (TString)" && ("+trainCut+")";
+
         TCanvas * tmpCnvs  = new TCanvas("tmpCnvs","tmpCnvs");
         int     nEvtPass   = aChainOut->Draw(drawExprs,cutExprs); DELNULL(tmpCnvs);
 

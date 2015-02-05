@@ -1406,8 +1406,8 @@ TString ANNZ::deriveBinClsBins(map < TString,TChain* > & chainM, map < TString,T
     hisQ_orig[nHisNow]   = new TH1D(hisQuantName,hisQuantName,closHisN,minValZ,maxValZ);
     
     TString drawExprs    = (TString)zTrgName+">>+"+hisQuantName;
-    TString cutExprs     = (TString)+"("+(TString)((TCut)cutM["_comn"]+(TCut)cutM["_train"])+")";
-    if(nHisNow == 1) {
+    TString cutExprs     = (TString)+"("+(TString)((TCut)cutM["_comn"]+(TCut)cutM["_train"])+")";  cutExprs.ReplaceAll("()","");
+    if(nHisNow == 1 && userWgtsM[MLMname+"_train"] != "") {
       cutExprs          += (TString)" * ("+userWgtsM[MLMname+"_train"]+")";
     }
     TCanvas * tmpCnvs    = new TCanvas("tmpCnvs","tmpCnvs");

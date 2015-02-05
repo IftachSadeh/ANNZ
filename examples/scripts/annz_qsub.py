@@ -28,7 +28,8 @@ onlyDoOptimVerif = False
 # ---------------------------------------------------------------------------------------------------
 
 # command line arguments and basic settings
-init()
+initParse()
+setCols()
 
 qsub               = dict()
 qsub["qsubCmnd"]   = "qsub"

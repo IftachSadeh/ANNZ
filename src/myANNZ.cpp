@@ -325,8 +325,8 @@ myANNZ::myANNZ() {
   // value during training, then modify_userCuts_valid (modify_userWeights_valid) will determine what is
   // done (new cuts/weights may be added, overwriten or ignored).
   // -----------------------------------------------------------------------------------------------------------
-  glob->NewOptC("modify_userCuts_valid"   ,"ADD");
-  glob->NewOptC("modify_userWeights_valid","ADD");
+  glob->NewOptC("modify_userCuts_valid"   ,"ADD"); // set to "ADD", "OVERWRITE" or "IGNORE"
+  glob->NewOptC("modify_userWeights_valid","ADD"); // set to "ADD", "OVERWRITE" or "IGNORE"
 
   // -----------------------------------------------------------------------------------------------------------
   // PDF settings (randomized regression and binned classification)  
