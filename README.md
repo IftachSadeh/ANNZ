@@ -428,11 +428,11 @@ A few notes:
   glob.annz["userCuts_valid"]    = "pow(MAG_G,3) + exp(MAG_R)*MAG_I/20. + abs(sin(MAG_Z))"
   ```
 
-  - By default, the output of evaluation is written to a subdirectory named `eval` in the output directory. An output file may e.g., be `output/test_randReg_quick/regres/optim/eval/ANNZ_randomReg_0000.csv`. It is possible to set the the `evalDirPostfix` variable in order to change this. For instance, setting
+  - By default, the output of evaluation is written to a subdirectory named `eval` in the output directory. An output file may e.g., be `./output/test_randReg_quick/regres/eval/ANNZ_randomReg_0000.csv`. It is possible to set the the `evalDirPostfix` variable in order to change this. For instance, setting
   ```python
   glob.annz["evalDirPostfix"] = "cat0"
   ```
-  will produce the same output file at `output/test_randReg_quick/regres/optim/eval_cat0/ANNZ_randomReg_0000.csv`. This may be used in order to run the evaluation on multiple input files simultaneously without overwriting previous results.
+  will produce the same output file at `./output/test_randReg_quick/regres/eval_cat0/ANNZ_randomReg_0000.csv`. This may be used in order to run the evaluation on multiple input files simultaneously without overwriting previous results.
 
   - There are several parameters used to tune PDFs in randomized regression. Here are a couple of principle examples:
 
