@@ -122,7 +122,6 @@ public:
   void    resetDirectory(TString OutDirName = "", bool verbose = false, bool copyCode = false);
   void    checkCmndSafety(TString cmnd = "", bool verbose = false);
   void    safeRM(TString cmnd = "", bool verbose = false);
-  int     linkFiles(TString linkToLocation = "$PWD", TString filesToLink = "", bool verbose = false);
   TString getShellCmndOutput(TString cmnd = "", vector <TString> * outV = NULL, bool verbose = false, bool checkExitStatus = true, int * getSysReturn = NULL);
   void    exeShellCmndOutput(TString cmnd = "", bool verbose = false, bool checkExitStatus = true);
  

@@ -325,49 +325,33 @@ bool Utils::validFileExists(TString fileName, bool verif) {
 TString Utils::getShellCmndOutput(TString cmnd, vector <TString> * outV, bool verbose, bool checkExitStatus, int * getSysReturn) {
 // ===============================================================================================================================
   if(glob->OptOrNullB("debugSysCmnd")) verbose = true;
+  if(verbose) aCleanLOG()<<coutPurple<<" - Utils::getShellCmndOutput("<<coutYellow<<cmnd<<coutPurple<<") ..."<<coutDef<<endl;
 
-  TString tmpDirName  = glob->GetOptC("tmpDirName");  validDirExists(tmpDirName);
-  TString tmpFileName = (TString)tmpDirName+"getShellCmndOutput_"+TString::Format("%1.20f",rnd->Rndm());   
-  
-  for(int nCmd=0; nCmd<100; nCmd++) {
-    TString sysCmnd("");
-    if     (nCmd == 0) sysCmnd = (TString)"touch   "+tmpFileName;
-    else if(nCmd == 1) sysCmnd = (TString)"rm -f   "+tmpFileName;
-    else if(nCmd == 2) sysCmnd = (TString)cmnd+" > "+tmpFileName;
-    else break;
+  TString outStr("");
+  FILE    * pipe(popen(cmnd, "r"));
 
-    int sysReturn = system(sysCmnd);
-    if(verbose)         aCustomLOG("       ")<<coutRed<<" - Sys-comnd (exit="<<sysReturn<<") : "<<coutBlue<<sysCmnd<<coutDef<<endl;
-    if(checkExitStatus) VERIFY(LOCATION,(TString)"Failed system-call ("+sysCmnd+") ...",(sysReturn == 0));
-    if(getSysReturn)    (*getSysReturn) = sysReturn;
+  if(pipe) {
+    char buffer[1024];
+
+    while(!feof(pipe)) {
+    if(fgets(buffer, sizeof(buffer), pipe) == NULL) continue;
+      TString buffStr(buffer); buffStr.ReplaceAll("\n","").ReplaceAll("\r","");
+
+      if(buffStr == "") continue;
+      if(outStr  == "") outStr = buffStr;
+      if(outV)          outV->push_back(buffStr);
+
+      if(verbose) aCleanLOG()<<coutGreen<<"  -- Got("<<coutYellow<<((outV)?outV->size():0)<<coutGreen<<") "<<coutBlue<<buffStr<<coutDef<<endl;
+    }    
+    pclose(pipe);
   }
 
-  std::string line("");
-  TString     shellOput("");
-  ifstream    inputFile(tmpFileName,std::ios::in);  if(!inputFile.is_open()) return shellOput;
-  
-  if(outV) {
-    while(!inputFile.eof()) {
-      getline(inputFile, line);       if(line == "") continue;
-      outV->push_back((TString)line); if(verbose)    aCleanLOG()<<coutGreen<<"Got "<<coutBlue<<line<<coutDef<<endl;
-    }
-    if((int)outV->size() > 0) shellOput = outV->at(0);
-  }
-  else inputFile >> shellOput;
+  int sysReturn = (outStr != "") ? 0 : 1;
+  if(verbose)         aCustomLOG("       ")<<coutRed<<" - Sys-comnd (exit="<<sysReturn<<") : "<<coutBlue<<cmnd<<coutDef<<endl;
+  if(checkExitStatus) VERIFY(LOCATION,(TString)" - Failed system-call ("+cmnd+") ...",(sysReturn == 0));
+  if(getSysReturn)    (*getSysReturn) = sysReturn;
 
-  // cleanup the temporary file
-  for(int nCmd=0; nCmd<100; nCmd++) {
-    TString sysCmnd("");
-    if     (nCmd == 0) sysCmnd = (TString)"touch   "+tmpFileName;
-    else if(nCmd == 1) sysCmnd = (TString)"rm -f   "+tmpFileName;
-    else break;
-
-    int sysReturn = system(sysCmnd);
-    if(verbose)         aCustomLOG("       ")<<coutRed<<" - Sys-comnd (exit="<<sysReturn<<") : "<<coutBlue<<sysCmnd<<coutDef<<endl;
-    if(checkExitStatus) VERIFY(LOCATION,(TString)"Failed system-call ("+sysCmnd+") ...",(sysReturn == 0));
-  }
-
-  return shellOput;
+  return outStr;
 }
 
 // ===========================================================================================================
@@ -377,7 +361,7 @@ void Utils::exeShellCmndOutput(TString cmnd, bool verbose, bool checkExitStatus)
 
  int sysReturn = system(cmnd);
  if(verbose)         aCustomLOG("       ")<<coutRed<<" - Sys-comnd (exit="<<sysReturn<<") : "<<coutBlue<<cmnd<<coutDef<<endl;
- if(checkExitStatus) VERIFY(LOCATION,(TString)"Failed system-call ("+cmnd+") ...",(sysReturn == 0));
+ if(checkExitStatus) VERIFY(LOCATION,(TString)" - Failed system-call ("+cmnd+") ...",(sysReturn == 0));
 
  return;
 }
@@ -650,21 +634,6 @@ void Utils::optToFromFile(vector<TString> * optNames, OptMaps * optMap, TString 
   }
 
   return;
-}
-
-// ===========================================================================================================
-int Utils::linkFiles(TString linkToLocation, TString filesToLink, bool verbose) {
-// ==============================================================================
-  if(glob->OptOrNullB("debugSysCmnd")) verbose = true;
-  
-  int     sysReturn(0);
-  TString sysCmnd("");
-  assert(filesToLink != "");
-
-  sysCmnd    = (TString)"cd "+linkToLocation+" ; ln -s "+filesToLink+" .";
-  sysReturn  = system(sysCmnd);
-  if(verbose) aCustomLOG("       ")<<coutRed<<" - Sys-comnd (exit="<<sysReturn<<") : "<<coutBlue<<sysCmnd<<coutDef<<endl;
-  return sysReturn;
 }
 
 // ===========================================================================================================
@@ -1611,15 +1580,6 @@ Utils::Utils(OptMaps * aMaps) {
 
   validDirExists(glob->GetOptC("outDirNamePath")); 
   if(!glob->GetOptC("outDirNamePath").EndsWith("/")) glob->SetOptC("outDirNamePath",(TString)glob->GetOptC("outDirNamePath")+"/");
-
-  // tmp directory setup
-  TString tmpDirName(glob->OptOrNullC("tmpDirName"));
-  
-  if(tmpDirName == "")          tmpDirName = "tmp/";
-  if(!tmpDirName.EndsWith("/")) tmpDirName = (TString)tmpDirName+"/";
-  glob->NewOptC("tmpDirName", (TString)glob->GetOptC("outDirNamePath")+tmpDirName);
-
-  validDirExists(glob->GetOptC("tmpDirName")); 
 
   if(!glob->HasOptC("UserInfoStr")) glob->NewOptC("UserInfoStr","UserInfo;");
 

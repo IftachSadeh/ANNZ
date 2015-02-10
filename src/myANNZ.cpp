@@ -481,9 +481,7 @@ void myANNZ::Init() {
   glob->NewOptC("verifDirName"    ,"verif");     // name of sub-dir for verification
   glob->NewOptC("evalDirName"     ,"eval");      // name of sub-dir for optimization
   glob->NewOptC("postTrainName"   ,"postTrain"); // name of sub-dir for MLM input trees
-  glob->NewOptC("tmpDirName"      ,"tmp");       // name of temporary dir for transient data storage
   
-
   // -----------------------------------------------------------------------------------------------------------
   // update/finalize glob-> paramters after user inputs and initialize utils and outputs
   // -----------------------------------------------------------------------------------------------------------
