@@ -2447,9 +2447,6 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
     int nEntriesChain   = aChainReg->GetEntries();
     aLOG(Log::DEBUG) <<coutRed<<" - added chain "<<coutGreen<<outTreeNameV[1][0]<<"("<<nEntriesChain<<")"<<" from "<<coutBlue<<outFileNameV[1][0]<<coutDef<<endl;
 
-    TChain * aChain_toFriend = (TChain*)aChain->Clone();
-    aChain_toFriend->AddFriend(aChainReg,utils->nextTreeFriendName(aChain_toFriend));
-
     VarMaps * var_2 = new VarMaps(glob,utils,"treeRegClsVar_2");
 
     // include MLMs requested by the user
@@ -2489,12 +2486,11 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
         addVarV.push_back(pdfBinName);
       }
     }
-    var_2->connectTreeBranches(aChain_toFriend);
+    var_2->connectTreeBranches(aChainReg);
 
     var_2->storeTreeToAscii("ANNZ"+glob->GetOptC("_typeANNZ"),outDirNameFull,0,glob->GetOptI("nObjectsToWrite"),"",&addVarV,NULL);
 
-    DELNULL(var_2);
-    aChain_toFriend->RemoveFriend(aChainReg); DELNULL(aChain_toFriend); DELNULL(aChainReg);
+    DELNULL(var_2); DELNULL(aChainReg);
   }
 
   // if needed, store the list of selected MLMs for use outside this function

@@ -1296,7 +1296,7 @@ void VarMaps::storeTreeToAscii(TString outFilePrefix, TString outFileDir, int ma
 
       if     (typeNow == "F"  || typeNow == "D"   ) { line += utils->doubleToStr(     GetVarF(nameNow)        ); }
       else if(typeNow == "S"  || typeNow == "I"   ) { line += utils->intToStr   (     GetVarI(nameNow)        ); }
-      else if(typeNow == "L"                      ) { line += utils->lIntToStr  (     GetVarB(nameNow)        ); }
+      else if(typeNow == "L"                      ) { line += utils->lIntToStr  (     GetVarI(nameNow)        ); }
       else if(typeNow == "US" || typeNow == "UI"  ) { line += utils->uIntToStr  (     GetVarU(nameNow)        ); }
       else if(typeNow == "UL"                     ) { line += utils->ULIntToStr (     GetVarU(nameNow)        ); }
       else if(typeNow == "B"                      ) { line += (TString)         (     GetVarB(nameNow)?"1":"0"); }
