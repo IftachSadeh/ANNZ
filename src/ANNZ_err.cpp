@@ -18,35 +18,145 @@
 
 // ===========================================================================================================
 /**
+ * @brief          - Create trees from the _train dataset which contain the input for
+ *                 the KNN error estimator
+ *              
+ * @param nMLMnow  - The index of the primary MLM.
+ */
+// ===========================================================================================================
+void ANNZ::createTreeErrKNN(int nMLMnow) {
+// =======================================
+  aLOG(Log::DEBUG) <<coutWhiteOnBlack<<coutGreen<<" - starting ANNZ::createTreeErrKNN() - "
+                   <<"will create errKNN trees for "<<coutPurple<<getTagName(nMLMnow)<<coutGreen<<" ... "<<coutDef<<endl;
+
+  TString zTrgName   = glob->GetOptC("zTrg");
+  TString indexName  = glob->GetOptC("indexName");
+  TString isSigName  = glob->GetOptC("isSigName");
+  bool    isCls      = glob->GetOptB("doClassification") || glob->GetOptB("doBinnedCls");
+  TString MLMname    = getTagName(nMLMnow);
+  TString errKNNname = getErrKNNname(nMLMnow);
+  TString MLMname_i  = getTagIndex(nMLMnow);
+
+  // -----------------------------------------------------------------------------------------------------------  
+  // the _train trees are used in all cases:
+  //  - if (separateTestValid == false) then the errors of the _train will be derived from the same source, but
+  //    there is no choice in the matter anyway...
+  //  - if (separateTestValid == true) then the errors for both the testing (ANNZ_tvType<0.5 in _valid) and for the
+  //    validation (ANNZ_tvType>0.5 in _valid) will be derived from the independent source of the _train tree
+  // -----------------------------------------------------------------------------------------------------------  
+  VarMaps * var_0 = new VarMaps(glob,utils,"treeErrKNN_0");
+  VarMaps * var_1 = new VarMaps(glob,utils,"treeErrKNN_1");
+
+  TString inTreeName = (TString)glob->GetOptC("treeName")+"_train";
+  TString inFileName = (TString)glob->GetOptC("inputTreeDirName")+inTreeName+"*.root";
+
+  // prepare the chain and input variables
+  TChain * aChain = new TChain(inTreeName,inTreeName); aChain->SetDirectory(0); aChain->Add(inFileName); 
+  aLOG(Log::DEBUG) <<coutRed<<" - added chain "<<coutGreen<<inTreeName<<"("<<aChain->GetEntries()<<")"<<" from "<<coutBlue<<inFileName<<coutDef<<endl;
+
+  // setup cuts for the vars we loop on for sig/bck determination in case of classification
+  if(isCls) {
+    TCut sigCuts = (userCutsM["_sig"] != "") ? userCutsM["_sig"] : userCutsM[MLMname+"_sig"];
+    VERIFY(LOCATION,(TString)"Could not determine the signal-cut ... Something is horribly wrong !!!",(sigCuts != ""));
+
+    var_0->setTreeCuts("_sig",sigCuts);
+  }
+
+  var_0->connectTreeBranchesForm(aChain,&readerInptV);
+
+  var_1->NewVarF(MLMname); var_1->NewVarF(errKNNname); var_1->NewVarI(MLMname_i);
+  if(isCls) var_1->NewVarB(isSigName); else var_1->NewVarF(zTrgName);
+  
+  TString outTreeName = getKeyWord("","treeErrKNN","treeErrKNNname");
+  TTree   * outTree   = new TTree(outTreeName,outTreeName); outTree->SetDirectory(0); outputs->TreeMap[outTreeName] = outTree;
+
+  var_1->createTreeBranches(outTree); 
+
+  // 
+  // -----------------------------------------------------------------------------------------------------------
+  bool  breakLoop(false), mayWriteObjects(false);
+  int   nObjectsToWrite(glob->GetOptI("nObjectsToWrite")), nObjectsToPrint(glob->GetOptI("nObjectsToPrint"));
+  var_0->clearCntr();
+  for(Long64_t loopEntry=0; true; loopEntry++) {
+    if(!var_0->getTreeEntry(loopEntry)) breakLoop = true;
+
+    if((var_0->GetCntr("nObj") % nObjectsToPrint == 0 && var_0->GetCntr("nObj") > 0) || breakLoop) { var_0->printCntr(inTreeName,Log::DEBUG); }
+    if((mayWriteObjects && var_0->GetCntr("nObj") % nObjectsToWrite == 0) || breakLoop) {
+      outputs->WriteOutObjects(false,true); outputs->ResetObjects(); mayWriteObjects = false;
+    }
+    if(breakLoop) break;
+
+    // set to default before anything else
+    var_1->setDefaultVals();
+
+    var_1->SetVarI(MLMname_i,var_0->GetVarI(indexName));
+
+    // compute the KNN error for this object
+    if(isCls) {
+      bool   isSig  = !var_0->hasFailedTreeCuts("_sig");
+      double clsPrb = getReader(var_0,ANNZ_readType::PRB,true,nMLMnow);
+      // expect for background that clsPrb=0, and for signal that clsPrb=1
+      double errKNN = isSig ? 1-clsPrb : clsPrb;
+      
+      var_1->SetVarF(MLMname,clsPrb);
+      var_1->SetVarF(errKNNname,errKNN);
+      var_1->SetVarB(isSigName,isSig);
+    }
+    else {
+      double zTrg   = var_0->GetVarF(zTrgName);
+      double regVal = getReader(var_0,ANNZ_readType::REG,true ,nMLMnow);
+      
+      // the error of each object wrt its own true value
+      // see: http://arxiv.org/abs/0810.2991 - Estimating the Redshift Distribution of Photometric Galaxy... - Sect. 4.2
+      double errKNN = regVal - zTrg;
+      
+      var_1->SetVarF(MLMname,regVal);
+      var_1->SetVarF(errKNNname,errKNN);
+      var_1->SetVarF(zTrgName,zTrg);
+    }
+
+    outTree->Fill();
+
+    var_0->IncCntr("nObj"); mayWriteObjects = true;
+  }
+  if(!breakLoop) { var_0->printCntr(inTreeName,Log::DEBUG); outputs->WriteOutObjects(false,true); outputs->ResetObjects(); }
+
+  DELNULL(var_0); DELNULL(var_1); DELNULL(aChain); DELNULL(outTree); outputs->TreeMap.erase(outTreeName);
+
+  aLOG(Log::DEBUG) <<coutGreen<<" - finished ANNZ::createTreeErrKNN()"<<coutDef<<endl;
+
+  return;
+}
+
+// ===========================================================================================================
+/**
  * @brief                - Setup a TMVA::Factory which will be used for KNN-error estimation.
  * 
- * @details              
- *                       - The TMVA::Factory is linked to the training dataset, and is initiated with the same
+ * @details              - The TMVA::Factory is linked to the training dataset, and is initiated with the same
  *                       input-variables as the "primary MLM", for which the error are calculated.
- *              
- * @param aChain         - A chain linked to the training dataset.
- * @param cutsAll        - Cuts used on the dataset, which should match the cuts on the primary MLM.
- * @param nMLMnow        - The index of the primary MLM.
+ * 
+ * @param aChainKnn      - A chain linked to the training dataset.
  * @param knnErrOutFile  - A TFile which is created as part of the setup of the TMVA::Factory (needs to be deleted suring cleanup).
  * @param knnErrFactory  - A pointed to the TMVA::Factory which is created here.
  * @param knnErrModule   - A pointer to the TMVA::kNN::ModulekNN which is created by the TMVA::Factory, and is later
  *                       used to get the near-neighbours in getRegClsErrKNN().
- * @param cutsSig        - Cuts on the signal dataset, used for classification MLMs.
- * @param cutsBck        - Cuts on the background dataset, used for classification MLMs.
- * @param wgtReg         - Weights for the entire dataset, used for regression MLMs.
- * @param wgtSig         - Weights for the signal dataset, used for classification MLMs.
- * @param wgtBck         - Weights for the background dataset, used for classification MLMs.
+ * @param trgIndexV      - container to kkep track of how MLM indices are arranged in the KNN target list
+ * @param nMLMnow        - The index of the primary MLM.
+ * @param cutsAll        - Cuts used on the dataset, which should match the cuts on the primary MLM.
+ * @param wgtAll         - Weights for the entire dataset.
  */
 // ===========================================================================================================
-void ANNZ::setupKdTreeKNN(TChain * aChain, TCut cutsAll, int nMLMnow, TFile *& knnErrOutFile,
-                          TMVA::Factory *& knnErrFactory, TMVA::kNN::ModulekNN *& knnErrModule,
-                          TCut cutsSig, TCut cutsBck, TString wgtReg, TString wgtSig, TString wgtBck) {
-// ====================================================================================================
+void ANNZ::setupKdTreeKNN(TChain * aChainKnn, TFile *& knnErrOutFile, TMVA::Factory *& knnErrFactory,
+                          TMVA::kNN::ModulekNN *& knnErrModule, vector <int> & trgIndexV, int nMLMnow, TCut cutsAll, TString wgtAll) {
+// ===================================================================================================================================
 
-  TString MLMname     = getTagName(nMLMnow);
-  TString knnErrName  = glob->GetOptC("baseName_knnErr");
-  int     nErrKNN     = glob->GetOptI("nErrKNN");
-  bool    debug       = inLOG(Log::DEBUG_2) || glob->OptOrNullB("debugErrANNZ");
+  int     nMLMs           = glob->GetOptI("nMLMs");
+  TString MLMname         = getTagName(nMLMnow);
+  TString baseName_knnErr = glob->GetOptC("baseName_knnErr");
+  TString errKNNname      = getErrKNNname(nMLMnow);
+  TString baseTag_errKNN  = glob->GetOptC("baseTag_errKNN");
+  int     nErrKNN         = glob->GetOptI("nErrKNN");
+  bool    debug           = inLOG(Log::DEBUG_2) || glob->OptOrNullB("debugErrANNZ");
 
   if(debug) aCustomLOG("") <<coutWhiteOnBlack<<coutBlue<<" - starting ANNZ::setupKdTreeKNN() ... "<<coutDef<<endl;
 
@@ -54,13 +164,14 @@ void ANNZ::setupKdTreeKNN(TChain * aChain, TCut cutsAll, int nMLMnow, TFile *& k
   TString verbLvlM        = (TString)(debug ? ":V:H"       : ":!V:!H");
   TString drawProgBarStr  = (TString)(debug ? ":Color:DrawProgressBar" : ":Color:!DrawProgressBar");
 
-  bool    isReg           = (glob->GetOptB("doRegression") && !glob->GetOptB("doBinnedCls"));
   TString optKNN          = TString::Format(":nkNN=%d:ScaleFrac=0.0",nErrKNN);
   TString transStr        = (TString)":Transformations=I";
-  TString analysType      = (TString)":AnalysisType="+(isReg ? "Regression" : "Classification");
-  TString typeANNZ        = (TString)glob->GetOptC("typeANNZ")+knnErrName;
-  TString trainValidStr   = (TString)(!isReg ? "" :   TString::Format("nTrain_Regression=%d:nTest_Regression=%d",0,0)
-                                                    + TString::Format(":SplitMode=Random:NormMode=NumEvents:!V") );
+  TString analysType      = (TString)":AnalysisType=Regression";
+  TString typeANNZ        = (TString)glob->GetOptC("typeANNZ")+baseName_knnErr;
+  TString trainValidStr   = (TString)"nTrain_Regression=0:nTest_Regression=0:SplitMode=Random:NormMode=NumEvents:!V";
+
+  // bool  isReg = (glob->GetOptB("doRegression") && !glob->GetOptB("doBinnedCls"));
+  // if(!isReg) { analysType = (TString)":AnalysisType=Classification"; trainValidStr = ""; }
   
   (TMVA::gConfig().GetIONames()).fWeightFileDir = getKeyWord(MLMname,"knnErrXML","outFileDirKnnErr");
 
@@ -70,25 +181,36 @@ void ANNZ::setupKdTreeKNN(TChain * aChain, TCut cutsAll, int nMLMnow, TFile *& k
   knnErrOutFile            = new TFile(outFileNameTrain,"RECREATE");
   knnErrFactory            = new TMVA::Factory(typeANNZ, knnErrOutFile, (TString)verbLvlF+drawProgBarStr+transStr+analysType);    
 
-  prepFactory(nMLMnow,knnErrFactory);
-
-  if(isReg) {  
-    knnErrFactory->AddRegressionTree(aChain, 1, TMVA::Types::kTraining);
-    knnErrFactory->SetWeightExpression(wgtReg,"Regression");
-  }
-  else {
-    knnErrFactory->AddSignalTree    (aChain,1,TMVA::Types::kTraining);
-    knnErrFactory->AddBackgroundTree(aChain,1,TMVA::Types::kTraining);
-
-    knnErrFactory->AddCut(cutsSig, "Signal");     knnErrFactory->SetWeightExpression(wgtSig,"Signal");
-    knnErrFactory->AddCut(cutsBck, "Background"); knnErrFactory->SetWeightExpression(wgtBck,"Background");
-
-    VERIFY(LOCATION,(TString)"Must define sig/bck cuts in setupKdTreeKNN()",(cutsSig != "" && cutsBck != ""));
+  // since all variables are read-in from TTreeFormula, we define them as floats ("F") in the factory
+  for(int nVarNow=0; nVarNow<(int)inNamesVar[nMLMnow].size(); nVarNow++) {
+    knnErrFactory->AddVariable(inNamesVar[nMLMnow][nVarNow],inNamesVar[nMLMnow][nVarNow],"",'F');
   }
 
+  // add targets for all available MLMs
+  trgIndexV.resize(nMLMs,-1);
+
+  int              nTrgIn(0);
+  vector <TString> branchNameV;
+  utils->getTreeBranchNames(aChainKnn,branchNameV);
+  for(int nBranchNameNow=0; nBranchNameNow<(int)branchNameV.size(); nBranchNameNow++) {
+    TString branchName = branchNameV[nBranchNameNow];  if(!branchName.Contains(baseTag_errKNN)) continue;
+
+    knnErrFactory->AddTarget(branchName,branchName);
+    
+    int indexErrKNN = getErrKNNtagNow(branchName);
+    trgIndexV[indexErrKNN] = nTrgIn;
+    
+    nTrgIn++;
+  }
+
+  // let TMVA know the name of the XML file
+  (TMVA::gConfig().GetIONames()).fWeightFileDir = getKeyWord(MLMname,"trainXML","outFileDirTrain");
+
+  knnErrFactory->AddRegressionTree(aChainKnn, 1, TMVA::Types::kTraining);
+  knnErrFactory->SetWeightExpression(wgtAll,"Regression");
   knnErrFactory->PrepareTrainingAndTestTree(cutsAll,trainValidStr);
 
-  TMVA::MethodKNN * knnErrMethod = dynamic_cast<TMVA::MethodKNN*>(knnErrFactory->BookMethod(TMVA::Types::kKNN, knnErrName,(TString)optKNN+verbLvlM));
+  TMVA::MethodKNN * knnErrMethod = dynamic_cast<TMVA::MethodKNN*>(knnErrFactory->BookMethod(TMVA::Types::kKNN, baseName_knnErr,(TString)optKNN+verbLvlM));
   knnErrModule = knnErrMethod->fModule;
 
   // fill the module with events made from the tree entries and create the binary tree
@@ -118,10 +240,8 @@ void ANNZ::setupKdTreeKNN(TChain * aChain, TCut cutsAll, int nMLMnow, TFile *& k
  // knnErrModule->Fill(static_cast<UInt_t>(knnErrMethod->fBalanceDepth), static_cast<UInt_t>(100.0*knnErrMethod->fScaleFrac), option);
 
   aLOG(Log::DEBUG_1) <<coutGreen<<" - "<<coutBlue<<MLMname<<coutGreen<<" - kd-tree ("<<knnErrMethod->fEvent.size()
-                     <<")"<<coutYellow<<" , opts = "<<coutRed<<optKNN<<coutYellow<<" , "<<coutRed<<trainValidStr<<coutYellow<<" , cuts(all,sig,bck) = "
-                     <<coutRed<<cutsAll<<coutYellow<<" , "<<coutRed<<cutsSig<<coutYellow<<" , "<<coutRed<<cutsBck<<coutYellow
-                     <<" , weights(reg,sig,bck) = "<<coutRed<<wgtReg<<coutYellow<<" , "<<coutRed<<wgtSig
-                     <<coutYellow<<" , "<<coutRed<<wgtBck<<coutDef<<endl;
+                     <<")"<<coutYellow<<" , opts = "<<coutRed<<optKNN<<coutYellow<<" , "<<coutRed<<trainValidStr<<coutYellow
+                     <<" , cuts = "<<coutRed<<cutsAll<<coutYellow<<" , weights = "<<coutRed<<wgtAll<<coutDef<<endl;
 
   // sanity check - if this is not true, the events in the binary tree will have the wrong "units"
   VERIFY(LOCATION,(TString)"Somehow the fScaleFrac for the kd-tree is not zero ... Something is horribly wrong ?!?!?",(knnErrMethod->fScaleFrac < EPS));
@@ -156,180 +276,118 @@ void ANNZ::cleanupKdTreeKNN(TFile *& knnErrOutFile, TMVA::Factory *& knnErrFacto
   return;
 }
 
+
+
 // ===========================================================================================================
 /**
- * @brief                - Derive the KNN-error estimation for regression and classification MLMs.
+ * @brief               - Derive the KNN-error estimation for regression and classification MLMs.
  * 
- * @details              
- *                       - The errors are derived using nErrKNN near-neighbours of the current object from
- *                       the "primary MLM". For each neighbour we compute the result of the TMVA::Reader of the
- *                       uncertainty estimator of the KNN TMVA::Factory. This is compared to the "true" value -
- *                       either the value of the traget in regression problems, or the true classification of
- *                       signal/background in the case of classification problems. The distribution of
- *                       [estimator - truth] is used to derive the final KNN error.
- *              
- * @param var            - A VarMaps object which may update the values of the input-variables which are
- *                       linked to the TMVA::Reader object.
- * @param readType       - The type of MLM used (regression, or one of two classification estimators).
- * @param nMLMnow        - The index of the current MLM.
- * @param knnErrModule   - A pointer to the TMVA::kNN::ModulekNN which is created by the TMVA::Factory, and is
- *                       used to get the near-neighbours in.
-* @param zErrV           - optional vector to hold negative/average/positive error estimates.
- *                       
- * @return               - The value of the KNN error (returns -1 in case of failure).
+ * @details             - The errors are derived using nErrKNN near-neighbours of the current object from
+ *                      the "primary MLM". For each neighbour we compute the result of the TMVA::Reader of the
+ *                      uncertainty estimator of the KNN TMVA::Factory. This is compared to the "true" value -
+ *                      either the value of the traget in regression problems, or the true classification of
+ *                      signal/background in the case of classification problems. The distribution of
+ *                      [estimator - truth] is used to derive the final KNN error. The KNN factory is connected
+ *                      to a tree which has all of the regression/classification variables (in order to compute
+ *                      the distances). The factory also has "regression targets", which correspond to the
+ *                      difference between the estimated and the "true" result - see ANNZ::createTreeErrKNN().
+ *                  
+ * @param var           - A VarMaps object which may update the values of the input-variables which are
+ *                      linked to the TMVA::Reader object.
+ * @param knnErrModule  - A pointer to the TMVA::kNN::ModulekNN which is created by the TMVA::Factory, and is
+ *                      used to get the near-neighbours in.
+ * @param trgIndexV     - vector of indices of the position of a given MLM-index in the target-list of the KNN factory.
+ * @param nMLMv         - vector of MLM indices for which the errors are computed.
+ * @param isREG         - flag to indicate if the error is for a regression target or for classification.
+ * @param zErrV         - vector to hold negative/average/positive error estimates for each MLM.
  */
 // ===========================================================================================================
-double ANNZ::getRegClsErrKNN(VarMaps * var, ANNZ_readType readType, int nMLMnow, TMVA::kNN::ModulekNN * knnErrModule, vector <double> * zErrV) {
-// =============================================================================================================================================
-  VERIFY(LOCATION,(TString)"Memory leak ?! ",(dynamic_cast<VarMaps*>(var)));
-  VERIFY(LOCATION,(TString)"Only REG,PRB options currently supported in getRegClsErrKNN()",(readType == ANNZ_readType::REG || readType == ANNZ_readType::PRB));
+void ANNZ::getRegClsErrKNN(VarMaps * var, TMVA::kNN::ModulekNN * knnErrModule, vector <int> & trgIndexV,
+                           vector <int> & nMLMv, bool isREG, vector < vector <double> > & zErrV) {
+// ===============================================================================================
+  aLOG(Log::DEBUG_3) <<coutWhiteOnBlack<<coutBlue<<" - starting ANNZ::getRegClsErrKNN() ... "<<coutDef<<endl;
+  
+  int  nMLMsIn = (int)nMLMv.size();  if(nMLMsIn == 0) return;
+  int  nMLMs   = glob->GetOptI("nMLMs");
+  int  nErrKNN = glob->GetOptI("nErrKNN");
+  int  nMLM_0  = nMLMv[0];
+  int  nInVar  = (int)inNamesVar[nMLM_0].size();
 
-  bool debug = inLOG(Log::DEBUG_3);
-  aLOG(Log::DEBUG_2) <<coutWhiteOnBlack<<coutBlue<<" - starting ANNZ::getRegClsErrKNN() ... "<<coutDef<<endl;
+  // sanith check of the initialization of trgIndexV
+  VERIFY(LOCATION,(TString)" - trgIndexV is not initialized in ANNZ::getRegClsErrKNN() !!!",((int)trgIndexV.size() == nMLMs));
 
-  TString MLMname = getTagName(nMLMnow);
-  int     nInVar  = (int)inNamesVar[nMLMnow].size();
-  bool    isREG   = (readType == ANNZ_readType::REG);
-
-  int    nkNNErrMin(0);
-  double deltaMax(0), errMaxDifZ(0);
-  if(isREG) {
-    deltaMax   = glob->GetOptF("maxValZ") - glob->GetOptF("minValZ");
-    errMaxDifZ = glob->GetOptF("kNNErrMaxDifZ");
-    nkNNErrMin = glob->GetOptI("nkNNErrMin");
+  for(int nMLMinNow=0; nMLMinNow<nMLMsIn; nMLMinNow++) {
+    VERIFY(LOCATION,(TString)" - trgIndexV is not initialized in ANNZ::getRegClsErrKNN() !!!",(trgIndexV[nMLMv[nMLMinNow]] >= 0));
   }
 
-  TH1 * his1 = new TH1D("hisErrKNN","hisErrKNN",1e3,1,-1);
-  his1->SetDefaultBufferSize(glob->GetOptI("nErrKNN") + 10);
+  vector <TH1 *> his1V(nMLMsIn);
+  for(int nMLMinNow=0; nMLMinNow<nMLMsIn; nMLMinNow++) {
+    TString hisName  = TString::Format("hisErrKNN_%d",nMLMinNow);
+    his1V[nMLMinNow] = new TH1F(hisName,hisName,1e3,1,-1);
+    his1V[nMLMinNow]->SetDefaultBufferSize(nErrKNN+2);
+  }
 
-  // make sure the values of the variables which are connected to the reader are up to date and
-  // extract the original MLM output before changing the content of readerInptV
-  double  regClsOrig = getReader(var,readType,true,nMLMnow);
-  vector < pair<TString,Float_t> > readerInptVorig = readerInptV;
+  // update the variables connected to the reader
+  var->updateReaderFormulae(readerInptV,true);
 
+  // get the content of readerInptV into a VarVec
   TMVA::kNN::VarVec vvec(nInVar,0);
   for(int nInVarNow=0; nInVarNow<nInVar; nInVarNow++) {
-    int readerInptIndex = readerInptIndexV[nMLMnow][nInVarNow];
+    int readerInptIndex = readerInptIndexV[nMLM_0][nInVarNow];
     vvec[nInVarNow]     = readerInptV[readerInptIndex].second;
 
     VERIFY(LOCATION,(TString)"There's a mixup with input variables and the reader... Something is horribly wrong... ?!?"
-                             ,(inNamesVar[nMLMnow][nInVarNow] == readerInptV[readerInptIndex].first));
-    // aLOG(Log::DEBUG_2) <<"var check: "<<MLMname<<CT<<nInVarNow<<CT<<readerInptIndex<<CT<<inNamesVar[nMLMnow][nInVarNow]<<CT<<readerInptV[readerInptIndex].first<<endl;
-  }
-
-  if(inLOG(Log::DEBUG_2)) {
-    aLOG(Log::DEBUG_2) <<coutGreen<<" - Original reg/cls value = "<<coutYellow<<regClsOrig<<coutDef<<endl;
-    for(int nInVarNow=0; nInVarNow<nInVar; nInVarNow++) {
-      aLOG(Log::DEBUG_2)<<coutPurple<<" --- Input variable value "<<nInVarNow<<CT<<coutGreen
-                        <<inNamesVar[nMLMnow][nInVarNow]<<CT<<vvec[nInVarNow]<<coutDef<<endl;
-    }
+                             ,(inNamesVar[nMLM_0][nInVarNow] == readerInptV[readerInptIndex].first));
   }
 
   const TMVA::kNN::Event evt_orig(vvec,1,0);
-  knnErrModule->Find(evt_orig, glob->GetOptI("nErrKNN")+2);
+  knnErrModule->Find(evt_orig,nErrKNN+2);
  
   const TMVA::kNN::List & listKNN = knnErrModule->GetkNNList();
 
-  int     nkNNErrNow(0), knnType(0);
-  double  knnTrue0(0), knnDist(0), knnWgt(0), knnNow(0), knnTrue(0), knnDelta(0);//, knnDist0(0);  //double evtZ[2],evtDist[2];
   for(TMVA::kNN::List::const_iterator itrKNN=listKNN.begin(); itrKNN!=listKNN.end(); ++itrKNN) {
     if(itrKNN->second < EPS) continue; // the distance to this neighbour must be positive
 
     const TMVA::kNN::Event & evt_knn = itrKNN->first->GetEvent();
+    double                 knnWgt    = evt_knn.GetWeight();
 
-    // update the content of readerInptV before evaluating the MLM
-    for(int nInVarNow=0; nInVarNow<nInVar; nInVarNow++) {
-      int readerInptIndex = readerInptIndexV[nMLMnow][nInVarNow];
-      readerInptV[readerInptIndex].second = evt_knn.GetVar(nInVarNow);
+    for(int nMLMinNow=0; nMLMinNow<nMLMsIn; nMLMinNow++) {
+      int nMLMnow = nMLMv[nMLMinNow];
+      int nTrgKNN = trgIndexV[nMLMnow];
+
+      his1V[nMLMinNow]->Fill(evt_knn.GetTgt(nTrgKNN),knnWgt);
+      // cout <<evt_knn.GetNTgt()<<CT<<nMLMnow<<CT<<nTrgKNN<<"  -> "<<evt_knn.GetTgt(nTrgKNN)<<endl;
     }
-
-    knnDist  = evt_orig.GetDist(evt_knn);
-    knnWgt   = evt_knn.GetWeight();
-    knnNow   = getReader(var,readType,false,nMLMnow); // get the reader estimate without re-computing the content of readerInptV
-
-    if(isREG) {
-      knnTrue  = evt_knn.GetTgt(0);
-      knnDelta = knnNow - knnTrue;
-
-      if(fabs(knnDelta) > deltaMax)                 { continue;                                           }
-      if(nkNNErrNow == 0)                           { knnTrue0 = knnTrue;                                 }
-      if(nkNNErrNow > nkNNErrMin && errMaxDifZ > 0) { if(fabs(knnTrue - knnTrue0) > errMaxDifZ) continue; }
-    }
-    else {
-      knnType  = evt_knn.GetType();
-      if     (knnType == 1) knnDelta = 1-knnNow; // signal     (GetType() == 1) - expect PRG = 1
-      else if(knnType == 2) knnDelta =   knnNow; // background (GetType() == 2) - expect PRG = 0
-      else VERIFY(LOCATION,(TString)"Unrecognized type (of expected signal/background) ... Something is horribly wrong ?!?!",false);
-    }
-
-    // the error of each object wrt its own true value
-    // see: http://arxiv.org/abs/0810.2991 - Estimating the Redshift Distribution of Photometric Galaxy... - Sect. 4.2
-    his1->Fill(knnDelta,knnWgt);
-
-    if(debug) {
-      aLOG(Log::DEBUG_3) <<coutBlue<<"Target  "<<nkNNErrNow<<CT<<knnDelta<<CT<<knnWgt<<"\t ->  "<<knnDist<<CT<<knnNow<<CT<<knnTrue<<CT<<knnType<<coutDef<<endl;
-      if(nkNNErrNow < 5) {
-        for(int nInVarNow=0; nInVarNow<nInVar; nInVarNow++) {
-          int readerInptIndex = readerInptIndexV[nMLMnow][nInVarNow];
-          aLOG(Log::DEBUG_3)<<coutRed<<"   --- Input variable value "<<nInVarNow<<CT<<coutGreen<<inNamesVar[nMLMnow][nInVarNow]
-              <<CT<<readerInptVorig[readerInptIndex].second<<CT<<readerInptV[readerInptIndex].second <<coutDef<<endl;
-        }
-      }
-    }
-    nkNNErrNow++;
   }
   
-  his1->BufferEmpty();
-
-  double          zErr(-1), zErrP(-1),zErrN(-1);
+  // derive the errors from the histograms
   vector <double> fracV(3), quantV(3,-1);
   fracV[0] = 0.16; fracV[1] = 0.5; fracV[2] = 0.84;
 
-  utils->param->clearAll();
-  if(utils->getQuantileV(fracV,quantV,his1)) {
-    if(isREG) {
-      zErr  = (quantV[2] - quantV[0])/2.; zErrP = (quantV[2] - quantV[1]); zErrN = (quantV[1] - quantV[0]);
+  for(int nMLMinNow=0; nMLMinNow<nMLMsIn; nMLMinNow++) {
+    int nMLMnow = nMLMv[nMLMinNow];
+
+    his1V[nMLMinNow]->BufferEmpty();
+
+    double zErr(-1), zErrP(-1), zErrN(-1);
+
+    utils->param->clearAll();
+    if(utils->getQuantileV(fracV,quantV,his1V[nMLMinNow])) {
+      if(isREG) { zErr = (quantV[2] - quantV[0])/2.; zErrP = (quantV[2] - quantV[1]); zErrN = (quantV[1] - quantV[0]); }
+      else      { zErr = quantV[1];                  zErrP = 0;                       zErrN = 0;                       }
     }
-    else {
-      zErr = quantV[1]; zErrP = zErrN = 0;
-    }
-  }
-  if(zErrV) {
-    zErrV->resize(3);
-    (*zErrV)[0] = zErrN; (*zErrV)[1] = zErr; (*zErrV)[2] = zErrP;
-  }
-  fracV.clear(); quantV.clear();
-  // if(utils->getInterQuantileStats(his1)) {
-  //   if(isREG) {
-  //     zErr = glob->GetOptB("defErrBySigma68") ? utils->param->GetOptF("quant_sigma_68") : utils->param->GetOptF("quant_sigma") ;
-  //   }
-  //   else {
-  //     zErr = utils->param->GetOptF("quant_median");
-  //   }
-  // }
 
-  // force a reset of the variables which are connected to the reader to the correct values and check if
-  // we get back the correct result from the MLM
-  double regClsTest = getReader(var,readType,true,nMLMnow);
+    zErrV[nMLMnow].resize(3);
+    zErrV[nMLMnow][0] = zErrN; zErrV[nMLMnow][1] = zErr; zErrV[nMLMnow][2] = zErrP;
 
-  // sanity check
-  VERIFY(LOCATION,(TString)"Somehow the error calculation messed up the MLM reader ... Something is horribly wrong ?!?!?"
-                           , (fabs(regClsOrig-regClsTest) < 1e-10));
-
-  DELNULL(his1); readerInptVorig.clear();
-
-  if(inLOG(Log::DEBUG_2)) {
-    TString debugStr("");
-    if(zErrV) debugStr = (TString) getTagError(nMLMnow,"N")+" = "+utils->floatToStr(zErrN)+", "
-                                 + getTagError(nMLMnow,"") +" = "+utils->floatToStr(zErr )+", "
-                                 + getTagError(nMLMnow,"P")+" = "+utils->floatToStr(zErrP);
-    else      debugStr = (TString) getTagError(nMLMnow)+" = "+utils->floatToStr(zErr);
-   
-    aLOG(Log::DEBUG_2) <<coutBlue<<" - Got "<<coutYellow<<debugStr<<coutDef<<endl;
+    DELNULL(his1V[nMLMinNow]);
   }
 
-  return zErr;
+  fracV.clear(); quantV.clear(); his1V.clear();
+
+  return;
 }
+
 
 // ===========================================================================================================
 /**
@@ -337,8 +395,7 @@ double ANNZ::getRegClsErrKNN(VarMaps * var, ANNZ_readType readType, int nMLMnow,
  *                  on an MLM. This may be used instead of the nominal KNN error estimation, provided that
  *                  input-variables errors are provided in inputVarErrors.
  * 
- * @details              
- *                  - The errors on the input-parameters are assumed to be Gaussian and uncorrelated. The
+ * @details         - The errors on the input-parameters are assumed to be Gaussian and uncorrelated. The
  *                  uncertainty on the MLM is computed by generating random shifts to each input-parameter
  *                  based on the respective error. The value of the MLM estimator is then computed using the
  *                  shifted inputs. The distribution of the smeared MLM estimations is used to derive the final
@@ -350,16 +407,16 @@ double ANNZ::getRegClsErrKNN(VarMaps * var, ANNZ_readType readType, int nMLMnow,
  * @param nMLMnow   - The index of the current MLM.
  * @param seedP     - A seed for random number generation, which should be dfferent every time the
  *                  function is called.
-* @param zErrV      - optional vector to hold negative/average/positive error estimates.
+ * @param zErrV      - optional vector to hold negative/average/positive error estimates.
  *                  
  * @return          - The value of the KNN error (returns -1 in case of failure).
  */
 // ===========================================================================================================
-double ANNZ::getRegClsErrINP(VarMaps * var, ANNZ_readType readType, int nMLMnow, UInt_t * seedP, vector <double> * zErrV) {
-// ========================================================================================================================
+double ANNZ::getRegClsErrINP(VarMaps * var, bool isREG, int nMLMnow, UInt_t * seedP, vector <double> * zErrV) {
+// ============================================================================================================
   VERIFY(LOCATION,(TString)"Memory leak ?! ",(dynamic_cast<VarMaps*>(var)));
 
-  aLOG(Log::DEBUG_2) <<coutWhiteOnBlack<<coutBlue<<" - starting ANNZ::getRegClsErrINP() ... "<<coutDef<<endl;
+  aLOG(Log::DEBUG_3) <<coutWhiteOnBlack<<coutBlue<<" - starting ANNZ::getRegClsErrINP() ... "<<coutDef<<endl;
 
   UInt_t seed(0);
   if(seedP) { seed = *seedP; (*seedP) += 1; }
@@ -374,7 +431,7 @@ double ANNZ::getRegClsErrINP(VarMaps * var, ANNZ_readType readType, int nMLMnow,
   for(int nInVarNow=0; nInVarNow<nInVar; nInVarNow++) {
     inVarErrV[nInVarNow] = var->GetForm(getTagInVarErr(nMLMnow,nInVarNow));
 
-    aLOG(Log::DEBUG_2) <<coutGreen<<" - "<<coutRed<<nInVarNow<<coutGreen<<" - var,err: "<<coutYellow<<inNamesVar[nMLMnow][nInVarNow]<<coutGreen<<" , "
+    aLOG(Log::DEBUG_3) <<coutGreen<<" - "<<coutRed<<nInVarNow<<coutGreen<<" - var,err: "<<coutYellow<<inNamesVar[nMLMnow][nInVarNow]<<coutGreen<<" , "
                        <<coutYellow<<inNamesErr[nMLMnow][nInVarNow]<<coutGreen<<"\t -> current value of err: "<<coutRed<<inVarErrV[nInVarNow]<<coutDef<<endl;
   }
 
@@ -382,10 +439,12 @@ double ANNZ::getRegClsErrINP(VarMaps * var, ANNZ_readType readType, int nMLMnow,
   // and store the original evaluation-result of the MLM, as well as the original values of the inputs
   // also - var->updateReaderFormulae(readerInptV,forceUpdate) can only work with forceUpdate=false
   // after it was caalled once with forceUpdate=true since the previousvar0>getTreeEntry()
+  ANNZ_readType readType = isREG ? ANNZ_readType::REG : ANNZ_readType::PRB;
+
   double  regClsOrig(getReader(var,readType,true,nMLMnow)), regClsSmear(0);
   vector < pair<TString,Float_t> > readerInptVorig = readerInptV;
 
-  TH1 * his1 = new TH1D("hisErrINP","hisErrINP",1e3,1,-1);
+  TH1 * his1 = new TH1F("hisErrINP","hisErrINP",1e3,1,-1);
   his1->SetDefaultBufferSize(glob->GetOptI("nErrINP") + 10);
 
   for(int nSmearRndNow=0; nSmearRndNow<nErrINP; nSmearRndNow++) {
@@ -416,28 +475,24 @@ double ANNZ::getRegClsErrINP(VarMaps * var, ANNZ_readType readType, int nMLMnow,
     zErrV->resize(3);
     (*zErrV)[0] = zErrN; (*zErrV)[1] = zErr; (*zErrV)[2] = zErrP;
   }
-  // double zErr(-1);
-  // utils->param->clearAll();
-  // if(utils->getInterQuantileStats(his1)) {
-  //   zErr = glob->GetOptB("defErrBySigma68") ? utils->param->GetOptF("quant_sigma_68") : utils->param->GetOptF("quant_sigma") ;
-  // }
   fracV.clear(); quantV.clear();
 
   // fore a reset of the variables which are connected to the reader to the correct values and check that we get the
   // original evaluation result back
   regClsSmear = getReader(var,readType,true,nMLMnow);
-  VERIFY(LOCATION,(TString)"Somehow the error calculation messed up the MLM reader ... Something is horribly wrong ?!?!?",(fabs(regClsOrig-regClsSmear) < 1e-10));
+  VERIFY(LOCATION,(TString)"Somehow the error calculation messed up the MLM reader ... Something is horribly wrong ?!?!?"
+                 ,(fabs(regClsOrig-regClsSmear) < 1e-10));
 
   DELNULL(his1); inVarErrV.clear(); readerInptVorig.clear();
 
-  if(inLOG(Log::DEBUG_2)) {
+  if(inLOG(Log::DEBUG_3)) {
     TString debugStr("");
     if(zErrV) debugStr = (TString) getTagError(nMLMnow,"N")+" = "+utils->floatToStr(zErrN)+", "
                                  + getTagError(nMLMnow,"") +" = "+utils->floatToStr(zErr )+", "
                                  + getTagError(nMLMnow,"P")+" = "+utils->floatToStr(zErrP);
     else      debugStr = (TString) getTagError(nMLMnow)+" = "+utils->floatToStr(zErr);
    
-    aLOG(Log::DEBUG_2) <<coutBlue<<" - Got "<<coutYellow<<debugStr<<coutDef<<endl;
+    aLOG(Log::DEBUG_3) <<coutBlue<<" - Got "<<coutYellow<<debugStr<<coutDef<<endl;
   }
 
   return zErr;

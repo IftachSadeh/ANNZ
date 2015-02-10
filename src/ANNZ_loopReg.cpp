@@ -20,17 +20,16 @@
 /**
  * @brief    - Perform optimization of regression results: find best MLM, derive PDF weights and produce performance plots.
  * 
- * @details              
- *           - Randomized regression:
- *             - Training dataset:
- *               1. fillColosureV():       Calculate the "nominal metrics" (bias, scatter and combined 2,3sigma outlier-fraction) in bins
- *                                         of the regression target (zTgr), and as averaged over the entire sample.
- *               2. getBestANNZ():         Derive the "best" MLM solution, as the one which minimizes the combination
- *                                         of nominal metrics.
- *               3. getRndMethodBestPDF(): Generate candidate PDF weighting schemes and select the "best" solution.
- *             - Validation dataset:
- *               1. doEvalReg():           Evaluate the results (produce PDFs etc.)
- *               2. doMetricPlots():       create performance plots.
+ * @details  - Randomized regression:
+ *           - Training dataset:
+ *             1. fillColosureV():       Calculate the "nominal metrics" (bias, scatter and combined 2,3sigma outlier-fraction) in bins
+ *                                       of the regression target (zTgr), and as averaged over the entire sample.
+ *             2. getBestANNZ():         Derive the "best" MLM solution, as the one which minimizes the combination
+ *                                       of nominal metrics.
+ *             3. getRndMethodBestPDF(): Generate candidate PDF weighting schemes and select the "best" solution.
+ *           - Validation dataset:
+ *             1. doEvalReg():           Evaluate the results (produce PDFs etc.)
+ *             2. doMetricPlots():       create performance plots.
  *           - Binned classifiction:
  *             - Perform steps 1,2 of the validation phase.
  */
@@ -76,7 +75,8 @@ void ANNZ::optimReg() {
 
     TChain * aChain_1 = new TChain(inTreeName,inTreeName); aChain_1->SetDirectory(0); aChain_1->Add(inFileName);
     int nEntriesChain_1 = aChain_1->GetEntries(); 
-    VERIFY(LOCATION,(TString)"Main and friend chains have different numbers of entries ... Something is horribly wrong !!!",(nEntriesChain_0 == nEntriesChain_1));
+    VERIFY(LOCATION,(TString)"Main and friend chains have different numbers of entries ... Something is horribly wrong !!!"
+                   ,(nEntriesChain_0 == nEntriesChain_1));
 
 
     // get the list of branch names from the friend-chain (all ANNZ_* branches), and add the target name
@@ -280,7 +280,7 @@ void  ANNZ::fillColosureV( map < int,vector<int> >    & zRegQnt_nANNZ,   map < i
     closH[nMLMnow].resize(nBinsZ);
     for(int nBinNow=0; nBinNow<nBinsZ; nBinNow++) {
       hisName = TString::Format("TMPclosureHis_%d_"+MLMname,nBinNow);
-      closH[nMLMnow][nBinNow] = new TH1D(hisName,hisName,closHisN,1,-1);
+      closH[nMLMnow][nBinNow] = new TH1F(hisName,hisName,closHisN,1,-1);
       closH[nMLMnow][nBinNow]->SetDefaultBufferSize(hisBufSize);
     }
   }
@@ -392,8 +392,7 @@ void  ANNZ::fillColosureV( map < int,vector<int> >    & zRegQnt_nANNZ,   map < i
 /**
  * @brief                    - Find the "best" MLM solution in randomized regression.
  * 
- * @details              
- *                           - Find the "best" MLMs, given the three metrics: bias, sig68 and fracSig68,
+ * @details                  - Find the "best" MLMs, given the three metrics: bias, sig68 and fracSig68,
  *                           where for optimCondReg (one of the three) the best several methods within the top fracLimNow
  *                           percentile are chosen, so long as for the other two metrics, the MLMs are within
  *                           the top (fracLimNow + 1_sigma) of the distribution of MLMs. This selects the solution
@@ -614,8 +613,7 @@ void  ANNZ::getBestANNZ( map < int,vector<int> >    & zRegQnt_nANNZ,   map < int
 /**
  * @brief                    - Generate PDF weighting schemes for randomized regression.
  * 
- * @details              
- *                           - Candidate PDFs are created by randomely generating weighting schemes, which represent different
+ * @details                  - Candidate PDFs are created by randomely generating weighting schemes, which represent different
  *                           supression powers af MLM, based on metric ranking: MLMs with better (smaller values of) metrics, have
  *                           larger relative weights.
  *                           - PDFs are selected by choosing the weighting scheme which is "most compatible" with the true value.
@@ -699,7 +697,7 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
     TString nPdfName(TString::Format("_nPdf%d",nPDFnow)), hisName("");
 
     hisName = (TString)"pdfIngrWeightHis"+"_zTrg"+nPdfName+_typeANNZ;
-    hisIntgrZtrgV[nPDFnow] = new TH1D(hisName,hisName,nBins0,binEdgeL0,binEdgeH0);
+    hisIntgrZtrgV[nPDFnow] = new TH1F(hisName,hisName,nBins0,binEdgeL0,binEdgeH0);
     hisIntgrZtrgV[nPDFnow]->GetXaxis()->SetTitle((TString)"C("+zTrgTitle+")");
     hisIntgrZtrgV[nPDFnow]->GetYaxis()->SetTitle((TString)"1/N dN/dC("+zTrgTitle+")");
 
@@ -709,18 +707,18 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
     hisIntgrZregV[nPDFnow]->GetYaxis()->SetTitle((TString)"1/N dN/dC("+zTrgTitle+"(best)})");
   
     hisName = (TString)"modelPdf_Nz"+nPdfName+_typeANNZ;
-    his2_N[nPDFnow] = new TH2D(hisName,hisName,closHisN,closHisL,closHisH,nBinsZ,&(zClos_binE[0]));
+    his2_N[nPDFnow] = new TH2F(hisName,hisName,closHisN,closHisL,closHisH,nBinsZ,&(zClos_binE[0]));
     his2_N[nPDFnow]->GetXaxis()->SetTitle((TString)zRegTitle+"-"+zTrgTitle);
     his2_N[nPDFnow]->GetYaxis()->SetTitle((TString)zTrgTitle);
     
-    hisName = (TString)"modelPdf_DELTA"+nPdfName+_typeANNZ;     his1_d[nPDFnow] = new TH1D(hisName,hisName,nBinsZ,&(zClos_binE[0]));
-    hisName = (TString)"modelPdf_SIGMA"+nPdfName+_typeANNZ;     his1_s[nPDFnow] = new TH1D(hisName,hisName,nBinsZ,&(zClos_binE[0]));
+    hisName = (TString)"modelPdf_DELTA"+nPdfName+_typeANNZ;     his1_d[nPDFnow] = new TH1F(hisName,hisName,nBinsZ,&(zClos_binE[0]));
+    hisName = (TString)"modelPdf_SIGMA"+nPdfName+_typeANNZ;     his1_s[nPDFnow] = new TH1F(hisName,hisName,nBinsZ,&(zClos_binE[0]));
     his1_d[nPDFnow]->GetXaxis()->SetTitle((TString)zTrgTitle);  his1_d[nPDFnow]->GetYaxis()->SetTitle((TString)"#delta");
     his1_s[nPDFnow]->GetXaxis()->SetTitle((TString)zTrgTitle);  his1_s[nPDFnow]->GetYaxis()->SetTitle((TString)"#sigma_{68}");  
     
     for(int nModelNow=0; nModelNow<nModels; nModelNow++) {
       hisName = TString::Format((TString)"pdfIngrWeightHis"+nPdfName+"_nModel_%d"+_typeANNZ,nModelNow);
-      hisIntgrZtrgSimV[nPDFnow][nModelNow] = new TH1D(hisName,hisName,nBins0,binEdgeL0,binEdgeH0);
+      hisIntgrZtrgSimV[nPDFnow][nModelNow] = new TH1F(hisName,hisName,nBins0,binEdgeL0,binEdgeH0);
       hisIntgrZtrgSimV[nPDFnow][nModelNow]->GetXaxis()->SetTitle((TString)"C("+zTrgTitle+")");
       hisIntgrZtrgSimV[nPDFnow][nModelNow]->GetYaxis()->SetTitle((TString)"1/N dN/dC("+zTrgTitle+")");
       hisIntgrZtrgSimV[nPDFnow][nModelNow]->SetTitle("");
@@ -1595,8 +1593,7 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
 /**
  * @brief             - Evaluate regression setups.
  * 
- * @details              
- *                    - If following optimization, then "postTrain" trees containing MLM results are
+ * @details           - If following optimization, then "postTrain" trees containing MLM results are
  *                    used [inChain != NULL]. Otherwise, first postTrain trees are created from the input
  *                    dataset. The latter is done in nDivLoops steps, where in each step a subset of the MLMs
  *                    is evaluated. The split into steps is done in order to avoid using too much memory, which
@@ -1620,6 +1617,7 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
 
   TString MLMsToStore       = glob->GetOptC("MLMsToStore");
   TString outDirNameFull    = glob->GetOptC("outDirNameFull");
+  TString postTrainDirName  = glob->GetOptC("postTrainDirNameFull");
   TString addOutputVars     = glob->GetOptC("addOutputVars");
   int     maxNobj           = glob->GetOptI("maxNobj");
   TString indexName         = glob->GetOptC("indexName");
@@ -1700,15 +1698,12 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
   // and the PDF solutions (hisPDF_w)
   // -----------------------------------------------------------------------------------------------------------
   vector < vector<double> > mlmAvg_val(nPDFs,vector<double>(nMLMs,0)), mlmAvg_err(nPDFs,vector<double>(nMLMs,0)), mlmAvg_wgt(nPDFs,vector<double>(nMLMs,0));
-  vector <TH1*> hisPDF_w(nPDFs); //, hisPDF_e(nPDFs);  
+  vector <TH1*> hisPDF_w(nPDFs);
   for(int nPDFnow=0; nPDFnow<nPDFs; nPDFnow++) {
     TString nPDFname  = TString::Format("_nPdf%d",nPDFnow);
 
-    // hisName           = (TString)"Nz"+_typeANNZ+"_tmpHisPDF_entries"+nPDFname;
-    // hisPDF_e[nPDFnow] = new TH1D(hisName,hisName,nPDFbins,&(zPDF_binE[0]));
-
     hisName           = (TString)"Nz"+_typeANNZ+"_tmpHisPDF_fullPdf"+nPDFname;
-    hisPDF_w[nPDFnow] = new TH1D(hisName,hisName,nPDFbins,&(zPDF_binE[0]));
+    hisPDF_w[nPDFnow] = new TH1F(hisName,hisName,nPDFbins,&(zPDF_binE[0]));
   }
 
   // -----------------------------------------------------------------------------------------------------------
@@ -1884,8 +1879,8 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
     allMLMs += coutPurple+MLMname+coutGreen+",";
     allMLMv.push_back(nMLMnow);
   }
-  if(!isBinCls) aLOG(Log::DEBUG) <<coutBlue<<"The \"best\" MLM is: "<<coutYellow<<getTagName(bestANNZindex)<<coutDef<<endl;
-  aLOG(Log::DEBUG) <<coutBlue<<"Will use the following MLMs: "<<allMLMs<<coutDef<<endl;
+  if(!isBinCls) aLOG(Log::DEBUG) <<coutBlue<<" - The \"best\" MLM is: "<<coutYellow<<getTagName(bestANNZindex)<<coutDef<<endl;
+  aLOG(Log::DEBUG) <<coutBlue<<" - Will use the following MLMs: "<<allMLMs<<coutDef<<endl;
 
   // -----------------------------------------------------------------------------------------------------------  
   // loop twice:
@@ -1972,22 +1967,29 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
       //   inputComboNow: check for each MLM if the combination of variables, weights and cuts has been
       //                  used before (avoid creating multiple identicle kd-trees)
       // -----------------------------------------------------------------------------------------------------------  
-      map <TString,int>               allInputCombos;
-      VarMaps                         * varKNN(NULL);            TChain                    * aChainKnn(NULL);
-      vector <TFile   *>              knnErrOutFile(nMLMs,NULL); vector <TMVA::Factory  *> knnErrFactory(nMLMs,NULL);
-      vector <TMVA::kNN::ModulekNN *> knnErrModule(nMLMs,NULL);
+      map < TMVA::kNN::ModulekNN*,vector<int> > getErrKNN;                 map <TString,int>        allInputCombos;            
+      VarMaps                                   * varKNN(NULL);            vector <TChain *>        aChainKnn(2,NULL);
+      vector <TFile *>                          knnErrOutFile(nMLMs,NULL); vector <TMVA::Factory *> knnErrFactory(nMLMs,NULL);
+      vector <TMVA::kNN::ModulekNN *>           knnErrModule(nMLMs,NULL);  vector <int>             trgIndexV;
 
       if(hasErrKNN && nLoopTypeNow == 0) {
-        TString inTreeNameKnn = (TString)treeName+"_train";
-        TString inFileNameKnn = (TString)glob->GetOptC("inputTreeDirName")+inTreeNameKnn+"*.root";
+        TString inTreeNameKnn = getKeyWord("","treeErrKNN","treeErrKNNname");
+        TString inFileNameKnn = postTrainDirName+inTreeNameKnn+"*.root";
 
-        aChainKnn = new TChain(inTreeNameKnn,inTreeNameKnn); aChainKnn->SetDirectory(0); aChainKnn->Add(inFileNameKnn);
-        int nEntriesChainKnn = aChainKnn->GetEntries();
-        aLOG(Log::INFO) <<coutRed<<" - Created KnnErr chain  "<<coutGreen<<inTreeNameKnn
-                        <<"("<<nEntriesChainKnn<<")"<<" from "<<coutBlue<<inFileNameKnn<<coutDef<<endl;
+        aChainKnn[0] = new TChain(inTreeNameKnn,inTreeNameKnn); aChainKnn[0]->SetDirectory(0); aChainKnn[0]->Add(inFileNameKnn);
+
+        TString inTreeKnnFrnd = (TString)glob->GetOptC("treeName")+"_train";
+        TString inFileKnnFrnd = (TString)glob->GetOptC("inputTreeDirName")+inTreeKnnFrnd+"*.root";
+        aChainKnn[1] = new TChain(inTreeKnnFrnd,inTreeKnnFrnd); aChainKnn[1]->SetDirectory(0); aChainKnn[1]->Add(inFileKnnFrnd);
+
+        aChainKnn[0]->AddFriend(aChainKnn[1],utils->nextTreeFriendName(aChainKnn[0]));
+
+        int nEntriesChainKnn = aChainKnn[0]->GetEntries();
+        aLOG(Log::INFO) <<coutRed<<" - Created KnnErr chain  "<<coutGreen<<inTreeNameKnn<<coutRed<<"+"<<coutBlue<<inTreeKnnFrnd
+                        <<"("<<nEntriesChainKnn<<")"<<" from "<<coutGreen<<inFileNameKnn<<coutRed<<"+"<<coutBlue<<inFileKnnFrnd<<coutDef<<endl;
 
         varKNN = new VarMaps(glob,utils,"varKNN");
-        varKNN->connectTreeBranches(aChainKnn);  // connect the tree so as to allocate memory for cut variables
+        varKNN->connectTreeBranches(aChainKnn[0]);  // connect the tree so as to allocate memory for cut variables
 
         for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) {
           TString MLMname = getTagName(nMLMnow); if(mlmSkipDivded[MLMname]) continue;
@@ -1996,14 +1998,10 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
           
           setMethodCuts(varKNN,nMLMnow,false);
 
-          TCut    cutsNow(varKNN->getTreeCuts("_comn") + varKNN->getTreeCuts(MLMname+"_valid")), cutsSig(""), cutsBck("");
-          TString wgtReg(userWgtsM[MLMname+"_valid"]), wgtSig("1"), wgtBck("1");
+          TCut    cutsNow(varKNN->getTreeCuts("_comn") + varKNN->getTreeCuts(MLMname+"_valid"));
+          TString wgtReg(userWgtsM[MLMname+"_valid"]);
 
-          if(needBinClsErr) { cutsSig = userCutsM[MLMname+"_sig"]; cutsBck = userCutsM[MLMname+"_bck"]; }
-
-          TString inputComboNow = (TString)  "[__ANNZ_VARIABLES__]" + inputVariableV[nMLMnow]
-                                           + "[__ANNZ_WEIGHTS__]"   + userWgtsM[MLMname+"_valid"]
-                                           + "[__ANNZ_CUTS__]"      + ((TString)(varKNN->getTreeCuts(MLMname+"_valid")+cutsSig+cutsBck));
+          TString inputComboNow = (TString)"[__ANNZ_VAR__]"+inputVariableV[nMLMnow]+"[__ANNZ_WGT__]"+wgtReg+"[__ANNZ_CUT__]"+(TString)cutsNow;
           inputComboNow.ReplaceAll(" ","").ReplaceAll("[__"," [__").ReplaceAll("__]","__] ");
 
           // if this is a new combination of variables/weights/cuts, create a new kd-tree
@@ -2013,7 +2011,7 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
             aLOG(Log::DEBUG_2) <<coutBlue<<" - registering a new cmbination of input-variables and cuts ["<<coutYellow<<inputComboNow<<coutBlue
                                <<"] - in "<<coutGreen<<MLMname<<coutDef<<endl;
 
-            setupKdTreeKNN( aChainKnn,cutsNow,nMLMnow,knnErrOutFile[nMLMnow],knnErrFactory[nMLMnow],knnErrModule[nMLMnow],cutsSig,cutsBck,wgtReg,wgtSig,wgtBck );
+            setupKdTreeKNN(aChainKnn[0],knnErrOutFile[nMLMnow],knnErrFactory[nMLMnow],knnErrModule[nMLMnow],trgIndexV,nMLMnow,cutsNow,wgtReg);
           }
           // if existing combination of variables and cuts, assign to the correct index
           else {
@@ -2021,9 +2019,18 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
 
             knnErrOutFile[nMLMnow] = knnErrOutFile[nMLMprev]; knnErrFactory[nMLMnow] = knnErrFactory[nMLMprev]; knnErrModule[nMLMnow] = knnErrModule[nMLMprev];
 
-            aLOG(Log::DEBUG_2) <<coutPurple<<" - found existing cmbination of input-variables and cuts ["<<coutYellow<<inputComboNow<<coutPurple
-                               <<"] - from "<<coutGreen<<getTagName(nMLMprev)<<coutPurple<<" -> no need to create new kd-tree."<<coutDef<<endl;
+            aLOG(Log::DEBUG_1) <<coutPurple<<" - For "<<coutYellow<<MLMname<<coutPurple<<" found existing combination of variables/cuts"
+                               <<" for kd-tree from "<<coutGreen<<getTagName(nMLMprev)<<coutDef<<endl;
+            aLOG(Log::DEBUG_2) <<coutPurple<<"   --> ["<<coutYellow<<inputComboNow<<coutPurple<<"] ..."<<coutDef<<endl;
           }
+        }
+
+        // get the MLMs which are associated with each unique knnErrModule
+        // -----------------------------------------------------------------------------------------------------------
+        for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) {
+          TString MLMname = getTagName(nMLMnow); if(mlmSkipDivded[MLMname]) continue; if(!isErrKNNv[nMLMnow]) continue;
+
+          getErrKNN[ knnErrModule[nMLMnow] ].push_back(nMLMnow);
         }
       }
 
@@ -2129,15 +2136,16 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
       // -----------------------------------------------------------------------------------------------------------
       // loop on the tree
       // -----------------------------------------------------------------------------------------------------------
-      vector <double> regErrV(3,0);
+      vector < vector <double> > regErrV(nMLMs,vector<double>(3,0));
 
-      bool    breakLoop(false), mayWriteObjects(false), hasZeroErr(false);
-      int     nObjectsToWrite(glob->GetOptI("nObjectsToWrite"));
+      bool breakLoop(false), mayWriteObjects(false), hasZeroErr(false);
+      int  nObjectsToWrite(glob->GetOptI("nObjectsToWrite")), nObjectsToPrint(glob->GetOptI("nObjectsToPrint"));
       TString aChainName(aChain->GetName());
       var_0->clearCntr();
       for(Long64_t loopEntry=0; true; loopEntry++) {
         if(!var_0->getTreeEntry(loopEntry)) breakLoop = true;
 
+        if((var_0->GetCntr("nObj") % nObjectsToPrint == 0 && var_0->GetCntr("nObj") > 0)) { var_0->printCntr(aChainName,Log::DEBUG); }
         if((mayWriteObjects && var_0->GetCntr("nObj") % nObjectsToWrite == 0) || breakLoop) {
           var_0->printCntr(aChainName); outputs->WriteOutObjects(false,true); outputs->ResetObjects();
           mayWriteObjects = false;
@@ -2152,9 +2160,18 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
         if(nLoopTypeNow == 1) {
           for(int nPDFnow=0; nPDFnow<nPDFs; nPDFnow++) {
             mlmAvg_val[nPDFnow].resize(nMLMs,0); mlmAvg_err[nPDFnow].resize(nMLMs,0); mlmAvg_wgt[nPDFnow].resize(nMLMs,0);
-            hisPDF_w[nPDFnow]->Reset(); //hisPDF_e[nPDFnow]->Reset();
+            hisPDF_w[nPDFnow]->Reset();
 
             pdfWgtValV[nPDFnow][0] = pdfWgtValV[nPDFnow][1] = pdfWgtNumV[nPDFnow][0] = pdfWgtNumV[nPDFnow][1] = 0;
+          }
+        }
+
+        // -----------------------------------------------------------------------------------------------------------
+        // calculate the KNN errors if needed, for each variation of knnErrModule
+        // -----------------------------------------------------------------------------------------------------------
+        if(hasErrKNN && nLoopTypeNow == 0) {
+          for(map < TMVA::kNN::ModulekNN*,vector<int> >::iterator Itr=getErrKNN.begin(); Itr!=getErrKNN.end(); ++Itr) {
+            getRegClsErrKNN(var_0,Itr->first,trgIndexV,Itr->second,!isBinCls,regErrV);
           }
         }
 
@@ -2180,8 +2197,8 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
 
               if(hasErrs) {
                 double  clsErr  = -1; 
-                if     (isErrKNNv[nMLMnow]) clsErr = getRegClsErrKNN(var_0,ANNZ_readType::PRB,nMLMnow,knnErrModule[nMLMnow]);
-                else if(isErrINPv[nMLMnow]) clsErr = getRegClsErrINP(var_0,ANNZ_readType::PRB,nMLMnow,&seed);
+                if     (isErrKNNv[nMLMnow]) clsErr = regErrV[nMLMnow][1];
+                else if(isErrINPv[nMLMnow]) clsErr = getRegClsErrINP(var_0,false,nMLMnow,&seed);
                 
                 var_1->SetVarF(MLMname_e,clsErr);
               }
@@ -2229,7 +2246,6 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
                       pdfWgtNumV[nPDFnow][1] += binSmr * binWgt;
                     }
                   }
-                  // cout << nPdfBinNow <<CT<<clsIndex <<CT<< zPDF_binC[nPdfBinNow]<<CT<<  binVal <<CT<<binWgt <<CT<<totWgt <<endl;
                 }
               }
             }
@@ -2252,10 +2268,9 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
               // sanity check that weights are properly defined
               if(regWgt < 0) { var_0->printVars(); VERIFY(LOCATION,(TString)"Weights can only be >= 0 ... Something is horribly wrong ?!?",false); }
 
-              if     (isErrKNNv[nMLMnow]) getRegClsErrKNN(var_0,ANNZ_readType::REG,nMLMnow,knnErrModule[nMLMnow],&regErrV);
-              else if(isErrINPv[nMLMnow]) getRegClsErrINP(var_0,ANNZ_readType::REG,nMLMnow,&seed,                &regErrV);
+              if(isErrINPv[nMLMnow]) getRegClsErrINP(var_0,true,nMLMnow,&seed,&(regErrV[nMLMnow]));
 
-              regErrN = regErrV[0]; regErr = regErrV[1]; regErrP = regErrV[2];
+              regErrN = regErrV[nMLMnow][0]; regErr = regErrV[nMLMnow][1]; regErrP = regErrV[nMLMnow][2];
             }
             else {
               regVal  = var_0->GetVarF(MLMname);    regWgt = var_0->GetVarF(MLMname_w);
@@ -2291,7 +2306,6 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
 
               mlmAvg_val[nPDFnow][nMLMnow] = regVal; mlmAvg_err[nPDFnow][nMLMnow] = regErr; mlmAvg_wgt[nPDFnow][nMLMnow] = regWgt;
 
-              // hisPDF_e[nPDFnow]->Fill(regVal,regWgt); // unweighted average of all MLMs which go into the pdf
               hisPDF_w[nPDFnow]->Fill(regVal,pdfWgt); // input original value into the pdf before smearing
 
               // generate random smearing factors for this MLM
@@ -2349,9 +2363,6 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
             for(int nPdfTypeNow=0; nPdfTypeNow<2; nPdfTypeNow++) {
               if(isBinCls && nPdfTypeNow == 0) continue;
 
-              // TH1     * hisPDF      = (nPdfTypeNow == 0) ? hisPDF_e[nPDFnow] : hisPDF_w[nPDFnow];
-              TH1     * hisPDF      = hisPDF_w[nPDFnow];
-
               TString pdfAvgName    = getTagPdfAvgName(nPDFnow,(TString)baseTag_v+tagNameV[nPdfTypeNow]);
               TString pdfAvgErrName = getTagPdfAvgName(nPDFnow,(TString)baseTag_e+tagNameV[nPdfTypeNow]);
               TString pdfAvgWgtName = getTagPdfAvgName(nPDFnow,(TString)baseTag_w+tagNameV[nPdfTypeNow]);
@@ -2373,7 +2384,7 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
               else {
                 utils->param->clearAll();
                 utils->param->NewOptF("meanWithoutOutliers",2);
-                if(utils->getInterQuantileStats(hisPDF)) {
+                if(utils->getInterQuantileStats(hisPDF_w[nPDFnow])) {
                   double  regAvgPdfVal  = utils->param->GetOptF("quant_mean_Nsig68");
                   double  regAvgPdfErr  = defErrBySigma68 ? utils->param->GetOptF("quant_sigma_68") : utils->param->GetOptF("quant_sigma");
 
@@ -2407,16 +2418,15 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
         for(map <TString,int>::iterator Itr=allInputCombos.begin(); Itr!=allInputCombos.end(); ++Itr) {
           int nMLMnow = Itr->second; TString MLMname = getTagName(nMLMnow);
 
-          cleanupKdTreeKNN(knnErrOutFile[nMLMnow],knnErrFactory[nMLMnow]); //,inLOG(Log::DEBUG_1)
+          cleanupKdTreeKNN(knnErrOutFile[nMLMnow],knnErrFactory[nMLMnow]);
 
           utils->safeRM(getKeyWord(MLMname,"knnErrXML","outFileDirKnnErr"), inLOG(Log::DEBUG_1));
           utils->safeRM(getKeyWord(MLMname,"knnErrXML","outFileNameKnnErr"),inLOG(Log::DEBUG_1));
         }
-        knnErrOutFile.clear(); knnErrFactory.clear(); knnErrModule.clear();
-
-        DELNULL(varKNN); DELNULL(aChainKnn);
+        DELNULL(varKNN);
+        aChainKnn[0]->RemoveFriend(aChainKnn[1]); DELNULL(aChainKnn[0]); DELNULL(aChainKnn[1]);
       }
-      allInputCombos.clear();
+      knnErrOutFile.clear(); knnErrFactory.clear(); knnErrModule.clear(); trgIndexV.clear(); aChainKnn.clear(); getErrKNN.clear(); allInputCombos.clear();
 
       mlmSkipDivded.clear();
 
@@ -2483,13 +2493,23 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
 
     var_2->storeTreeToAscii("ANNZ"+glob->GetOptC("_typeANNZ"),outDirNameFull,0,glob->GetOptI("nObjectsToWrite"),"",&addVarV,NULL);
 
-    DELNULL(var_2); DELNULL(aChain_toFriend); // aChainReg is a friend of aChain_toFriend, and so already deleted with aChain_toFriend
+    DELNULL(var_2);
+    aChain_toFriend->RemoveFriend(aChainReg); DELNULL(aChain_toFriend); DELNULL(aChainReg);
   }
 
   // if needed, store the list of selected MLMs for use outside this function
   if(selctVarV) *selctVarV = addVarV;
 
   //cleanup
+  if(noInChain) {
+    vector <TTree*> friendV = utils->getTreeFriends(aChain);
+    for(int nTreeNow=0; nTreeNow<(int)friendV.size(); nTreeNow++) { aChain->RemoveFriend(friendV[nTreeNow]); }
+    for(int nTreeNow=0; nTreeNow<(int)friendV.size(); nTreeNow++) { DELNULL(friendV[nTreeNow]);              }
+    friendV.clear();
+
+    DELNULL(aChain);
+  }
+
   if(!glob->GetOptB("keepEvalTrees") && noInChain) {
     utils->safeRM(inFileName,inLOG(Log::DEBUG));
 
@@ -2498,10 +2518,8 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
     }
   }
 
-  if(noInChain) DELNULL(aChain);
-
-  for(int nPDFnow=0; nPDFnow<nPDFs; nPDFnow++) {  DELNULL(hisPDF_w[nPDFnow]); } //DELNULL(hisPDF_e[nPDFnow]);
-  pdfWgtValV.clear(); pdfWgtNumV.clear(); mlmAvg_val.clear(); mlmAvg_err.clear(); mlmAvg_wgt.clear(); hisPDF_w.clear(); //hisPDF_e.clear();
+  for(int nPDFnow=0; nPDFnow<nPDFs; nPDFnow++) {  DELNULL(hisPDF_w[nPDFnow]); }
+  pdfWgtValV.clear(); pdfWgtNumV.clear(); mlmAvg_val.clear(); mlmAvg_err.clear(); mlmAvg_wgt.clear(); hisPDF_w.clear();
 
   pdfWeightV.clear(); optim_pdfV.clear(); addVarV.clear();
   mlmSkipAll.clear(); mlmSkipPdf.clear(); tagNameV.clear(); allMLMv.clear();
@@ -2755,20 +2773,19 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
           TString nameBinZ = TString::Format("_nBinZ%d",nBinZnow);
 
           hisName = (TString)"closHis_"+typeName+typeBinZ+nameBinZ;
-          his_clos[typeName][nTypeBinNow][nBinZnow] = new TH1D(hisName,hisName,closHisN,1,-1);
+          his_clos[typeName][nTypeBinNow][nBinZnow] = new TH1F(hisName,hisName,closHisN,1,-1);
           his_clos[typeName][nTypeBinNow][nBinZnow]->SetDefaultBufferSize(hisBufSize);
           his_clos[typeName][nTypeBinNow][nBinZnow]->SetTitle(hisTitle);
 
           hisName = (TString)"relErrHis_"+typeName+typeBinZ+nameBinZ;
-          his_relErr[typeName][nTypeBinNow][nBinZnow] = new TH1D(hisName,hisName,closHisN,1,-1);
+          his_relErr[typeName][nTypeBinNow][nBinZnow] = new TH1F(hisName,hisName,closHisN,1,-1);
           his_relErr[typeName][nTypeBinNow][nBinZnow]->SetDefaultBufferSize(hisBufSize);
           his_relErr[typeName][nTypeBinNow][nBinZnow]->SetTitle(hisTitle);
         }
 
         if(nTypeBinNow < 2) {
           hisName = (TString)"regTrgZ_"+typeName+typeBinZ;
-          // his_regTrgZ[typeName][nTypeBinNow] = new TH1D(hisName,hisName,closHisN,minValZ,maxValZ);
-          his_regTrgZ[typeName][nTypeBinNow] = new TH1D(hisName,hisName,nDrawBins_zTrg,minValZ,maxValZ);
+          his_regTrgZ[typeName][nTypeBinNow] = new TH1F(hisName,hisName,nDrawBins_zTrg,minValZ,maxValZ);
           his_regTrgZ[typeName][nTypeBinNow]->SetTitle(hisTitle);
         }
       }
@@ -3232,12 +3249,12 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
 
       TH1     * his1(NULL);
       // int     rebinX     = static_cast<int>(floor(0.1+closHisN/double(nDrawBins_zTrg)));
-      // double  binW       = (maxValZ-minValZ)/double(nDrawBins_zTrg);
-      // TString yAxisTitle = TString::Format("Entries/%1.2g",binW);
-      TString yAxisTitle = (TString)"1/N dN/d("+zRegTitle+")";
+      double  binW       = (maxValZ-minValZ)/double(nDrawBins_zTrg);
+      TString yAxisTitle = TString::Format("Entries/%1.2g",binW);
+      // TString yAxisTitle = (TString)"1/N dN/d("+zRegTitle+")";
 
       if((int)hisRegTrgV.size() == 0) {
-        his1 = (TH1D*)his_regTrgZ[typeName][0]->Clone((TString)his_regTrgZ[typeName][0]->GetName()+"_cln");
+        his1 = (TH1F*)his_regTrgZ[typeName][0]->Clone((TString)his_regTrgZ[typeName][0]->GetName()+"_cln");
         his1->SetTitle(zTrgTitle);
         his1->GetXaxis()->SetTitle((TString)zTrgTitle+" , "+zRegTitle);
         his1->GetYaxis()->SetTitle(yAxisTitle);
@@ -3245,7 +3262,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
         hisRegTrgV.push_back(his1);
       }
 
-      his1 = (TH1D*)his_regTrgZ[typeName][1]->Clone((TString)his_regTrgZ[typeName][1]->GetName()+"_cln");
+      his1 = (TH1F*)his_regTrgZ[typeName][1]->Clone((TString)his_regTrgZ[typeName][1]->GetName()+"_cln");
       his1->GetXaxis()->SetTitle(zRegTitle);
       his1->GetYaxis()->SetTitle(yAxisTitle);
       // his1->Rebin(rebinX);
@@ -3260,7 +3277,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
     outputs->draw->NewOptC("drawOpt_0"           , "HIST");
     outputs->draw->NewOptC("maxDrawMark"         , "100");
     outputs->draw->NewOptB("wideCnvs"            , true);
-    outputs->draw->NewOptB("doNormIntegralWidth" , true);
+    // outputs->draw->NewOptB("doNormIntegralWidth" , true);
     outputs->draw->NewOptC("axisTitleX"          , hisRegTrgV[0]->GetXaxis()->GetTitle());
     outputs->draw->NewOptC("axisTitleY"          , hisRegTrgV[0]->GetYaxis()->GetTitle());
     outputs->drawHis1dV(hisRegTrgV);

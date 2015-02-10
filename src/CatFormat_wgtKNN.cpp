@@ -109,8 +109,7 @@ void CatFormat::asciiToSplitTree_wgtKNN(TString inAsciiFiles, TString inAsciiVar
  * @brief               - Generate weights based on the KNN method
  *                      (see: Cunha et al. (2008), http://arxiv.org/abs/0810.2991v4)
  * 
- * @details
- *                      - Weights are calculated as the ratio  r_ref/R_same = (N_ref/V_nn) / (N_same/V_nn) = N_ref/N_same.
+ * @details             - Weights are calculated as the ratio  r_ref/R_same = (N_ref/V_nn) / (N_same/V_nn) = N_ref/N_same.
  *                      Given the "reference-position" of a given object from the 
  *                      main dataset (aChainInp), N_ref,N_same are the number of near neighbours from the reference-position
  *                      within a given volume in the parameter space, V_nn. The difference between the two parameters, is that

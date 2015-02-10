@@ -42,7 +42,7 @@ ANNZ::~ANNZ() {
   mlmTagIndex.clear();  mlmSkip.clear();         pdfBinNames.clear();    pdfAvgNames.clear();
   trainTimeM.clear();   inputVariableV.clear();  inErrTag.clear();       readerInptIndexV.clear();
   zPDF_binE.clear();    zPDF_binC.clear();       zPlot_binE.clear();     zPlot_binC.clear();
-  inNamesVar.clear();   inNamesErr.clear();      userWgtsM.clear();
+  inNamesVar.clear();   inNamesErr.clear();      userWgtsM.clear();      mlmTagErrKNN.clear();
   zClos_binE.clear();   zClos_binC.clear();      zBinCls_binE.clear();   zBinCls_binC.clear();
   typeMLM.clear();      allANNZtypes.clear();    typeToNameMLM.clear();  nameToTypeMLM.clear();
   bestMLMname.clear();

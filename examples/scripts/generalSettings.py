@@ -71,15 +71,8 @@ def generalSettings():
   # the uncertainty on the input parameters to the MLM-estimator. See getRegClsErrINP()
   # glob.annz["nErrINP"] = -1
 
-  # kNNErrMaxDifZ,nkNNErrMin -
-  #   - improve KNN error calculation by only considering neighbours which are "close" (in the input parameter
-  #     space) to the target object (for which the error is calculated).
-  #   - if the nth neighbour has a regression value which is different by kNNErrMaxDifZ compared to the original
-  #     target object, and at least nkNNErrMin neighbours have already been consudered, then the nth neighbour is
-  #     ignored in the KNN error calculation
-  # -----------------------------------------------------------------------------------------------------------
-  # glob.annz["kNNErrMaxDifZ"] = -1
-  # glob.annz["nkNNErrMin"]    = 50
+  # maximal number of objects in a tree/output ascii file
+  # glob.annz["nObjectsToWrite"] = 1e6
 
   return
 

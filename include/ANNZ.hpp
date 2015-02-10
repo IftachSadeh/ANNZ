@@ -79,6 +79,8 @@ private:
   TString  getTagPdfAvgName(int nPdfNow = -1, TString type = "");
   TString  getTagBestMLMname(TString MLMname = "");
   int      getTagNow(TString MLMname);
+  TString  getErrKNNname(int nMLMnow = -1);
+  int      getErrKNNtagNow(TString errKNNname);
   TString  getKeyWord(TString MLMname, TString sequence, TString key);
   void     loadOptsMLM();
   void     setNominalParams(int nMLMnow, TString inputVariables, TString inputVarErrors);
@@ -104,9 +106,9 @@ private:
   // -----------------------------------------------------------------------------------------------------------
   // ANNZ_TMVA.cpp :
   // -----------------------------------------------------------------------------------------------------------
-  void              prepFactory(int nANNZnow = -1, TMVA::Factory * factory = NULL);
+  void              prepFactory(int nMLMnow = -1, TMVA::Factory * factory = NULL);
   void              doFactoryTrain(TMVA::Factory * factory);
-  void              clearReaders();
+  void              clearReaders(Log::LOGtypes logLevel = Log::DEBUG_1);
   void              loadReaders(map <TString,bool> & mlmSkipNow);
   double            getReader(VarMaps * var = NULL, ANNZ_readType readType = ANNZ_readType::NUN, bool forceUpdate = false, int nMLMnow = -1);
   void              setupTypesTMVA();
@@ -116,14 +118,14 @@ private:
   // -----------------------------------------------------------------------------------------------------------
   // ANNZ_err.cpp :
   // -----------------------------------------------------------------------------------------------------------
-  void     setupKdTreeKNN(TChain * aChain, TCut cutsAll, int nANNZnow, TFile *& knnErrOutFile, TMVA::Factory *& knnErrFactory,
-                          TMVA::kNN::ModulekNN *& knnErrModule, TCut cutsSig = "", TCut cutsBck = "",
-                          TString wgtReg = "1", TString wgtSig = "1", TString wgtBck = "1");
+  void     createTreeErrKNN(int nMLMnow);
+  void     setupKdTreeKNN(TChain * aChainKnn, TFile *& knnErrOutFile, TMVA::Factory *& knnErrFactory, TMVA::kNN::ModulekNN *& knnErrModule,
+                          vector <int> & trgIndexV, int nMLMnow, TCut cutsAll, TString wgtAll);
   void     cleanupKdTreeKNN(TFile *& knnErrOutFile, TMVA::Factory *& knnErrFactory, bool verb = false);
-  double   getRegClsErrKNN(VarMaps * var = NULL, ANNZ_readType readType = ANNZ_readType::NUN,
-                           int nMLMnow = -1, TMVA::kNN::ModulekNN * knnErrModule = NULL, vector <double> * zErrV = NULL);
-  double   getRegClsErrINP(VarMaps * var = NULL, ANNZ_readType readType = ANNZ_readType::NUN,
-                           int nMLMnow = -1, UInt_t * seedP = NULL, vector <double> * zErrV = NULL);
+  void     getRegClsErrKNN(VarMaps * var, TMVA::kNN::ModulekNN * knnErrModule, vector <int> & trgIndexV,
+                           vector <int> & nMLMv, bool isREG, vector < vector <double> > & zErrV);
+
+  double   getRegClsErrINP(VarMaps * var, bool isREG, int nMLMnow, UInt_t * seedP = NULL, vector <double> * zErrV = NULL);
   
   // -----------------------------------------------------------------------------------------------------------
   // ANNZ_loopRegCls.cpp :
@@ -159,7 +161,7 @@ private:
   // private variables
   // ===========================================================================================================
   vector < Double_t >                   zClos_binE, zClos_binC, zPlot_binE, zPlot_binC, zPDF_binE, zPDF_binC, zBinCls_binE, zBinCls_binC;
-  vector < TString >                    mlmTagName, mlmTagWeight, mlmTagClsVal, mlmTagIndex, inputVariableV;
+  vector < TString >                    mlmTagName, mlmTagWeight, mlmTagClsVal, mlmTagIndex, mlmTagErrKNN, inputVariableV;
   vector < map <TString,TString> >      mlmTagErr;
   vector < vector <TString> >           pdfBinNames, inErrTag;
   vector < map < TString,TString> >     pdfAvgNames;

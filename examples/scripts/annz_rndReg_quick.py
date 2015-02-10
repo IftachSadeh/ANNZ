@@ -113,6 +113,9 @@ if glob.annz["doOptim"] or glob.annz["doEval"]:
     # inAsciiVars - list of parameters in the input files (doesnt need to be exactly the same as in doGenInputTrees, but must contain all
     #               of the parameers which were used for training)
     glob.annz["inAsciiVars"]    = "F:MAG_U;F:MAGERR_U;F:MAG_G;F:MAGERR_G;F:MAG_R;F:MAGERR_R;F:MAG_I;F:MAGERR_I;F:MAG_Z;F:MAGERR_Z"
+    # evalDirPostfix - if not empty, this string will be added to the name of the evaluation directory
+    #                  (can be used to prevent multiple evaluation of different input files from overwriting each other)
+    glob.annz["evalDirPostfix"] = ""
 
     # run ANNZ with the current settings
     runANNZ()

@@ -55,16 +55,15 @@ void ANNZ::Optim() {
  * @brief    - Loop over all MLMs, and check that each one has its corresponding "postTrain" trees, validate
  *           that these are up to date, and erge them into a single tree.
  * 
- * @details              
- *           - The following checks are performed:
- *             - Each trained MLM must have a "postTrain" tree with the results of the MLM estimator
- *             - Each postTrain tree must have been generated after the training (it is possible that
- *             an MLM was re-trained after the original postTrain tree was created). Otherwise it
- *             needs to be recreated.
- *             - If new cuts or weights have been added (compared to what was defined during training)
- *             than the postTrain tree needs to be recreated.
- *             - In binned-classification, if two PDFs are requested, than the postTrain trees ned to be
- *             recreated with error estimates (these are not computed by default during training).
+ * @details  - The following checks are performed:
+ *           - Each trained MLM must have a "postTrain" tree with the results of the MLM estimator
+ *           - Each postTrain tree must have been generated after the training (it is possible that
+ *           an MLM was re-trained after the original postTrain tree was created). Otherwise it
+ *           needs to be recreated.
+ *           - If new cuts or weights have been added (compared to what was defined during training)
+ *           than the postTrain tree needs to be recreated.
+ *           - In binned-classification, if two PDFs are requested, than the postTrain trees ned to be
+ *           recreated with error estimates (these are not computed by default during training).
  *           - Once all postTrain trees for individual MLMs are up to date, they are all merged into a
  *           single tree, which is used for optimization.
  */
@@ -100,7 +99,7 @@ void  ANNZ::makeTreeRegClsAllMLM() {
     aChain = new TChain(inTreeName,inTreeName); aChain->SetDirectory(0); aChain->Add(inFileName); 
     nEntriesChainV[nTrainValidNow] = aChain->GetEntries();
     
-    aLOG(Log::DEBUG) <<coutRed<<"Got chain "<<coutGreen<<inTreeName<<"("<<nEntriesChainV[nTrainValidNow]
+    aLOG(Log::DEBUG) <<coutRed<<" - Got chain "<<coutGreen<<inTreeName<<"("<<nEntriesChainV[nTrainValidNow]
                      <<")"<<" from "<<coutBlue<<inFileName<<coutDef<<endl;
     
     DELNULL(aChain);
@@ -143,7 +142,8 @@ void  ANNZ::makeTreeRegClsAllMLM() {
           
           if(!errBranch) {
             foundGoodTrees = false;
-            aLOG(Log::INFO) <<coutRed<<MLMname<<coutYellow<<" - requested 2 binCls PDFs. Will regenerate, as error estimates are needed ..."<<coutDef<<endl;
+            aLOG(Log::INFO) <<coutYellow<<" - "<<coutRed<<MLMname<<coutYellow
+                            <<" - Will regenerate, as error estimates are needed ..."<<coutDef<<endl;
           }
         }
 
@@ -253,29 +253,36 @@ void  ANNZ::makeTreeRegClsAllMLM() {
       // check date of creation
       TString saveFileName = getKeyWord("","postTrain","configSaveFileName");  //saveFileName = (TString)glob->GetOptC("postTrainDirNameFull")+"saveTime.txt";
 
-      aLOG(Log::INFO) <<coutBlue<<" - Found all requred post-train root files -> Getting from file "<<coutYellow<<saveFileName<<coutBlue
-                      <<" the creation time of the merged trees and comparing to the creationg time of source result-trees ..."<<coutDef<<endl;
+      if(!utils->validFileExists(saveFileName,false)) {
+        needToMergeTrees = true;
+        aLOG(Log::INFO)<<coutGreen<<" - File with timing information "<<coutYellow<<saveFileName
+                       <<coutGreen<<" not found ,,, will generate merged trees."<<coutDef<<endl;
+      }
+      else {
+        aLOG(Log::INFO) <<coutBlue<<" - Found all requred post-train root files -> Getting from file "<<coutYellow<<saveFileName<<coutBlue
+                        <<" the creation time of the merged trees and comparing to the creationg time of source result-trees ..."<<coutDef<<endl;
 
-      optMap = new OptMaps("localOptMap"); optNames.clear();
-      utils->optToFromFile(&optNames,optMap,saveFileName,"READ","SILENT_KeepFile");
-
-      time_t mergedTreeTime = static_cast<time_t>(optMap->GetOptF(glob->GetOptC("aTimeName")));
-
-      for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) {
-        MLMname             = getTagName(nMLMnow); if(mlmSkip[MLMname]) continue;
-        // postTrainDirNameMLM = getKeyWord(MLMname,"postTrain","postTrainDirName");
-        saveFileName        = getKeyWord(MLMname,"postTrain","configSaveFileName");  //saveFileName = (TString)postTrainDirNameMLM+"saveTime.txt";
-
-        optMap->clearAll(); optNames.clear();
+        optMap = new OptMaps("localOptMap"); optNames.clear();
         utils->optToFromFile(&optNames,optMap,saveFileName,"READ","SILENT_KeepFile");
 
-        time_t treeTime = static_cast<time_t>(optMap->GetOptF(glob->GetOptC("aTimeName")));
-        
-        timeDiff = difftime(treeTime,mergedTreeTime);
-        if(timeDiff > 0) {
-          needToMergeTrees = true;
-          aLOG(Log::INFO)<<coutGreen<<" - New result-trees found ... will generate merged trees."<<coutDef<<endl;
-          break;
+        time_t mergedTreeTime = static_cast<time_t>(optMap->GetOptF(glob->GetOptC("aTimeName")));
+
+        for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) {
+          MLMname             = getTagName(nMLMnow); if(mlmSkip[MLMname]) continue;
+          // postTrainDirNameMLM = getKeyWord(MLMname,"postTrain","postTrainDirName");
+          saveFileName        = getKeyWord(MLMname,"postTrain","configSaveFileName");  //saveFileName = (TString)postTrainDirNameMLM+"saveTime.txt";
+
+          optMap->clearAll(); optNames.clear();
+          utils->optToFromFile(&optNames,optMap,saveFileName,"READ","SILENT_KeepFile");
+
+          time_t treeTime = static_cast<time_t>(optMap->GetOptF(glob->GetOptC("aTimeName")));
+          
+          timeDiff = difftime(treeTime,mergedTreeTime);
+          if(timeDiff > 0) {
+            needToMergeTrees = true;
+            aLOG(Log::INFO)<<coutGreen<<" - New result-trees found ... will generate merged trees."<<coutDef<<endl;
+            break;
+          }
         }
       }
       if(!needToMergeTrees) aLOG(Log::INFO)<<coutGreen<<" - No new MLMs found ... no need to regenerate the merged trees."<<coutDef<<endl;
@@ -290,11 +297,13 @@ void  ANNZ::makeTreeRegClsAllMLM() {
       outputs->InitializeDir(glob->GetOptC("postTrainDirNameFull"),glob->GetOptC("baseName"));
       saveFileName = getKeyWord("","postTrain","configSaveFileName");  //saveFileName = (TString)glob->GetOptC("postTrainDirNameFull")+"saveTime.txt";
 
-      for(int nTrainValidNow=0; nTrainValidNow<2; nTrainValidNow++) {
-        if(separateTestValid && (nTrainValidNow==0)) continue;
+      for(int nTreeInNow=0; nTreeInNow<3; nTreeInNow++) {
+        if(separateTestValid && (nTreeInNow==0)) continue;
 
-        treeNamePostfix = (TString)( (nTrainValidNow == 0) ? "_train" : "_valid" );
-        inTreeName      = (TString)glob->GetOptC("treeName")+treeNamePostfix;
+        inTreeName = "";
+        if     (nTreeInNow == 0) inTreeName = (TString)glob->GetOptC("treeName")+"_train";
+        else if(nTreeInNow == 1) inTreeName = (TString)glob->GetOptC("treeName")+"_valid";
+        else if(nTreeInNow == 2) inTreeName = getKeyWord("","treeErrKNN","treeErrKNNname");
 
         // -----------------------------------------------------------------------------------------------------------
         // merge all postTrain trees into one file - if there are too many separate inputs (more than maxTreesMerge)
@@ -309,6 +318,19 @@ void  ANNZ::makeTreeRegClsAllMLM() {
           MLMname             = getTagName(nMLMnow); if(mlmSkip[MLMname]) continue;
           postTrainDirNameMLM = getKeyWord(MLMname,"postTrain","postTrainDirName");
           inFileName          = (TString)postTrainDirNameMLM+inTreeName+"*.root";
+
+          // verify that the expected trees exist befor adding them to the list of tree-friends
+          vector <TString> outV;
+          TString cmnd = (TString)"ls "+postTrainDirNameMLM;
+          utils->validDirExists(postTrainDirNameMLM); utils->getShellCmndOutput(cmnd,&outV,false,false);
+
+          bool foundFile(false);
+          for(int nFileNow=0; nFileNow<(int)outV.size(); nFileNow++) {
+            if(outV[nFileNow].BeginsWith(inTreeName) && outV[nFileNow].EndsWith(".root")) foundFile = true;
+          }
+          VERIFY(LOCATION,(TString)"Could not find expected file(s) by pattern: "+inFileName
+                                  +" - Try to erase the directory, "+postTrainDirNameMLM+" , and re-running ...",foundFile);
+          outV.clear();
 
           allFriendFileNameV.push_back(inFileName);
         }
@@ -380,7 +402,6 @@ void  ANNZ::makeTreeRegClsAllMLM() {
         outDirNameV.clear(); allFriendFileNameV.clear();
       }
 
-      // 
       aLOG(Log::INFO)<<coutYellow<<" - Saving file "<<coutGreen<<saveFileName<<coutYellow<<" to log the creation time of the trees ..."<<coutDef<<endl;
 
       optMap = new OptMaps("localOptMap"); optNames.clear();
@@ -434,8 +455,6 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
   TString MLMname_v         = getTagClsVal(nMLMnow);
   TString MLMname_i         = getTagIndex(nMLMnow);
 
-  ANNZ_readType aReadType   = isCls ? ANNZ_readType::PRB : ANNZ_readType::REG;
-
   // this check is safe, since (inNamesErr[nMLMnow].size() > 0) was confirmed in setNominalParams()
   VERIFY(LOCATION,(TString)"inNamesErr["+utils->intToStr(nMLMnow)+"] not initialized... something is horribly wrong ?!?",(inNamesErr[nMLMnow].size() > 0));
   if(isErrKNN && (inNamesErr[nMLMnow][0] != "")) { isErrKNN = false; isErrINP = true; }
@@ -456,8 +475,13 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
     mlmSkipNow[MLMname] = (nMLMnow0 != nMLMnow);
   }
   loadReaders(mlmSkipNow);
-
   mlmSkipNow.clear();
+
+  // -----------------------------------------------------------------------------------------------------------  
+  // create trees from the _train dataset which contain the input for the KNN error estimator (this is done
+  // in any case, even if KNN errors are not needed later on...)
+  // -----------------------------------------------------------------------------------------------------------  
+  createTreeErrKNN(nMLMnow);
 
   double separation(-1);
   for(int nTrainValidNow=0; nTrainValidNow<2; nTrainValidNow++) {
@@ -471,36 +495,34 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
 
     // 
     // -----------------------------------------------------------------------------------------------------------  
-    VarMaps * varKNN(NULL);        TChain        * aChainKnn(NULL);
-    TFile   * knnErrOutFile(NULL); TMVA::Factory * knnErrFactory(NULL); TMVA::kNN::ModulekNN * knnErrModule(NULL);
+    VarMaps * varKNN(NULL);        vector <TChain *> aChainKnn(2,NULL);   vector <int>         trgIndexV;
+    TFile   * knnErrOutFile(NULL); TMVA::Factory *   knnErrFactory(NULL); TMVA::kNN::ModulekNN * knnErrModule(NULL);
 
     if(isErrKNN) {
-      // -----------------------------------------------------------------------------------------------------------  
-      // the _train trees are used in all cases:
-      //  - if (separateTestValid == false) then the errors of the _train will be derived from the same source, but
-      //    there is no choice in the matter anyway...
-      //  - if (separateTestValid == true) then the errors for both the testing (ANNZ_tvType<0.5 in _valid) and for the
-      //    validation (ANNZ_tvType>0.5 in _valid) will be derived from the independent source of the _train tree
-      // -----------------------------------------------------------------------------------------------------------  
-      TString inTreeNameKnn = (TString)glob->GetOptC("treeName")+"_train";
-      TString inFileNameKnn = (TString)glob->GetOptC("inputTreeDirName")+inTreeNameKnn+"*.root";
+      TString inTreeNameKnn = getKeyWord("","treeErrKNN","treeErrKNNname");
+      TString inFileNameKnn = postTrainDirName+inTreeNameKnn+"*.root";
 
-      aChainKnn = new TChain(inTreeNameKnn,inTreeNameKnn); aChainKnn->SetDirectory(0); aChainKnn->Add(inFileNameKnn);
-      int nEntriesChainKnn = aChainKnn->GetEntries();
+      aChainKnn[0] = new TChain(inTreeNameKnn,inTreeNameKnn); aChainKnn[0]->SetDirectory(0); aChainKnn[0]->Add(inFileNameKnn);
+
+      TString inTreeKnnFrnd = (TString)glob->GetOptC("treeName")+"_train";
+      TString inFileKnnFrnd = (TString)glob->GetOptC("inputTreeDirName")+inTreeKnnFrnd+"*.root";
+      aChainKnn[1] = new TChain(inTreeKnnFrnd,inTreeKnnFrnd); aChainKnn[1]->SetDirectory(0); aChainKnn[1]->Add(inFileKnnFrnd);
+
+      aChainKnn[0]->AddFriend(aChainKnn[1],utils->nextTreeFriendName(aChainKnn[0]));
+
+      int nEntriesChainKnn = aChainKnn[0]->GetEntries();
       aLOG(Log::DEBUG) <<coutRed<<" - Created KnnErr chain  "<<coutGreen<<inTreeNameKnn
                        <<"("<<nEntriesChainKnn<<")"<<" from "<<coutBlue<<inFileNameKnn<<coutDef<<endl;
 
       varKNN = new VarMaps(glob,utils,"varKNN");
-      varKNN->connectTreeBranches(aChainKnn);  // connect the tree so as to allocate memory for cut variables
+      varKNN->connectTreeBranches(aChainKnn[0]);  // connect the tree so as to allocate memory for cut variables
 
       setMethodCuts(varKNN,nMLMnow);
 
-      TCut    cutsNow(varKNN->getTreeCuts("_comn") + varKNN->getTreeCuts(MLMname+treeNamePostfix)), cutsSig(""), cutsBck("");
-      TString wgtReg(userWgtsM[MLMname+treeNamePostfix]), wgtSig("1"), wgtBck("1");
+      TCut    cutsNow(varKNN->getTreeCuts("_comn") + varKNN->getTreeCuts(MLMname+treeNamePostfix));
+      TString wgtReg(userWgtsM[MLMname+treeNamePostfix]);
 
-      if(needBinClsErr) { cutsSig = userCutsM[MLMname+"_sig"]; cutsBck = userCutsM[MLMname+"_bck"]; }
-
-      setupKdTreeKNN(aChainKnn,cutsNow,nMLMnow,knnErrOutFile,knnErrFactory,knnErrModule,cutsSig,cutsBck,wgtReg,wgtSig,wgtBck);
+      setupKdTreeKNN(aChainKnn[0],knnErrOutFile,knnErrFactory,knnErrModule,trgIndexV,nMLMnow,cutsNow,wgtReg);
     }
 
     // -----------------------------------------------------------------------------------------------------------
@@ -557,7 +579,8 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
     // -----------------------------------------------------------------------------------------------------------
     // loop on the tree
     // -----------------------------------------------------------------------------------------------------------
-    vector <double> regErrV(3,0);
+    vector <int>               nMLMv(1,nMLMnow);
+    vector < vector <double> > regErrV(nMLMs,vector<double>(3,0));
 
     bool  breakLoop(false), mayWriteObjects(false);
     int   nObjectsToWrite(glob->GetOptI("nObjectsToWrite")), nObjectsToPrint(glob->GetOptI("nObjectsToPrint"));
@@ -619,15 +642,13 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
       }
 
       if(!isCls || needBinClsErr) {
-        if     (isErrKNNnow) getRegClsErrKNN(var_0,aReadType,nMLMnow,knnErrModule,&regErrV);
-        else if(isErrINPnow) getRegClsErrINP(var_0,aReadType,nMLMnow,&seed,       &regErrV);
+        if     (isErrKNNnow) getRegClsErrKNN(var_0,knnErrModule,trgIndexV,nMLMv,!isCls,regErrV);
+        else if(isErrINPnow) getRegClsErrINP(var_0,!isCls,nMLMnow,&seed,&(regErrV[nMLMnow]));
 
-        var_1->SetVarF(MLMname_eN,regErrV[0]);
-        var_1->SetVarF(MLMname_e ,regErrV[1]);
-        var_1->SetVarF(MLMname_eP,regErrV[2]);
+        var_1->SetVarF(MLMname_eN,regErrV[nMLMnow][0]); var_1->SetVarF(MLMname_e,regErrV[nMLMnow][1]); var_1->SetVarF(MLMname_eP,regErrV[nMLMnow][2]);
       }
 
-      treeOut->Fill(); //var_0->printVars(); cout <<"----------------------"<<endl; var_1->printVars();
+      treeOut->Fill();
 
       // to increment the loop-counter, at least one method should have passed the cuts
       mayWriteObjects = true;
@@ -638,7 +659,6 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
       else {
         if(var_0->GetCntr("nObj") == maxNobj) breakLoop = true;
       }  
-    //cout <<skipObj<<CT<<var_0->GetCntr("nObj") <<CT<< var_0->GetCntr("nObj_sig") <<CT<< var_0->GetCntr("nObj_bck") <<endl;
     }
     if(!breakLoop) { var_0->printCntr(inTreeName); outputs->WriteOutObjects(false,true); outputs->ResetObjects(); }
 
@@ -664,7 +684,7 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
         TString sigBckCut  = (TString)((nSigBckNow == 0) ? ">0.5" : "<0.5");
         
         TString hisName    = (TString)"sepHis"+sigBckName;
-        TH1     * his1_sb  = new TH1D(hisName,hisName,100,0,1); 
+        TH1     * his1_sb  = new TH1F(hisName,hisName,100,0,1); 
         TString drawExprs  = (TString)MLMname+">>+"+hisName;
 
         TString trainCut   = (TString)var_0->getTreeCuts("_train");
@@ -695,11 +715,14 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
     DELNULL(var_0); DELNULL(var_1); DELNULL(aChain);
 
     if(isErrKNN) {
-      DELNULL(varKNN); cleanupKdTreeKNN(knnErrOutFile,knnErrFactory); DELNULL(aChainKnn);
+      DELNULL(varKNN); cleanupKdTreeKNN(knnErrOutFile,knnErrFactory);
+
+      aChainKnn[0]->RemoveFriend(aChainKnn[1]); DELNULL(aChainKnn[0]); DELNULL(aChainKnn[1]);
 
       utils->safeRM(getKeyWord(MLMname,"knnErrXML","outFileDirKnnErr"), inLOG(Log::DEBUG));
       utils->safeRM(getKeyWord(MLMname,"knnErrXML","outFileNameKnnErr"),inLOG(Log::DEBUG));
     }
+    aChainKnn.clear(); trgIndexV.clear();
   }
 
   // re-set the output directory to the correct path
@@ -738,8 +761,7 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
 /**
  * @brief                 - Compute the separation parameter between two distributions.
  *
- * @details        
- *                        - see "separation" in: http://root.cern.ch/root/html/ANNZ__MethodBase.html .
+ * @details               - see "separation" in: http://root.cern.ch/root/html/ANNZ__MethodBase.html .
  *                        - Uses both a binned estimator and a fitted PDF estimator to compute the separation.
  *                  
  * @param hisSig, hisBck  - Two histograms with the same xAxis bins which contain the distributions for which

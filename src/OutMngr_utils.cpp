@@ -60,7 +60,7 @@ void OutMngr::InitializeDir(TString outDirNameNow , TString outFileNameNow) {
 // ===========================================================================================================
 void OutMngr::WriteOutObjects(bool writePdfScripts, bool dontWriteHis) {
 // =====================================================================
-  aLOG(Log::DEBUG_1) <<coutWhiteOnBlack<<coutBlue<<" - starting OutMngr::WriteOutObjects() ... "<<coutDef<<endl;
+  aLOG(Log::DEBUG_1) <<coutBlue<<" - starting OutMngr::WriteOutObjects() ... "<<coutDef<<endl;
 
   int numHis;
 
@@ -194,7 +194,7 @@ void OutMngr::WriteOutObjects(bool writePdfScripts, bool dontWriteHis) {
 // ===========================================================================================================
 void OutMngr::ResetObjects() {
 // ===========================
-  aLOG(Log::DEBUG_1) <<coutWhiteOnBlack<<coutBlue<<" - starting OutMngr::ResetObjects() ... "<<coutDef<<endl;
+  aLOG(Log::DEBUG_1) <<coutBlue<<" - starting OutMngr::ResetObjects() ... "<<coutDef<<endl;
 
   int numHis;
 

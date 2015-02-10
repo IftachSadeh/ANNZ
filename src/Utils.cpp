@@ -309,10 +309,8 @@ void Utils::validDirExists(TString dirName, bool verbose) {
   return;
 }
 // ===========================================================================================================
-bool Utils::validFileExists(TString fileName, bool verif, bool verbose) {
-// ======================================================================
-  if(glob->OptOrNullB("debugSysCmnd")) verbose = true;
-
+bool Utils::validFileExists(TString fileName, bool verif) {
+// ========================================================
   VERIFY(LOCATION,(TString)"Trying to check existance of file with empty name ("+fileName+")",(fileName != ""));
 
   ifstream inputFile(fileName,std::ios::in);
@@ -329,12 +327,12 @@ TString Utils::getShellCmndOutput(TString cmnd, vector <TString> * outV, bool ve
   if(glob->OptOrNullB("debugSysCmnd")) verbose = true;
 
   TString tmpDirName  = glob->GetOptC("tmpDirName");  validDirExists(tmpDirName);
-  TString tmpFileName = (TString)tmpDirName+"getShellCmndOutput_"+TString::Format("%1.15f",rnd->Rndm());   
+  TString tmpFileName = (TString)tmpDirName+"getShellCmndOutput_"+TString::Format("%1.20f",rnd->Rndm());   
   
   for(int nCmd=0; nCmd<100; nCmd++) {
     TString sysCmnd("");
     if     (nCmd == 0) sysCmnd = (TString)"touch   "+tmpFileName;
-    else if(nCmd == 1) sysCmnd = (TString)"rm -rf  "+tmpFileName;
+    else if(nCmd == 1) sysCmnd = (TString)"rm -f   "+tmpFileName;
     else if(nCmd == 2) sysCmnd = (TString)cmnd+" > "+tmpFileName;
     else break;
 
@@ -361,7 +359,7 @@ TString Utils::getShellCmndOutput(TString cmnd, vector <TString> * outV, bool ve
   for(int nCmd=0; nCmd<100; nCmd++) {
     TString sysCmnd("");
     if     (nCmd == 0) sysCmnd = (TString)"touch   "+tmpFileName;
-    else if(nCmd == 1) sysCmnd = (TString)"rm -rf  "+tmpFileName;
+    else if(nCmd == 1) sysCmnd = (TString)"rm -f   "+tmpFileName;
     else break;
 
     int sysReturn = system(sysCmnd);
@@ -411,27 +409,29 @@ bool Utils::isSameWeightExpr(TString wgt0, TString wgt1) {
 // ===========================================================================================================
 int Utils::getNlinesAsciiFile(TString fileName, bool checkNonEmpty) {
 // ==================================================================
-  TString cmnd   = (TString)"ls "+fileName;
-  // first make sure the file exists
-  getShellCmndOutput(cmnd); // use getShellCmndOutput coz we don't want the output as ls on screen...
-  // now get the number of lines (exclusing those which start with "#"
-  cmnd       = (TString)"grep -v \"#\" "+fileName+" | wc -l  | head -1 | awk {'print $1'}";
-  int nLines = strToInt(getShellCmndOutput(cmnd));
+  validFileExists(fileName,true);
 
-  if(checkNonEmpty) VERIFY(LOCATION,(TString)"found empty input file ("+fileName+") ...",(nLines > 0));
+  // get the number of lines (exclusing those which start with "#"
+  TString cmnd    = (TString)"grep -v \"#\" "+fileName+" | wc -l  | head -1 | awk {'print $1'}";
+  TString cmndOut = getShellCmndOutput(cmnd);
+  int     nLines  = (cmndOut.IsDigit()) ? strToInt(cmndOut) : 0;
+
+  if(checkNonEmpty) VERIFY(LOCATION,(TString)"found empty input file for command->output: ["+cmnd+"] -> ["+cmndOut+"] ...",(nLines > 0));
 
   return nLines;
 }
 // ===========================================================================================================
-int Utils::getNlinesAsciiFile(vector<TString> & fileNameV, bool checkNonEmpty) {
-// =============================================================================
+int Utils::getNlinesAsciiFile(vector<TString> & fileNameV, bool checkNonEmpty, vector <int> * nLineV) {
+// ====================================================================================================
   TString inFileNames("");
   int     nLinesTot(0), nInFiles((int)fileNameV.size());
 
   for(int nInFileNow=0; nInFileNow<nInFiles; nInFileNow++) {
-    int nLines   = getNlinesAsciiFile(fileNameV[nInFileNow],false);
+    int nLines   = getNlinesAsciiFile(fileNameV[nInFileNow],checkNonEmpty);
     nLinesTot   += nLines;
     inFileNames += (TString)fileNameV[nInFileNow]+" , ";
+
+    if(nLineV) nLineV->push_back(nLines);
 
     aLOG(Log::INFO)<<coutGreen<<" - Found "<<coutYellow<<nLines<<coutGreen<<" lines in file "<<coutRed<<fileNameV[nInFileNow]
                                    <<coutGreen<<coutGreen<<" -> total so far = "<<coutYellow<<nLinesTot<<" ... "<<coutDef<<endl;
@@ -1144,11 +1144,17 @@ void Utils::his2d_to_his1dV(OptMaps * optMap, TH1 * his2, vector <TH1*> & hisV) 
       }
     }
 
-    if(xAxis->GetXbins()->GetSize() > 0)  his1 = new TH1D(hisName1d,hisName1d,nBinsX,xAxis->GetXbins()->GetArray());
-    else                                  his1 = new TH1D(hisName1d,hisName1d,nBinsX,lowEdgeX,highEdgeX);
-    hisV.push_back(his1); //HisMap1D[hisName1d] = his1;
+    if     (dynamic_cast<TH2D*>(his2)) {
+      if(xAxis->GetXbins()->GetSize() > 0)  his1 = new TH1D(hisName1d,hisName1d,nBinsX,xAxis->GetXbins()->GetArray());
+      else                                  his1 = new TH1D(hisName1d,hisName1d,nBinsX,lowEdgeX,highEdgeX);
+    }
+    else if(dynamic_cast<TH2F*>(his2)) {
+      if(xAxis->GetXbins()->GetSize() > 0)  his1 = new TH1F(hisName1d,hisName1d,nBinsX,xAxis->GetXbins()->GetArray());
+      else                                  his1 = new TH1F(hisName1d,hisName1d,nBinsX,lowEdgeX,highEdgeX);
+    }
+    else VERIFY(LOCATION,(TString)" - Unsupported histogram type (expected TH2D or TH1D) for "+his2->GetName(),false);
 
-    // SetHisStyle(his1);
+    hisV.push_back(his1);
 
     TString binLabel = (TString)yAxis->GetBinLabel(nBinNowY);
     if(binLabel == "") his1->SetTitle(hisTitle);  else his1->SetTitle(binLabel);
@@ -1247,15 +1253,7 @@ void Utils::getKolmogorov(vector <double> & data0, vector <double> & data1) {
   param->NewOptI("nArrEntries" , min((int)data0.size(),(int)data1.size()));
   // perform the Kolmogorov test
   getKolmogorov(data0.data(),data1.data());
-  
-//double * dataArr0 = new double[param->GetOptI("nArrEntries")];
-//double * dataArr1 = new double[param->GetOptI("nArrEntries")];
-//for(int nEleNow=0; nEleNow<param->GetOptI("nArrEntries"); nEleNow++) {
-//  dataArr0[nEleNow] = data0[nEleNow];
-//  dataArr1[nEleNow] = data1[nEleNow];
-//}
-//// cleanup the arrays
-//delete [] dataArr0; delete [] dataArr1;
+
   return;
 }
 // -----------------------------------------------------------------------------------------------------------
@@ -1264,12 +1262,22 @@ void Utils::getKolmogorov(TH1 * data0, TH1 * data1) {
   param->NewOptF("Kolmogorov_prob",-1);
   param->NewOptF("Kolmogorov_dist",-1);
  
- if(!data0 || !data1) return;
+  if(!data0 || !data1) return;
 
- data0->BufferEmpty(); data1->BufferEmpty();
+  data0->BufferEmpty(); data1->BufferEmpty();
 
-  TH1 * cumulatData0 = (TH1D*)data0->Clone((TString)data0->GetName()+"_cumul"); cumulatData0->Reset();
-  TH1 * cumulatData1 = (TH1D*)data1->Clone((TString)data1->GetName()+"_cumul"); cumulatData1->Reset();
+  TH1 * cumulatData0(NULL), * cumulatData1(NULL);
+  if     (dynamic_cast<TH1D*>(data0) && dynamic_cast<TH1D*>(data1)) {
+    cumulatData0 = (TH1D*)data0->Clone((TString)data0->GetName()+"_cumul");
+    cumulatData1 = (TH1D*)data1->Clone((TString)data1->GetName()+"_cumul");
+  }
+  else if(dynamic_cast<TH1F*>(data0) && dynamic_cast<TH1F*>(data1)) {
+    cumulatData0 = (TH1F*)data0->Clone((TString)data0->GetName()+"_cumul");
+    cumulatData1 = (TH1F*)data1->Clone((TString)data1->GetName()+"_cumul");
+  }
+  else VERIFY(LOCATION,(TString)" - Unsupported histogram type (expected TH2D or TH1D) for "+data0->GetName()+" , "+data1->GetName(),false);
+
+  cumulatData0->Reset(); cumulatData1->Reset();
 
   double  sum0(0), sum1(0);
   for(int nBinNow=1; nBinNow<data0->GetNbinsX()+1; nBinNow++) {
@@ -1510,7 +1518,7 @@ int Utils::getInterQuantileStats(double * dataArr, TH1 * dataHis) {
   // Median absolute deviation
   // -----------------------------------------------------------------------------------------------------------
   if(param->OptOrNullB("medianAbsoluteDeviation")) {
-    TH1 * madH = new TH1D("madHisTMP","madHisTMP",closHisN,1,-1); madH->SetDefaultBufferSize(closHisN);
+    TH1 * madH = new TH1F("madHisTMP","madHisTMP",closHisN,1,-1); madH->SetDefaultBufferSize(closHisN);
 
     if(hasHis) {
       int nBins = dataHis->GetXaxis()->GetNbins();
@@ -1595,7 +1603,7 @@ Utils::Utils(OptMaps * aMaps) {
 // ============================
   glob        = aMaps;
   param       = new OptMaps("param");
-  rnd         = new TRandom3(1); // same random seed for all runs
+  rnd         = new TRandom3(0); // must be a different random seed each time (used for temporary file-name generation) !
   
   setColors();
 
@@ -1605,12 +1613,13 @@ Utils::Utils(OptMaps * aMaps) {
   if(!glob->GetOptC("outDirNamePath").EndsWith("/")) glob->SetOptC("outDirNamePath",(TString)glob->GetOptC("outDirNamePath")+"/");
 
   // tmp directory setup
-  TString tmpDirName = glob->OptOrNullC("tmpDirName");
-  if(tmpDirName == "") tmpDirName = "tmp";
+  TString tmpDirName(glob->OptOrNullC("tmpDirName"));
+  
+  if(tmpDirName == "")          tmpDirName = "tmp/";
+  if(!tmpDirName.EndsWith("/")) tmpDirName = (TString)tmpDirName+"/";
   glob->NewOptC("tmpDirName", (TString)glob->GetOptC("outDirNamePath")+tmpDirName);
-  validDirExists(glob->GetOptC("tmpDirName")); 
 
-  if(!glob->GetOptC("tmpDirName").EndsWith("/")) glob->SetOptC("tmpDirName",(TString)glob->GetOptC("tmpDirName")+"/");
+  validDirExists(glob->GetOptC("tmpDirName")); 
 
   if(!glob->HasOptC("UserInfoStr")) glob->NewOptC("UserInfoStr","UserInfo;");
 

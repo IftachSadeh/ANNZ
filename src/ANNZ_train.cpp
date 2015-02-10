@@ -37,8 +37,7 @@ void ANNZ::Train() {
 /**
  * @brief    - Training for a single classification MLM.
  *
- * @details
- *           - Train a single MLM. Begin by splittting the input dataset into signal and background trees,
+ * @details  - Train a single MLM. Begin by splittting the input dataset into signal and background trees,
  *           then do the training. Finally, use makeTreeRegClsOneMLM() to write output trees with the
  *           result of the training, which will be used later on.
  */
@@ -225,8 +224,7 @@ void ANNZ::Train_singleCls() {
 /**
  * @brief    - Training for a single regression MLM.
  *
- * @details
- *           - Train a single MLM. Begin by creating a cut version of the trees, in case the training and validation
+ * @details  - Train a single MLM. Begin by creating a cut version of the trees, in case the training and validation
  *           cuts are different. After doing the training, use makeTreeRegClsOneMLM() to write output trees with the
  *           result of the training, which will be used later on.
  */
@@ -413,8 +411,7 @@ void ANNZ::Train_singleReg() {
 /**
  * @brief    - Training for a single binned-classification MLM.
  *
- * @details
- *           - Train a collection of MLMs in a given classification-bin. The "signal" region of the
+ * @details  - Train a collection of MLMs in a given classification-bin. The "signal" region of the
  *           classification-bin is defined as a region of values in the traget variable (zTrg) corresponding
  *           to the current value of nMLMnow. The "background" region is defined as all zTrg values smaller
  *           or larger than the lower and upper edges of the signal region respectively.
@@ -759,7 +756,7 @@ void ANNZ::Train_binnedCls() {
   // all the configuration files for the different files anc cleanup the discarded tries
   // -----------------------------------------------------------------------------------------------------------
   TString hisSepName = "hisSep_nTries";
-  TH1     * hisSep   = new TH1D(hisSepName,hisSepName,26,-0.02,1.02);
+  TH1     * hisSep   = new TH1F(hisSepName,hisSepName,26,-0.02,1.02);
 
   optMap = new OptMaps("localOptMap");
   TString          saveName(""), allSeps("");
@@ -842,8 +839,7 @@ void ANNZ::Train_binnedCls() {
 /**
  * @brief              - Generate randomized MLM training options
  * 
- * @details
- *                     - For all possible user options, see: http://tmva.sourceforge.net/optionRef.html
+ * @details            - For all possible user options, see: http://tmva.sourceforge.net/optionRef.html
  *                     - All TMVA options for the various methods are allowed. The only ANNZ requirements are that the option
  *                     string contains the type of MLM. Also, it is allowed to specify a global normalization, which normaly in
  *                     TMVA is given as part of the TMVA::Factory options.

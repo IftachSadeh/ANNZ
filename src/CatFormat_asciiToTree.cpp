@@ -69,14 +69,15 @@ void CatFormat::asciiToFullTree(TString inAsciiFiles, TString inAsciiVars, TStri
   // -----------------------------------------------------------------------------------------------------------
   // input files
   // -----------------------------------------------------------------------------------------------------------
-  inFileNameV  = utils->splitStringByChar(inAsciiFiles,';');
+  inFileNameV  = utils->splitStringByChar(inAsciiFiles.ReplaceAll(" ",""),';');
   int nInFiles = (int)inFileNameV.size();
   VERIFY(LOCATION,(TString)"found no input files defined in \"inAsciiFiles\"...",(nInFiles > 0));
 
   // add the path to the file names
   for(int nInFileNow=0; nInFileNow<nInFiles; nInFileNow++) inFileNameV[nInFileNow] = glob->GetOptC("inDirName")+inFileNameV[nInFileNow];
 
-  int nLinesTot = utils->getNlinesAsciiFile(inFileNameV,true);
+  vector <int> nLineV;
+  int nLinesTot = utils->getNlinesAsciiFile(inFileNameV,true,&nLineV);
   VERIFY(LOCATION,(TString)"found no content in \"inAsciiFiles\"...",(nLinesTot > 0));
 
   // clear tree objects and reserve variables which are not part of the input file
@@ -105,7 +106,7 @@ void CatFormat::asciiToFullTree(TString inAsciiFiles, TString inAsciiVars, TStri
     TString  reducedFileName = (TString)(((std::string)inFileNameNow).substr(posSlash+1));
 
     // skip input files with no content
-    if(utils->getNlinesAsciiFile(inFileNameNow,false) == 0) {
+    if(nLineV[nInFileNow] == 0) {
       aLOG(Log::WARNING)<<coutBlue<<" - Skipping "<<coutRed<<inFileNameNow<<coutBlue<<" (no content in file) ... "<<coutDef<<endl;
       continue;
     }
@@ -144,7 +145,7 @@ void CatFormat::asciiToFullTree(TString inAsciiFiles, TString inAsciiVars, TStri
       // fill the tree with the current variables
       treeOut->Fill();
 
-      if(inLOG(Log::DEBUG_2)) {
+      if(inLOG(Log::DEBUG_3)) {
         int nPrintRow(4), width(14);
         cout <<coutYellow<<"Line # "<<var->GetCntr("nObj")<<endl<<coutYellow<<std::setw(100)<<std::setfill('.')<<" "<<std::setfill(' ')<<coutDef;
         var->printVars(nPrintRow,width);
@@ -159,7 +160,7 @@ void CatFormat::asciiToFullTree(TString inAsciiFiles, TString inAsciiVars, TStri
 
   DELNULL(var);
 
-  inVarNames.clear(); inVarTypes.clear(); inFileNameV.clear();
+  inVarNames.clear(); inVarTypes.clear(); inFileNameV.clear(); nLineV.clear();
 
   return;
 }
@@ -169,8 +170,7 @@ void CatFormat::asciiToFullTree(TString inAsciiFiles, TString inAsciiVars, TStri
  * @brief                - Convert ascii file into a root tree (optional splitting for train/test/valid subsamples).
  * 
  * 
- * @details
- *                       - For training and testing/validation the input is divided into two (test,train) or into three (test,train,valid)
+ * @details              - For training and testing/validation the input is divided into two (test,train) or into three (test,train,valid)
  *                         sub-samples.
  *                       - The user needs to define the number of sub-samples (e.g., nSplit = 1,2 or 3) and the way to divide the
  *                         inputs in one of 4 ways (e.g., splitType = "serial", "blocks", "random" or "byInFiles" (default)):
@@ -179,7 +179,6 @@ void CatFormat::asciiToFullTree(TString inAsciiFiles, TString inAsciiVars, TStri
  *                           - random: -> valid;test;test;train;valid;test;valid;valid;test;train;valid;train...
  *                           - separate input files. Must supplay at least one file in splitTypeTrain and one in splitTypeTest.
  *                             In this case, [nSplit = 2]. Optionally can set [nSplit = 3] and provide a list of files in "splitTypeValid" as well.
- * 
  * 
  * @param inAsciiFiles   - semicolon-separated list of input ascii files
  * @param inAsciiVars    - semicolon-separated list of input parameter names, corresponding to columns in the input files
@@ -232,7 +231,7 @@ void CatFormat::asciiToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
       else if(nSplitNow == 2) splitTypeNow = "splitTypeValid";
       else VERIFY(LOCATION,"How did we get here... ?!?",false);
 
-      inFileNameV_now = utils->splitStringByChar(glob->GetOptC(splitTypeNow),';');
+      inFileNameV_now = utils->splitStringByChar((glob->GetOptC(splitTypeNow)).ReplaceAll(" ",""),';');
       nInFiles        = (int)inFileNameV_now.size();
       for(int nInFileNow=0; nInFileNow<nInFiles; nInFileNow++) {
         inFileNameV_now[nInFileNow] = glob->GetOptC("inDirName")+inFileNameV_now[nInFileNow];        
@@ -251,7 +250,7 @@ void CatFormat::asciiToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
   // input files - if common files for training,testing(,validating)
   // -----------------------------------------------------------------------------------------------------------
   else {
-    inFileNameV = utils->splitStringByChar(inAsciiFiles,';');
+    inFileNameV = utils->splitStringByChar(inAsciiFiles.ReplaceAll(" ",""),';');
     nInFiles    = (int)inFileNameV.size();
     VERIFY(LOCATION,(TString)"found no input files defined in \"inAsciiFiles\"...",(nInFiles > 0));
 
@@ -376,7 +375,7 @@ void CatFormat::asciiToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
       // fill the tree with the current variables
       treeOut[intMap["nSplitTree"]]->Fill();
 
-      if(inLOG(Log::DEBUG_2)) {
+      if(inLOG(Log::DEBUG_3)) {
         int nPrintRow(4), width(14);
         cout <<coutYellow<<"Line # "<<var->GetCntr("nObj")<<endl<<coutYellow<<std::setw(100)<<std::setfill('.')<<" "<<std::setfill(' ')<<coutDef;
         var->printVars(nPrintRow,width);
@@ -400,7 +399,7 @@ void CatFormat::asciiToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
       TString plotTag     = (TString)"asciiToTree_"+treeNameNow;//+TString::Format("_nTree%d",nTreeNow);
 
       TChain  * aChain = new TChain(treeNameNow,treeNameNow); aChain->SetDirectory(0); aChain->Add(fileNameNow);
-      aLOG(Log::DEBUG) <<coutRed<<"Created chain  "<<coutGreen<<treeNameNow<<"("<<aChain->GetEntries()<<")"<<" from "<<coutBlue<<fileNameNow<<coutDef<<endl;
+      aLOG(Log::DEBUG) <<coutRed<<" - Created chain  "<<coutGreen<<treeNameNow<<"("<<aChain->GetEntries()<<")"<<" from "<<coutBlue<<fileNameNow<<coutDef<<endl;
 
       // derive the names of all numeric branches in the chain
       vector <TString> branchNameV_0, branchNameV;
@@ -500,6 +499,7 @@ void CatFormat::asciiToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
 // ===========================================================================================================
 void CatFormat::parseInputVars(VarMaps * var, TString inAsciiVars, vector <TString> & inVarNames, vector <TString> & inVarTypes) {
 // ===============================================================================================================================
+  aLOG(Log::DEBUG_3) <<coutGreen<<" - CatFormat::parseInputVars(): "<<coutYellow<<inAsciiVars<<coutDef<<endl;
 
   // -----------------------------------------------------------------------------------------------------------
   // inAsciiVars -
@@ -510,7 +510,7 @@ void CatFormat::parseInputVars(VarMaps * var, TString inAsciiVars, vector <TStri
   //   and NAME can be any string without spaces (special characters will be replaces...)
   // -----------------------------------------------------------------------------------------------------------
 
-  inAsciiVars.ReplaceAll(" ",""); inVarNames = utils->splitStringByChar(inAsciiVars,';');
+  inAsciiVars.ReplaceAll(" ",""); inVarNames = utils->splitStringByChar(inAsciiVars.ReplaceAll(" ",""),';');
   int nVars  = (int)inVarNames.size();
 
   VERIFY(LOCATION,(TString)"found no input variables defined in \"inAsciiVars\"...",(nVars > 0));
@@ -559,9 +559,10 @@ void CatFormat::parseInputVars(VarMaps * var, TString inAsciiVars, vector <TStri
 // ===========================================================================================================
 bool CatFormat::inputLineToVars(TString line, VarMaps * var, vector <TString> & inVarNames, vector <TString> & inVarTypes) {
 // =========================================================================================================================
-  if(line == "" || line.BeginsWith("#")) return false;
+  aLOG(Log::DEBUG_3) <<coutGreen<<" - CatFormat::inputLineToVars(): "<<coutYellow<<line<<coutDef<<endl;
 
-  assert(dynamic_cast<VarMaps*>(var));
+  TString lineTest(line); lineTest.ReplaceAll(" ","");
+  if(lineTest == "" || lineTest.BeginsWith("#")) return false;
 
   // transformations to regularize the line
   // -----------------------------------------------------------------------------------------------------------
@@ -589,6 +590,8 @@ bool CatFormat::inputLineToVars(TString line, VarMaps * var, vector <TString> & 
     TString wordNow = words[nWordNow];
     TString nameNow = inVarNames[nWordNow];
     TString typeNow = inVarTypes[nWordNow];
+
+    VERIFY(LOCATION,(TString)" - got empty input for "+nameNow+" of type "+typeNow+" from input-line = "+line,(wordNow != ""));
 
     if     (typeNow == "F"  || typeNow == "D"                    ) { var->SetVarF(nameNow,(TString)wordNow); }
     else if(typeNow == "S"  || typeNow == "I"  || typeNow == "L" ) { var->SetVarI(nameNow,(TString)wordNow); }

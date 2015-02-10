@@ -322,33 +322,33 @@ void VarMaps::copyVarStruct(VarMaps * inObj, vector <TString> * acceptV, vector 
 // ===========================================================================================================
 void VarMaps::copyVarData(VarMaps * inObj) {
 // =========================================
-  for(map <TString,Bool_t>     ::iterator Itr = inObj->varB .begin(); Itr!=inObj->varB .end(); ++Itr) { if(HasVarB_ (Itr->first)) SetVarB_ (Itr->first,Itr->second);           }
-  for(map <TString,TObjString*>::iterator Itr = inObj->varC .begin(); Itr!=inObj->varC .end(); ++Itr) { if(HasVarC_ (Itr->first)) SetVarC_ (Itr->first,Itr->second->String()); }
-  for(map <TString,Short_t>    ::iterator Itr = inObj->varS .begin(); Itr!=inObj->varS .end(); ++Itr) { if(HasVarS_ (Itr->first)) SetVarS_ (Itr->first,Itr->second);           }
-  for(map <TString,Int_t>      ::iterator Itr = inObj->varI .begin(); Itr!=inObj->varI .end(); ++Itr) { if(HasVarI_ (Itr->first)) SetVarI_ (Itr->first,Itr->second);           }
-  for(map <TString,Long64_t>   ::iterator Itr = inObj->varL .begin(); Itr!=inObj->varL .end(); ++Itr) { if(HasVarL_ (Itr->first)) SetVarL_ (Itr->first,Itr->second);           }
-  for(map <TString,UShort_t>   ::iterator Itr = inObj->varUS.begin(); Itr!=inObj->varUS.end(); ++Itr) { if(HasVarUS_(Itr->first)) SetVarUS_(Itr->first,Itr->second);           }
-  for(map <TString,UInt_t>     ::iterator Itr = inObj->varUI.begin(); Itr!=inObj->varUI.end(); ++Itr) { if(HasVarUI_(Itr->first)) SetVarUI_(Itr->first,Itr->second);           }
-  for(map <TString,ULong64_t>  ::iterator Itr = inObj->varUL.begin(); Itr!=inObj->varUL.end(); ++Itr) { if(HasVarUL_(Itr->first)) SetVarUL_(Itr->first,Itr->second);           }
-  for(map <TString,Float_t>    ::iterator Itr = inObj->varF .begin(); Itr!=inObj->varF .end(); ++Itr) { if(HasVarF_ (Itr->first)) SetVarF_ (Itr->first,Itr->second);           }
-  for(map <TString,Double_t>   ::iterator Itr = inObj->varD .begin(); Itr!=inObj->varD .end(); ++Itr) { if(HasVarD_ (Itr->first)) SetVarD_ (Itr->first,Itr->second);           }
-  for(map <TString,TString>    ::iterator Itr = inObj->varFM.begin(); Itr!=inObj->varFM.end(); ++Itr) { if(HasForm_ (Itr->first)) SetForm_ (Itr->first,Itr->second);           }
+  for(map <TString,Bool_t>     ::iterator Itr=inObj->varB .begin(); Itr!=inObj->varB .end(); ++Itr) { if(HasVarB_ (Itr->first)) SetVarB_ (Itr->first,Itr->second);           }
+  for(map <TString,TObjString*>::iterator Itr=inObj->varC .begin(); Itr!=inObj->varC .end(); ++Itr) { if(HasVarC_ (Itr->first)) SetVarC_ (Itr->first,Itr->second->String()); }
+  for(map <TString,Short_t>    ::iterator Itr=inObj->varS .begin(); Itr!=inObj->varS .end(); ++Itr) { if(HasVarS_ (Itr->first)) SetVarS_ (Itr->first,Itr->second);           }
+  for(map <TString,Int_t>      ::iterator Itr=inObj->varI .begin(); Itr!=inObj->varI .end(); ++Itr) { if(HasVarI_ (Itr->first)) SetVarI_ (Itr->first,Itr->second);           }
+  for(map <TString,Long64_t>   ::iterator Itr=inObj->varL .begin(); Itr!=inObj->varL .end(); ++Itr) { if(HasVarL_ (Itr->first)) SetVarL_ (Itr->first,Itr->second);           }
+  for(map <TString,UShort_t>   ::iterator Itr=inObj->varUS.begin(); Itr!=inObj->varUS.end(); ++Itr) { if(HasVarUS_(Itr->first)) SetVarUS_(Itr->first,Itr->second);           }
+  for(map <TString,UInt_t>     ::iterator Itr=inObj->varUI.begin(); Itr!=inObj->varUI.end(); ++Itr) { if(HasVarUI_(Itr->first)) SetVarUI_(Itr->first,Itr->second);           }
+  for(map <TString,ULong64_t>  ::iterator Itr=inObj->varUL.begin(); Itr!=inObj->varUL.end(); ++Itr) { if(HasVarUL_(Itr->first)) SetVarUL_(Itr->first,Itr->second);           }
+  for(map <TString,Float_t>    ::iterator Itr=inObj->varF .begin(); Itr!=inObj->varF .end(); ++Itr) { if(HasVarF_ (Itr->first)) SetVarF_ (Itr->first,Itr->second);           }
+  for(map <TString,Double_t>   ::iterator Itr=inObj->varD .begin(); Itr!=inObj->varD .end(); ++Itr) { if(HasVarD_ (Itr->first)) SetVarD_ (Itr->first,Itr->second);           }
+  for(map <TString,TString>    ::iterator Itr=inObj->varFM.begin(); Itr!=inObj->varFM.end(); ++Itr) { if(HasForm_ (Itr->first)) SetForm_ (Itr->first,Itr->second);           }
   return;    
 }
 
 // ===========================================================================================================
 void VarMaps::setDefaultVals() {
 // =============================
-  for(map <TString,Bool_t>     ::iterator Itr = varB .begin(); Itr != varB .end(); ++Itr) { SetVarB_ (Itr->first , DefOpts::DefB ); }
-  for(map <TString,TObjString*>::iterator Itr = varC .begin(); Itr != varC .end(); ++Itr) { SetVarC_ (Itr->first , DefOpts::DefC ); }
-  for(map <TString,Short_t>    ::iterator Itr = varS .begin(); Itr != varS .end(); ++Itr) { SetVarS_ (Itr->first , DefOpts::DefS ); }
-  for(map <TString,Int_t>      ::iterator Itr = varI .begin(); Itr != varI .end(); ++Itr) { SetVarI_ (Itr->first , DefOpts::DefI ); }
-  for(map <TString,Long64_t>   ::iterator Itr = varL .begin(); Itr != varL .end(); ++Itr) { SetVarL_ (Itr->first , DefOpts::DefL ); }
-  for(map <TString,UShort_t>   ::iterator Itr = varUS.begin(); Itr != varUS.end(); ++Itr) { SetVarUS_(Itr->first , DefOpts::DefUS); }
-  for(map <TString,UInt_t>     ::iterator Itr = varUI.begin(); Itr != varUI.end(); ++Itr) { SetVarUI_(Itr->first , DefOpts::DefUI); }
-  for(map <TString,ULong64_t>  ::iterator Itr = varUL.begin(); Itr != varUL.end(); ++Itr) { SetVarUL_(Itr->first , DefOpts::DefUL); }
-  for(map <TString,Float_t>    ::iterator Itr = varF .begin(); Itr != varF .end(); ++Itr) { SetVarF_ (Itr->first , DefOpts::DefF ); }
-  for(map <TString,Double_t>   ::iterator Itr = varD .begin(); Itr != varD .end(); ++Itr) { SetVarD_ (Itr->first , DefOpts::DefD ); }
+  for(map <TString,Bool_t>     ::iterator Itr=varB .begin(); Itr!=varB .end(); ++Itr) { SetVarB_ (Itr->first , DefOpts::DefB ); }
+  for(map <TString,TObjString*>::iterator Itr=varC .begin(); Itr!=varC .end(); ++Itr) { SetVarC_ (Itr->first , DefOpts::DefC ); }
+  for(map <TString,Short_t>    ::iterator Itr=varS .begin(); Itr!=varS .end(); ++Itr) { SetVarS_ (Itr->first , DefOpts::DefS ); }
+  for(map <TString,Int_t>      ::iterator Itr=varI .begin(); Itr!=varI .end(); ++Itr) { SetVarI_ (Itr->first , DefOpts::DefI ); }
+  for(map <TString,Long64_t>   ::iterator Itr=varL .begin(); Itr!=varL .end(); ++Itr) { SetVarL_ (Itr->first , DefOpts::DefL ); }
+  for(map <TString,UShort_t>   ::iterator Itr=varUS.begin(); Itr!=varUS.end(); ++Itr) { SetVarUS_(Itr->first , DefOpts::DefUS); }
+  for(map <TString,UInt_t>     ::iterator Itr=varUI.begin(); Itr!=varUI.end(); ++Itr) { SetVarUI_(Itr->first , DefOpts::DefUI); }
+  for(map <TString,ULong64_t>  ::iterator Itr=varUL.begin(); Itr!=varUL.end(); ++Itr) { SetVarUL_(Itr->first , DefOpts::DefUL); }
+  for(map <TString,Float_t>    ::iterator Itr=varF .begin(); Itr!=varF .end(); ++Itr) { SetVarF_ (Itr->first , DefOpts::DefF ); }
+  for(map <TString,Double_t>   ::iterator Itr=varD .begin(); Itr!=varD .end(); ++Itr) { SetVarD_ (Itr->first , DefOpts::DefD ); }
   return;
 }
 
@@ -367,7 +367,7 @@ void VarMaps::printVars(int nPrintRow, int width) {
   glob->printMap(varD ,TString::Format(name+": varD (%d)",(int)varD .size()),nPrintRow,width);
 
   map <TString,Double_t> tmpM;
-  for(map <TString,TString>::iterator Itr = varFM.begin(); Itr != varFM.end(); ++Itr) {
+  for(map <TString,TString>::iterator Itr=varFM.begin(); Itr!=varFM.end(); ++Itr) {
     TString nameNow = (TString)"("+Itr->first+") "+Itr->second;
     double  valNaw  = GetForm(Itr->first);
     tmpM[nameNow]   = valNaw;
@@ -383,21 +383,21 @@ void VarMaps::rmVarPattern(TString pattern, TString type) {
 // ========================================================
   vector <TString> varNames;
 
-  if(type == "B" ) { for(map <TString,Bool_t>     ::iterator Itr = varB .begin(); Itr!=varB .end(); ++Itr) if((Itr->first).Contains(pattern)) varNames.push_back(Itr->first); }
-  if(type == "C" ) { for(map <TString,TObjString*>::iterator Itr = varC .begin(); Itr!=varC .end(); ++Itr) if((Itr->first).Contains(pattern)) varNames.push_back(Itr->first); }
+  if(type == "B" ) { for(map <TString,Bool_t>     ::iterator Itr=varB .begin(); Itr!=varB .end(); ++Itr) if((Itr->first).Contains(pattern)) varNames.push_back(Itr->first); }
+  if(type == "C" ) { for(map <TString,TObjString*>::iterator Itr=varC .begin(); Itr!=varC .end(); ++Itr) if((Itr->first).Contains(pattern)) varNames.push_back(Itr->first); }
   if(type == "I") {
-    for(map <TString,Short_t>    ::iterator Itr = varS .begin(); Itr!=varS .end(); ++Itr) if((Itr->first).Contains(pattern)) varNames.push_back(Itr->first);
-    for(map <TString,Int_t>      ::iterator Itr = varI .begin(); Itr!=varI .end(); ++Itr) if((Itr->first).Contains(pattern)) varNames.push_back(Itr->first);
-    for(map <TString,Long64_t>   ::iterator Itr = varL .begin(); Itr!=varL .end(); ++Itr) if((Itr->first).Contains(pattern)) varNames.push_back(Itr->first);
+    for(map <TString,Short_t>    ::iterator Itr=varS .begin(); Itr!=varS .end(); ++Itr) if((Itr->first).Contains(pattern)) varNames.push_back(Itr->first);
+    for(map <TString,Int_t>      ::iterator Itr=varI .begin(); Itr!=varI .end(); ++Itr) if((Itr->first).Contains(pattern)) varNames.push_back(Itr->first);
+    for(map <TString,Long64_t>   ::iterator Itr=varL .begin(); Itr!=varL .end(); ++Itr) if((Itr->first).Contains(pattern)) varNames.push_back(Itr->first);
   }
   if(type == "U") {
-    for(map <TString,UShort_t>   ::iterator Itr = varUS.begin(); Itr!=varUS.end(); ++Itr) if((Itr->first).Contains(pattern)) varNames.push_back(Itr->first);
-    for(map <TString,UInt_t>     ::iterator Itr = varUI.begin(); Itr!=varUI.end(); ++Itr) if((Itr->first).Contains(pattern)) varNames.push_back(Itr->first);
-    for(map <TString,ULong64_t>  ::iterator Itr = varUL.begin(); Itr!=varUL.end(); ++Itr) if((Itr->first).Contains(pattern)) varNames.push_back(Itr->first);
+    for(map <TString,UShort_t>   ::iterator Itr=varUS.begin(); Itr!=varUS.end(); ++Itr) if((Itr->first).Contains(pattern)) varNames.push_back(Itr->first);
+    for(map <TString,UInt_t>     ::iterator Itr=varUI.begin(); Itr!=varUI.end(); ++Itr) if((Itr->first).Contains(pattern)) varNames.push_back(Itr->first);
+    for(map <TString,ULong64_t>  ::iterator Itr=varUL.begin(); Itr!=varUL.end(); ++Itr) if((Itr->first).Contains(pattern)) varNames.push_back(Itr->first);
   }
   if(type == "F") {
-    for(map <TString,Float_t>    ::iterator Itr = varF .begin(); Itr!=varF .end(); ++Itr) if((Itr->first).Contains(pattern)) varNames.push_back(Itr->first);
-    for(map <TString,Double_t>   ::iterator Itr = varD .begin(); Itr!=varD .end(); ++Itr) if((Itr->first).Contains(pattern)) varNames.push_back(Itr->first);
+    for(map <TString,Float_t>    ::iterator Itr=varF .begin(); Itr!=varF .end(); ++Itr) if((Itr->first).Contains(pattern)) varNames.push_back(Itr->first);
+    for(map <TString,Double_t>   ::iterator Itr=varD .begin(); Itr!=varD .end(); ++Itr) if((Itr->first).Contains(pattern)) varNames.push_back(Itr->first);
   }
   
   for(int nVarNameNow=0; nVarNameNow<(int)varNames.size(); nVarNameNow++) {
@@ -430,16 +430,16 @@ void VarMaps::getVarPattern(TString type, vector <TString> & optV, TString patte
 void VarMaps::GetAllVarNames(vector <TString> & varNames, TString type) {
 // ======================================================================
   varNames.clear();
-  if(type == "ALL" || type == "B" ) { for(map <TString,Bool_t>     ::iterator Itr = varB .begin(); Itr!=varB .end(); ++Itr) varNames.push_back(Itr->first); }
-  if(type == "ALL" || type == "C" ) { for(map <TString,TObjString*>::iterator Itr = varC .begin(); Itr!=varC .end(); ++Itr) varNames.push_back(Itr->first); }
-  if(type == "ALL" || type == "S" ) { for(map <TString,Short_t>    ::iterator Itr = varS .begin(); Itr!=varS .end(); ++Itr) varNames.push_back(Itr->first); }
-  if(type == "ALL" || type == "I" ) { for(map <TString,Int_t>      ::iterator Itr = varI .begin(); Itr!=varI .end(); ++Itr) varNames.push_back(Itr->first); }
-  if(type == "ALL" || type == "L" ) { for(map <TString,Long64_t>   ::iterator Itr = varL .begin(); Itr!=varL .end(); ++Itr) varNames.push_back(Itr->first); }
-  if(type == "ALL" || type == "US") { for(map <TString,UShort_t>   ::iterator Itr = varUS.begin(); Itr!=varUS.end(); ++Itr) varNames.push_back(Itr->first); }
-  if(type == "ALL" || type == "UI") { for(map <TString,UInt_t>     ::iterator Itr = varUI.begin(); Itr!=varUI.end(); ++Itr) varNames.push_back(Itr->first); }
-  if(type == "ALL" || type == "UL") { for(map <TString,ULong64_t>  ::iterator Itr = varUL.begin(); Itr!=varUL.end(); ++Itr) varNames.push_back(Itr->first); }
-  if(type == "ALL" || type == "F" ) { for(map <TString,Float_t>    ::iterator Itr = varF .begin(); Itr!=varF .end(); ++Itr) varNames.push_back(Itr->first); }
-  if(type == "ALL" || type == "D" ) { for(map <TString,Double_t>   ::iterator Itr = varD .begin(); Itr!=varD .end(); ++Itr) varNames.push_back(Itr->first); }
+  if(type == "ALL" || type == "B" ) { for(map <TString,Bool_t>     ::iterator Itr=varB .begin(); Itr!=varB .end(); ++Itr) varNames.push_back(Itr->first); }
+  if(type == "ALL" || type == "C" ) { for(map <TString,TObjString*>::iterator Itr=varC .begin(); Itr!=varC .end(); ++Itr) varNames.push_back(Itr->first); }
+  if(type == "ALL" || type == "S" ) { for(map <TString,Short_t>    ::iterator Itr=varS .begin(); Itr!=varS .end(); ++Itr) varNames.push_back(Itr->first); }
+  if(type == "ALL" || type == "I" ) { for(map <TString,Int_t>      ::iterator Itr=varI .begin(); Itr!=varI .end(); ++Itr) varNames.push_back(Itr->first); }
+  if(type == "ALL" || type == "L" ) { for(map <TString,Long64_t>   ::iterator Itr=varL .begin(); Itr!=varL .end(); ++Itr) varNames.push_back(Itr->first); }
+  if(type == "ALL" || type == "US") { for(map <TString,UShort_t>   ::iterator Itr=varUS.begin(); Itr!=varUS.end(); ++Itr) varNames.push_back(Itr->first); }
+  if(type == "ALL" || type == "UI") { for(map <TString,UInt_t>     ::iterator Itr=varUI.begin(); Itr!=varUI.end(); ++Itr) varNames.push_back(Itr->first); }
+  if(type == "ALL" || type == "UL") { for(map <TString,ULong64_t>  ::iterator Itr=varUL.begin(); Itr!=varUL.end(); ++Itr) varNames.push_back(Itr->first); }
+  if(type == "ALL" || type == "F" ) { for(map <TString,Float_t>    ::iterator Itr=varF .begin(); Itr!=varF .end(); ++Itr) varNames.push_back(Itr->first); }
+  if(type == "ALL" || type == "D" ) { for(map <TString,Double_t>   ::iterator Itr=varD .begin(); Itr!=varD .end(); ++Itr) varNames.push_back(Itr->first); }
   return;    
 }
 
@@ -450,52 +450,52 @@ void VarMaps::printVarNames(TString type, TString title) {
 
   if(type == "ALL" || type == "B" ) {
     int nVar(0); aCleanLOG() <<coutBlue<<title<<" varB - "<<coutGreen;
-    for(map <TString,Bool_t>     ::iterator Itr = varB .begin(); Itr!=varB .end(); ++Itr) { aCleanLOG()<<" ("<<nVar<<","<<Itr->first<<")"; nVar++; }
+    for(map <TString,Bool_t>     ::iterator Itr=varB .begin(); Itr!=varB .end(); ++Itr) { aCleanLOG()<<" ("<<nVar<<","<<Itr->first<<")"; nVar++; }
     aCleanLOG()<<coutDef<<endl;
   }
   if(type == "ALL" || type == "C" ) {
     int nVar(0); aCleanLOG() <<coutBlue<<title<<" varC  - "<<coutGreen;
-    for(map <TString,TObjString*>::iterator Itr = varC .begin(); Itr!=varC .end(); ++Itr) { aCleanLOG()<<" ("<<nVar<<","<<Itr->first<<")"; nVar++; }
+    for(map <TString,TObjString*>::iterator Itr=varC .begin(); Itr!=varC .end(); ++Itr) { aCleanLOG()<<" ("<<nVar<<","<<Itr->first<<")"; nVar++; }
     aCleanLOG()<<coutDef<<endl;
   }
   if(type == "ALL" || type == "S" ) {
     int nVar(0); aCleanLOG() <<coutBlue<<title<<" varS  - "<<coutGreen;
-    for(map <TString,Short_t>    ::iterator Itr = varS .begin(); Itr!=varS .end(); ++Itr) { aCleanLOG()<<" ("<<nVar<<","<<Itr->first<<")"; nVar++; }
+    for(map <TString,Short_t>    ::iterator Itr=varS .begin(); Itr!=varS .end(); ++Itr) { aCleanLOG()<<" ("<<nVar<<","<<Itr->first<<")"; nVar++; }
     aCleanLOG()<<coutDef<<endl;
   }
   if(type == "ALL" || type == "I" ) {
     int nVar(0); aCleanLOG() <<coutBlue<<title<<" varI  - "<<coutGreen;
-    for(map <TString,Int_t>      ::iterator Itr = varI .begin(); Itr!=varI .end(); ++Itr) { aCleanLOG()<<" ("<<nVar<<","<<Itr->first<<")"; nVar++; }
+    for(map <TString,Int_t>      ::iterator Itr=varI .begin(); Itr!=varI .end(); ++Itr) { aCleanLOG()<<" ("<<nVar<<","<<Itr->first<<")"; nVar++; }
     aCleanLOG()<<coutDef<<endl;
   }
   if(type == "ALL" || type == "L" ) {
     int nVar(0); aCleanLOG() <<coutBlue<<title<<" varL  - "<<coutGreen;
-    for(map <TString,Long64_t>   ::iterator Itr = varL .begin(); Itr!=varL .end(); ++Itr) { aCleanLOG()<<" ("<<nVar<<","<<Itr->first<<")"; nVar++; }
+    for(map <TString,Long64_t>   ::iterator Itr=varL .begin(); Itr!=varL .end(); ++Itr) { aCleanLOG()<<" ("<<nVar<<","<<Itr->first<<")"; nVar++; }
     aCleanLOG()<<coutDef<<endl;
   }
   if(type == "ALL" || type == "US") {
     int nVar(0); aCleanLOG() <<coutBlue<<title<<" varUS - "<<coutGreen;
-    for(map <TString,UShort_t>   ::iterator Itr = varUS.begin(); Itr!=varUS.end(); ++Itr) { aCleanLOG()<<" ("<<nVar<<","<<Itr->first<<")"; nVar++; }
+    for(map <TString,UShort_t>   ::iterator Itr=varUS.begin(); Itr!=varUS.end(); ++Itr) { aCleanLOG()<<" ("<<nVar<<","<<Itr->first<<")"; nVar++; }
     aCleanLOG()<<coutDef<<endl;
   }
   if(type == "ALL" || type == "UI") {
     int nVar(0); aCleanLOG() <<coutBlue<<title<<" varUI - "<<coutGreen;
-    for(map <TString,UInt_t>     ::iterator Itr = varUI.begin(); Itr!=varUI.end(); ++Itr) { aCleanLOG()<<" ("<<nVar<<","<<Itr->first<<")"; nVar++; }
+    for(map <TString,UInt_t>     ::iterator Itr=varUI.begin(); Itr!=varUI.end(); ++Itr) { aCleanLOG()<<" ("<<nVar<<","<<Itr->first<<")"; nVar++; }
     aCleanLOG()<<coutDef<<endl;
   }
   if(type == "ALL" || type == "UL") {
     int nVar(0); aCleanLOG() <<coutBlue<<title<<" varUL - "<<coutGreen;
-    for(map <TString,ULong64_t>  ::iterator Itr = varUL.begin(); Itr!=varUL.end(); ++Itr) { aCleanLOG()<<" ("<<nVar<<","<<Itr->first<<")"; nVar++; }
+    for(map <TString,ULong64_t>  ::iterator Itr=varUL.begin(); Itr!=varUL.end(); ++Itr) { aCleanLOG()<<" ("<<nVar<<","<<Itr->first<<")"; nVar++; }
     aCleanLOG()<<coutDef<<endl;
   }
   if(type == "ALL" || type == "F" ) {
     int nVar(0); aCleanLOG() <<coutBlue<<title<<" varF  - "<<coutGreen;
-    for(map <TString,Float_t>    ::iterator Itr = varF .begin(); Itr!=varF .end(); ++Itr) { aCleanLOG()<<" ("<<nVar<<","<<Itr->first<<")"; nVar++; }
+    for(map <TString,Float_t>    ::iterator Itr=varF .begin(); Itr!=varF .end(); ++Itr) { aCleanLOG()<<" ("<<nVar<<","<<Itr->first<<")"; nVar++; }
     aCleanLOG()<<coutDef<<endl;
   }
   if(type == "ALL" || type == "D" ) {
     int nVar(0); aCleanLOG() <<coutBlue<<title<<" varD  - "<<coutGreen;
-    for(map <TString,Double_t>   ::iterator Itr = varD .begin(); Itr!=varD .end(); ++Itr) { aCleanLOG()<<" ("<<nVar<<","<<Itr->first<<")"; nVar++; }
+    for(map <TString,Double_t>   ::iterator Itr=varD .begin(); Itr!=varD .end(); ++Itr) { aCleanLOG()<<" ("<<nVar<<","<<Itr->first<<")"; nVar++; }
     aCleanLOG()<<coutDef<<endl;
   }
 
@@ -724,7 +724,7 @@ void VarMaps::createTreeBranches(TTree * tree, TString prefix, TString postfix, 
 
   if(debug) aCleanLOG() <<coutPurple<<" - createTreeBranches()  - Creating branches of "<<coutYellow<<tree->GetName()<<coutDef<<endl;
 
-  for(map <TString,Bool_t>::iterator Itr = varB.begin(); Itr!=varB.end(); ++Itr) {
+  for(map <TString,Bool_t>::iterator Itr=varB.begin(); Itr!=varB.end(); ++Itr) {
     TString branchName = (TString)prefix+(Itr->first)+postfix;
     if(excludeThisBranch(branchName,excludedBranchNames) || treeHasBranch(treeWrite,branchName)) {
       if(debug) aCleanLOG() <<coutGreen<<"Skip create branch:  "<<coutRed<<std::setw(width)<<branchName<<CT<<coutBlue<<std::setw(width)<<"(B)"<<coutDef<<endl;
@@ -734,7 +734,7 @@ void VarMaps::createTreeBranches(TTree * tree, TString prefix, TString postfix, 
       treeWrite->Branch(branchName, &Itr->second);
     }
   }
-  for(map <TString,TObjString*>::iterator Itr = varC.begin(); Itr!=varC.end(); ++Itr) {
+  for(map <TString,TObjString*>::iterator Itr=varC.begin(); Itr!=varC.end(); ++Itr) {
     TString branchName = (TString)prefix+(Itr->first)+postfix;
     if(excludeThisBranch(branchName,excludedBranchNames) || treeHasBranch(treeWrite,branchName)) {
       if(debug) aCleanLOG() <<coutGreen<<"Skip create branch:  "<<coutRed<<std::setw(width)<<branchName<<CT<<coutBlue<<std::setw(width)<<"(C)"<<coutDef<<endl;
@@ -744,7 +744,7 @@ void VarMaps::createTreeBranches(TTree * tree, TString prefix, TString postfix, 
       treeWrite->Branch(branchName,"TObjString", &Itr->second);
     }
   }
-  for(map <TString,Short_t>::iterator Itr = varS.begin(); Itr!=varS.end(); ++Itr) {
+  for(map <TString,Short_t>::iterator Itr=varS.begin(); Itr!=varS.end(); ++Itr) {
     TString branchName = (TString)prefix+(Itr->first)+postfix;
     if(excludeThisBranch(branchName,excludedBranchNames) || treeHasBranch(treeWrite,branchName)) {
       if(debug) aCleanLOG() <<coutGreen<<"Skip create branch:  "<<coutRed<<std::setw(width)<<branchName<<CT<<coutBlue<<std::setw(width)<<"(S)"<<coutDef<<endl;
@@ -754,7 +754,7 @@ void VarMaps::createTreeBranches(TTree * tree, TString prefix, TString postfix, 
       treeWrite->Branch(branchName, &Itr->second);
     }
   }
-  for(map <TString,Int_t>::iterator Itr = varI.begin(); Itr!=varI.end(); ++Itr) {
+  for(map <TString,Int_t>::iterator Itr=varI.begin(); Itr!=varI.end(); ++Itr) {
     TString branchName = (TString)prefix+(Itr->first)+postfix;
     if(excludeThisBranch(branchName,excludedBranchNames) || treeHasBranch(treeWrite,branchName)) {
       if(debug) aCleanLOG() <<coutGreen<<"Skip create branch:  "<<coutRed<<std::setw(width)<<branchName<<CT<<coutBlue<<std::setw(width)<<"(I)"<<coutDef<<endl;
@@ -764,7 +764,7 @@ void VarMaps::createTreeBranches(TTree * tree, TString prefix, TString postfix, 
       treeWrite->Branch(branchName, &Itr->second);
     }
   }
-  for(map <TString,Long64_t>::iterator Itr = varL.begin(); Itr!=varL.end(); ++Itr) {
+  for(map <TString,Long64_t>::iterator Itr=varL.begin(); Itr!=varL.end(); ++Itr) {
     TString branchName = (TString)prefix+(Itr->first)+postfix;
     if(excludeThisBranch(branchName,excludedBranchNames) || treeHasBranch(treeWrite,branchName)) {
       if(debug) aCleanLOG() <<coutGreen<<"Skip create branch:  "<<coutRed<<std::setw(width)<<branchName<<CT<<coutBlue<<std::setw(width)<<"(L)"<<coutDef<<endl;
@@ -774,7 +774,7 @@ void VarMaps::createTreeBranches(TTree * tree, TString prefix, TString postfix, 
       treeWrite->Branch(branchName, &Itr->second);
     }
   }
-  for(map <TString,UShort_t>::iterator Itr = varUS.begin(); Itr!=varUS.end(); ++Itr) {
+  for(map <TString,UShort_t>::iterator Itr=varUS.begin(); Itr!=varUS.end(); ++Itr) {
     TString branchName = (TString)prefix+(Itr->first)+postfix;
     if(excludeThisBranch(branchName,excludedBranchNames) || treeHasBranch(treeWrite,branchName)) {
       if(debug) aCleanLOG() <<coutGreen<<"Skip create branch:  "<<coutRed<<std::setw(width)<<branchName<<CT<<coutBlue<<std::setw(width)<<"(US)"<<coutDef<<endl;
@@ -784,7 +784,7 @@ void VarMaps::createTreeBranches(TTree * tree, TString prefix, TString postfix, 
       treeWrite->Branch(branchName, &Itr->second);
     }
   }
-  for(map <TString,UInt_t>::iterator Itr = varUI.begin(); Itr!=varUI.end(); ++Itr) {
+  for(map <TString,UInt_t>::iterator Itr=varUI.begin(); Itr!=varUI.end(); ++Itr) {
     TString branchName = (TString)prefix+(Itr->first)+postfix;
     if(excludeThisBranch(branchName,excludedBranchNames) || treeHasBranch(treeWrite,branchName)) {
       if(debug) aCleanLOG() <<coutGreen<<"Skip create branch:  "<<coutRed<<std::setw(width)<<branchName<<CT<<coutBlue<<std::setw(width)<<"(UI)"<<coutDef<<endl;
@@ -794,7 +794,7 @@ void VarMaps::createTreeBranches(TTree * tree, TString prefix, TString postfix, 
       treeWrite->Branch(branchName, &Itr->second);
     }
   }
-  for(map <TString,ULong64_t>::iterator Itr = varUL.begin(); Itr!=varUL.end(); ++Itr) {
+  for(map <TString,ULong64_t>::iterator Itr=varUL.begin(); Itr!=varUL.end(); ++Itr) {
     TString branchName = (TString)prefix+(Itr->first)+postfix;
     if(excludeThisBranch(branchName,excludedBranchNames) || treeHasBranch(treeWrite,branchName)) {
       if(debug) aCleanLOG() <<coutGreen<<"Skip create branch:  "<<coutRed<<std::setw(width)<<branchName<<CT<<coutBlue<<std::setw(width)<<"(UL)"<<coutDef<<endl;
@@ -804,7 +804,7 @@ void VarMaps::createTreeBranches(TTree * tree, TString prefix, TString postfix, 
       treeWrite->Branch(branchName, &Itr->second);
     }
   }
-  for(map <TString,Float_t>::iterator Itr = varF.begin(); Itr!=varF.end(); ++Itr) {
+  for(map <TString,Float_t>::iterator Itr=varF.begin(); Itr!=varF.end(); ++Itr) {
     TString branchName = (TString)prefix+(Itr->first)+postfix;
     if(excludeThisBranch(branchName,excludedBranchNames) || treeHasBranch(treeWrite,branchName)) {
       if(debug) aCleanLOG() <<coutGreen<<"Skip create branch:  "<<coutRed<<std::setw(width)<<branchName<<CT<<coutBlue<<std::setw(width)<<"(F)"<<coutDef<<endl;
@@ -814,7 +814,7 @@ void VarMaps::createTreeBranches(TTree * tree, TString prefix, TString postfix, 
       treeWrite->Branch(branchName, &Itr->second);
     }
   }
-  for(map <TString,Double_t>::iterator Itr = varD.begin(); Itr!=varD.end(); ++Itr) {
+  for(map <TString,Double_t>::iterator Itr=varD.begin(); Itr!=varD.end(); ++Itr) {
     TString branchName = (TString)prefix+(Itr->first)+postfix;
     if(excludeThisBranch(branchName,excludedBranchNames) || treeHasBranch(treeWrite,branchName)) {
       if(debug) aCleanLOG() <<coutGreen<<"Skip create branch:  "<<coutRed<<std::setw(width)<<branchName<<CT<<coutBlue<<std::setw(width)<<"(D)"<<coutDef<<endl;
@@ -1029,16 +1029,16 @@ void VarMaps::connectTreeBranchesForm(TTree * tree, vector < pair<TString,Float_
 void VarMaps::resetTreeBrancheAddresses(TTree * tree) {
 // ====================================================
 
-  for(map <TString,Bool_t>     ::iterator Itr = varB .begin(); Itr!=varB .end(); ++Itr) { tree->GetBranch(Itr->first)->SetAddress(&Itr->second); }
-  for(map <TString,TObjString*>::iterator Itr = varC .begin(); Itr!=varC .end(); ++Itr) { tree->GetBranch(Itr->first)->SetAddress(&Itr->second); }  
-  for(map <TString,Short_t>    ::iterator Itr = varS .begin(); Itr!=varS .end(); ++Itr) { tree->GetBranch(Itr->first)->SetAddress(&Itr->second); }
-  for(map <TString,Int_t>      ::iterator Itr = varI .begin(); Itr!=varI .end(); ++Itr) { tree->GetBranch(Itr->first)->SetAddress(&Itr->second); }
-  for(map <TString,Long64_t>   ::iterator Itr = varL .begin(); Itr!=varL .end(); ++Itr) { tree->GetBranch(Itr->first)->SetAddress(&Itr->second); }
-  for(map <TString,UShort_t>   ::iterator Itr = varUS.begin(); Itr!=varUS.end(); ++Itr) { tree->GetBranch(Itr->first)->SetAddress(&Itr->second); }
-  for(map <TString,UInt_t>     ::iterator Itr = varUI.begin(); Itr!=varUI.end(); ++Itr) { tree->GetBranch(Itr->first)->SetAddress(&Itr->second); }
-  for(map <TString,ULong64_t>  ::iterator Itr = varUL.begin(); Itr!=varUL.end(); ++Itr) { tree->GetBranch(Itr->first)->SetAddress(&Itr->second); }
-  for(map <TString,Float_t>    ::iterator Itr = varF .begin(); Itr!=varF .end(); ++Itr) { tree->GetBranch(Itr->first)->SetAddress(&Itr->second); }
-  for(map <TString,Double_t>   ::iterator Itr = varD .begin(); Itr!=varD .end(); ++Itr) { tree->GetBranch(Itr->first)->SetAddress(&Itr->second); }
+  for(map <TString,Bool_t>     ::iterator Itr=varB .begin(); Itr!=varB .end(); ++Itr) { tree->GetBranch(Itr->first)->SetAddress(&Itr->second); }
+  for(map <TString,TObjString*>::iterator Itr=varC .begin(); Itr!=varC .end(); ++Itr) { tree->GetBranch(Itr->first)->SetAddress(&Itr->second); }  
+  for(map <TString,Short_t>    ::iterator Itr=varS .begin(); Itr!=varS .end(); ++Itr) { tree->GetBranch(Itr->first)->SetAddress(&Itr->second); }
+  for(map <TString,Int_t>      ::iterator Itr=varI .begin(); Itr!=varI .end(); ++Itr) { tree->GetBranch(Itr->first)->SetAddress(&Itr->second); }
+  for(map <TString,Long64_t>   ::iterator Itr=varL .begin(); Itr!=varL .end(); ++Itr) { tree->GetBranch(Itr->first)->SetAddress(&Itr->second); }
+  for(map <TString,UShort_t>   ::iterator Itr=varUS.begin(); Itr!=varUS.end(); ++Itr) { tree->GetBranch(Itr->first)->SetAddress(&Itr->second); }
+  for(map <TString,UInt_t>     ::iterator Itr=varUI.begin(); Itr!=varUI.end(); ++Itr) { tree->GetBranch(Itr->first)->SetAddress(&Itr->second); }
+  for(map <TString,ULong64_t>  ::iterator Itr=varUL.begin(); Itr!=varUL.end(); ++Itr) { tree->GetBranch(Itr->first)->SetAddress(&Itr->second); }
+  for(map <TString,Float_t>    ::iterator Itr=varF .begin(); Itr!=varF .end(); ++Itr) { tree->GetBranch(Itr->first)->SetAddress(&Itr->second); }
+  for(map <TString,Double_t>   ::iterator Itr=varD .begin(); Itr!=varD .end(); ++Itr) { tree->GetBranch(Itr->first)->SetAddress(&Itr->second); }
   return ;
 }
 

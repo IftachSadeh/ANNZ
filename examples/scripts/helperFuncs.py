@@ -102,8 +102,8 @@ def initParse():
   glob.annz["doRegression"]     = glob.annz["doSingleReg"] or glob.annz["doRandomReg"] or glob.annz["doBinnedCls"]
   glob.annz["doClassification"] = glob.annz["doSingleCls"] or glob.annz["doRandomCls"]
 
-  glob.annz["maxNobj"]          = int(floor(glob.pars["maxNobj"]))    # limit number of used objects - used for debugging
-  glob.annz["trainIndex"]       = int(floor(glob.pars["trainIndex"])) # used for python batch-job submision
+  glob.annz["maxNobj"]          = int(floor(glob.pars["maxNobj"])) # limit number of used objects - used for debugging
+  glob.annz["trainIndex"]       = glob.pars["trainIndex"]          # used for python batch-job submision
 
   glob.annz["doFitsToAscii"]    = glob.pars["fitsToAscii"]
   glob.annz["doAsciiToFits"]    = glob.pars["asciiToFits"]

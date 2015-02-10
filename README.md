@@ -1,4 +1,4 @@
-# ANNZ 2.0.0
+# ANNZ 2.0.1
 
 ## Introduction
 ANNZ uses both regression and classification techniques for estimation of single-value photo-z (or any regression problem) solutions and PDFs. In addition it is suitable for classification problems, such as star/galaxy classification.
@@ -120,7 +120,7 @@ python scripts/annz_singleReg_quick.py --make --clean
 
 The various example scripts includes comments about the different variables which the user needs to set. Each operational mode has a *quickstart* dedicated script as well as an *advanced* script. The latter include more job-options as well as more detailed documentation.
 
-For each of the following, please use follow the four respective steps (generation, training, optimization/verification, evaluation) in sequence. For instance, for single regression, do:
+For each of the following, please follow the four respective steps (generation, training, optimization/verification, evaluation) in sequence. For instance, for single regression, do:
 ```bash
 python scripts/annz_singleReg_quick.py --singleRegression --genInputTrees
 python scripts/annz_singleReg_quick.py --singleRegression --train
@@ -332,7 +332,7 @@ There are two ways to define the PDF bins:
 
   1. The PDF is defined within `nPDFbins` equal-width bins between `minValZ` and `maxValZ` (the minimal and maximal defined values of the regression target). The `nPDFbins`, `minValZ` and `maxValZ` variables are mandatory settings for ANNZ, as defined in the example scripts.
   
-  2. A specific set of bins of arbitrary with may defined by setting the variable, `userPdfBins` (in which case `nPDFbins` is ignored). The only constrain is that the first and last bin edges be within the range defined by `minValZ` and `maxValZ`. This can e.g., be
+  2. A specific set of bins of arbitrary width may defined by setting the variable, `userPdfBins` (in which case `nPDFbins` is ignored). The only constrain is that the first and last bin edges be within the range defined by `minValZ` and `maxValZ`. This can e.g., be
   ```python
   glob.annz["userPdfBins"] = "0.05;0.1;0.2;0.24;0.3;0.52;0.6;0.7;0.8"
   ```
@@ -422,11 +422,23 @@ A few notes:
 
   - It is possible to train/optimize MLMs using specific cuts and/or weights, based on any mathematical expression which uses the variables defined in the input dataset (not limited to the variables used for the training). The relevant variables are `userCuts_train`, `userCuts_valid`, `userWeights_train` and `userWeights_valid`. See the advanced scripts for use-examples.
 
-  - The syntax for math expressions is defined using the ROOT conventions (see e.g., [TMath](https://root.cern.ch/root/html/TMath.html) and [TFormula](https://root.cern.ch/root/html/TFormula.html)). Acceptable expressions may for instance be the following ridiculous choice:
+  - The syntax for math expressions is defined using the ROOT conventions (see e.g., [TMath](https://root.cern.ch/root/html/TMath.html) and [TFormula](https://root.cern.ch/root/html/TFormula.html)). Acceptable expressions may for instance include the following ridiculous choice:
   ```python
   glob.annz["userCuts_train"]    = "(MAG_R > 22)/MAG_R + (MAG_R <= 22)*1"
   glob.annz["userCuts_valid"]    = "pow(MAG_G,3) + exp(MAG_R)*MAG_I/20. + abs(sin(MAG_Z))"
   ```
+
+  - By default, the output of evaluation is written to a subdirectory named `eval` in the output directory. An output file may e.g., be `output/test_randReg_quick/regres/optim/eval/ANNZ_randomReg_0000.csv`. It is possible to set the the `evalDirPostfix` variable in order to change this. For instance, setting
+  ```python
+  glob.annz["evalDirPostfix"] = "cat0"
+  ```
+  will produce the same output file at `output/test_randReg_quick/regres/optim/eval_cat0/ANNZ_randomReg_0000.csv`. This may be used in order to run the evaluation on multiple input files simultaneously without overwriting previous results.
+
+  - There are several parameters used to tune PDFs in randomized regression. Here are a couple of principle examples:
+
+    - **`minPdfWeight` -** may be used to set a minimal weights for an MLM in the PDF. For instance, setting `minPdfWeight=0.05` will insure that each MLM will have at least 5% relative significance in the PDF. That is, in this case, no more than 20 MLMs will be used for the PDF.
+
+    - **`max_sigma68_PDF`, `max_bias_PDF`, `max_frac68_PDF` -** may be set to put a threshold on the maximal value of the scatter (`max_sigma68_PDF`), bias (`max_bias_PDF`) or outlier-fraction (`max_frac68_PDF`) of an MLM, which may be included in the PDF. For instance, setting `max_sigma68_PDF = 0.05` will insure that any MLM which has scatter higher than `0.05` will not be included in the PDF.
 
   - By default, a progress bar is drawn during training. If one is writing the output to a log file, the progress bar is important to avoid, as it will cause the size of the log file to become very large. One can either add `--isBatch` while running the example scripts, or set in `generalSettings.py` (or elsewhere),
   ```python

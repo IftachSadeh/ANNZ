@@ -26,8 +26,8 @@
 // ===========================================================================================================
 /**
  * @brief       - The main function
- * @details     
- *              - Parse input parameters from the user and run an instance of myANNZ.
+ * 
+ * @details     - Parse input parameters from the user and run an instance of myANNZ.
  * 
  * @param argc  - Number of input parameters.
  * @param argv  - Input parameters of format [NAME=VAL], (e.g., [nPDFbins="30"]), with possible types of int, float, bool, string.
@@ -120,8 +120,7 @@ int main(int argc, char * argv[]){
 // ===========================================================================================================
 /**
  * @brief    - Constructor of myANNZ.
- * @details  
- *           - Define all possible user input parameters (and default values) as members of the glob OptMaps.
+ * @details  - Define all possible user input parameters (and default values) as members of the glob OptMaps.
  */
 // ===========================================================================================================
 myANNZ::myANNZ() {
@@ -356,7 +355,8 @@ myANNZ::myANNZ() {
   glob->NewOptC("outDirName"      ,"output");  // working directory for a given analysis
   glob->NewOptC("inDirName"       ,"rootIn");  // input directory for source-ascii files - only used for doGenInputTrees()
   glob->NewOptI("maxNobj"         ,0);         // limit the number of objects to use (if zero -> use all)
-  glob->NewOptI("nObjectsToWrite" ,(int)5e5);  // maximal number of lines in a tree/output ascii file
+  glob->NewOptC("evalDirPostfix"  ,"");        // add this to the name of the evaluation directory
+  glob->NewOptI("nObjectsToWrite" ,(int)5e5);  // maximal number of objects in a tree/output ascii file
   glob->NewOptI("nObjectsToPrint" ,(int)1e4);  // frequency for printing loop counter status
   glob->NewOptB("doPlots"         ,true);      // wether or not to generate performance and control plots
   glob->NewOptC("zTrgTitle"       ,"Z_{trg}"); // title of regression target   (for plots)
@@ -384,16 +384,6 @@ myANNZ::myANNZ() {
   // if propagating input-errors - nErrINP is the number of randomly generated MLM values used to propagate
   // the uncertainty on the input parameters to the MLM-estimator. See getRegClsErrINP()
   glob->NewOptI("nErrINP",-1);
-
-  // kNNErrMaxDifZ,nkNNErrMin -
-  //   - improve KNN error calculation by only considering neighbours which are "close" (in the input parameter
-  //     space) to the target object (for which the error is calculated).
-  //   - if the nth neighbour has a regression value which is different by kNNErrMaxDifZ compared to the original
-  //     target object, and at least nkNNErrMin neighbours have already been consudered, then the nth neighbour is
-  //     ignored in the KNN error calculation
-  // -----------------------------------------------------------------------------------------------------------
-  glob->NewOptF("kNNErrMaxDifZ",-1);
-  glob->NewOptI("nkNNErrMin"   ,50);
 
   // add positive and negative error estimators for MLMs to the ascii output of regression
   glob->NewOptB("writePosNegErrs",false);
@@ -449,13 +439,20 @@ myANNZ::myANNZ() {
 // ===========================================================================================================
 /**
  * @brief    - Initialization of myANNZ after the user options have been read-in.
- * @details  
- *           - Make sanity checks, input variable reformatting (e.g., add '/' at the
+ * @details  - Make sanity checks, input variable reformatting (e.g., add '/' at the
  *           end of directory names), and initialize instances of Utils and OutMngr.
  */
 // ===========================================================================================================
 void myANNZ::Init() {
 // ==================
+
+  // check user string-input
+  vector <TString> optNames;
+  glob->GetAllOptNames(optNames,"C");
+  for(int nOptNow=0; nOptNow<(int)optNames.size(); nOptNow++) {
+    glob->SetOptC(optNames[nOptNow],(glob->GetOptC(optNames[nOptNow])).ReplaceAll("\n","").ReplaceAll("\r",""));
+  }
+  optNames.clear();
 
   // -----------------------------------------------------------------------------------------------------------
   // internal naming conventions, which should not be tampered with
@@ -511,6 +508,11 @@ void myANNZ::Init() {
   // -----------------------------------------------------------------------------------------------------------
   // working directories (definitions which must come BEFORE initializing utils and outputs)
   // -----------------------------------------------------------------------------------------------------------  
+  // unique evaluation directory prefix (so that multiple evaluation of different input files will not overwrite each other)
+  if(glob->GetOptC("evalDirPostfix") != "") {
+    glob->SetOptC("evalDirName",(TString)glob->GetOptC("evalDirName")+"_"+glob->GetOptC("evalDirPostfix"));
+  }
+
   // add trailing slash if needed
   if(!glob->GetOptC("inDirName")    .EndsWith("/")) glob->SetOptC("inDirName",    (TString)glob->GetOptC("inDirName")    +"/");
   if(!glob->GetOptC("outDirName")   .EndsWith("/")) glob->SetOptC("outDirName",   (TString)glob->GetOptC("outDirName")   +"/");
@@ -593,8 +595,8 @@ void myANNZ::Init() {
 // ===========================================================================================================
 /**
  * @brief    - Parse input dataset into ROOT trees for internal use by ANNZ.
- * @details  
- *           - Direct ascii to tree conversion, given a proper list of input parameters and types, using CatFormat.
+ * 
+ * @details  - Direct ascii to tree conversion, given a proper list of input parameters and types, using CatFormat.
  *           - May also include KNN weight calculation, based on a reference sample.
  */
 // ===========================================================================================================

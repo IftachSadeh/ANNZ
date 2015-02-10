@@ -89,7 +89,7 @@ void ANNZ::optimCls() {
 
     // MLM responce histograms
     hisRange0 = 1; hisRange1 = -1; numBins0 = 10000;
-    hisName  = (TString)MLMname+"_clasOptimize"+"_SIG";            his1M["SIG"][nMLMnow] = new TH1D(hisName,hisName,numBins0,hisRange0,hisRange1);
+    hisName  = (TString)MLMname+"_clasOptimize"+"_SIG";            his1M["SIG"][nMLMnow] = new TH1F(hisName,hisName,numBins0,hisRange0,hisRange1);
     his1M["SIG"][nMLMnow]->SetDirectory(0);                        his1M["SIG"][nMLMnow]->SetDefaultBufferSize(bufSize);
     
     hisName  = (TString)MLMname+"_clasOptimize"+"_BCK";            his1M["BCK"][nMLMnow] = (TH1*)his1M["SIG"][nMLMnow]->Clone(hisName);
@@ -97,7 +97,7 @@ void ANNZ::optimCls() {
 
     // MLM probability histograms
     hisRange0 = 0; hisRange1 = 1; numBins0 = compPureN;
-    hisName  = (TString)MLMname+"_clasOptimize"+"_prbSig";         his1M["prbSig"][nMLMnow] = new TH1D(hisName,hisName,numBins0,hisRange0,hisRange1);
+    hisName  = (TString)MLMname+"_clasOptimize"+"_prbSig";         his1M["prbSig"][nMLMnow] = new TH1F(hisName,hisName,numBins0,hisRange0,hisRange1);
     his1M["prbSig"][nMLMnow]->SetTitle(hisName);                   his1M["prbSig"][nMLMnow]->SetDirectory(0);
     his1M["prbSig"][nMLMnow]->GetXaxis()->SetTitle((TString)"p");  his1M["prbSig"][nMLMnow]->GetYaxis()->SetTitle("1/n #times dn/dp");
     
@@ -112,7 +112,7 @@ void ANNZ::optimCls() {
 
     hisName  = TString::Format((TString)"nANNZtype_%d"+"_clasOptimize"+"CLS"+"_sepDist",nANNZtypeNow);
 
-    TH1 * his1 = new TH1D(hisName,hisName,numBins0,hisRange0,hisRange1);
+    TH1 * his1 = new TH1F(hisName,hisName,numBins0,hisRange0,hisRange1);
     his1->SetTitle(typeToNameMLM[allANNZtypes[nANNZtypeNow]]); his1->SetDirectory(0); his1->SetDefaultBufferSize(bufSize);
     his1->GetXaxis()->SetTitle((TString)"S_{s/b}"); his1->GetYaxis()->SetTitle("1/S_{s/b} #times dS_{s/b}/dn_{MLM}");
     
@@ -195,7 +195,7 @@ void ANNZ::optimCls() {
     }
 
     // define and fill the nice-looking histograms
-    hisName  = (TString)MLMname+"_clasOptimize"+"_sig";            his1M["sig"][nMLMnow] = new TH1D(hisName,hisName,hisBins,hisRange0,hisRange1);
+    hisName  = (TString)MLMname+"_clasOptimize"+"_sig";            his1M["sig"][nMLMnow] = new TH1F(hisName,hisName,hisBins,hisRange0,hisRange1);
     his1M["sig"][nMLMnow]->SetTitle(hisName);                      his1M["sig"][nMLMnow]->SetDirectory(0);
     his1M["sig"][nMLMnow]->GetXaxis()->SetTitle((TString)"#eta");  his1M["sig"][nMLMnow]->GetYaxis()->SetTitle("1/n #times dn/d#eta");
 
@@ -470,8 +470,7 @@ void ANNZ::optimCls() {
 /**
  * @brief    - Evaluate method in the classification setup.
  * 
- * @details              
- *           - By default, only the "best" MLM is used, as derived by optimCls().
+ * @details  - By default, only the "best" MLM is used, as derived by optimCls().
  *           Following the evaluation, both outputt trees and ascii output are created, which contain
  *           the "best" MLM, as derived by optimCls(), and any other individual MLM
  *           estimators which are requested by the user, using MLMsToStore. In addition, any variables from
@@ -484,13 +483,14 @@ void  ANNZ::doEvalCls() {
 // ======================
   aLOG(Log::INFO) <<coutWhiteOnBlack<<coutPurple<<" - starting ANNZ::doEvalCls() ... "<<coutDef<<endl;
 
-  int     nMLMs          = glob->GetOptI("nMLMs");
-  bool    optimMLMprb    = glob->GetOptB("optimMLMprb");
-  int     maxNobj        = glob->GetOptI("maxNobj");
-  TString indexName      = glob->GetOptC("indexName");
-  bool    doStoreToAscii = glob->GetOptB("doStoreToAscii");
-  bool    hasErrs        = glob->GetOptB("addClsKNNerr");
-  UInt_t  seed           = glob->GetOptI("initSeedRnd") * 14320;
+  int     nMLMs             = glob->GetOptI("nMLMs");
+  bool    optimMLMprb       = glob->GetOptB("optimMLMprb");
+  int     maxNobj           = glob->GetOptI("maxNobj");
+  TString indexName         = glob->GetOptC("indexName");
+  bool    doStoreToAscii    = glob->GetOptB("doStoreToAscii");
+  bool    hasErrs           = glob->GetOptB("addClsKNNerr");
+  TString postTrainDirName  = glob->GetOptC("postTrainDirNameFull");
+  UInt_t  seed              = glob->GetOptI("initSeedRnd") * 14320;
 
   // figure out which MLMs to generate an error for, using which method (KNN errors or propagation of user-defined parameter-errors)
   // -----------------------------------------------------------------------------------------------------------
@@ -524,7 +524,7 @@ void  ANNZ::doEvalCls() {
   saveNameP = "optimMLMs_PRB"; optNames.push_back(saveNameP); optMap->NewOptC(saveNameP);
   saveNameC = "optimMLMs_CLS"; optNames.push_back(saveNameC); optMap->NewOptC(saveNameC);
 
-  utils->optToFromFile(&optNames,optMap,saveFileName,"READ","SILENT_KeepFile",inLOG(Log::DEBUG_1));
+  utils->optToFromFile(&optNames,optMap,saveFileName,"READ","SILENT_KeepFile",inLOG(Log::DEBUG_2));
 
   optimMLMs = (TString)(optimMLMprb ? optMap->GetOptC(saveNameP) : optMap->GetOptC(saveNameC));
 
@@ -551,24 +551,35 @@ void  ANNZ::doEvalCls() {
   // -----------------------------------------------------------------------------------------------------------  
   loadReaders(mlmSkipNow);
 
+
   // -----------------------------------------------------------------------------------------------------------  
-  // 
+  // setup for the knn error estimation -
+  //   inputComboNow: check for each MLM if the combination of variables, weights and cuts has been
+  //                  used before (avoid creating multiple identicle kd-trees)
   // -----------------------------------------------------------------------------------------------------------  
-  VarMaps               * varKNN(NULL); TChain                        * aChainKnn(NULL);
-  map <TString,TFile *> knnErrOutFile;  map <TString,TMVA::Factory *> knnErrFactory; map <TString,TMVA::kNN::ModulekNN *> knnErrModule;
+  map < TMVA::kNN::ModulekNN*,vector<int> > getErrKNN;                 map <TString,int>        allInputCombos;            
+  VarMaps                                   * varKNN(NULL);            vector <TChain *>        aChainKnn(2,NULL);
+  vector <TFile *>                          knnErrOutFile(nMLMs,NULL); vector <TMVA::Factory *> knnErrFactory(nMLMs,NULL);
+  vector <TMVA::kNN::ModulekNN *>           knnErrModule(nMLMs,NULL);  vector <int>             trgIndexV;
 
   if(hasErrKNN) {
-    TString treeNamePostfixKnnErr = "_train";
-    TString inTreeNameKnn         = (TString)glob->GetOptC("treeName")+treeNamePostfixKnnErr;
-    TString inFileNameKnn         = (TString)glob->GetOptC("inputTreeDirName")+inTreeNameKnn+"*.root";
+    TString inTreeNameKnn = getKeyWord("","treeErrKNN","treeErrKNNname");
+    TString inFileNameKnn = postTrainDirName+inTreeNameKnn+"*.root";
 
-    aChainKnn = new TChain(inTreeNameKnn,inTreeNameKnn); aChainKnn->SetDirectory(0); aChainKnn->Add(inFileNameKnn);
-    int nEntriesChainKnn = aChainKnn->GetEntries();
-    aLOG(Log::INFO) <<coutRed<<" - Created KnnErr chain  "<<coutGreen<<inTreeNameKnn
-                    <<"("<<nEntriesChainKnn<<")"<<" from "<<coutBlue<<inFileNameKnn<<coutDef<<endl;
+    aChainKnn[0] = new TChain(inTreeNameKnn,inTreeNameKnn); aChainKnn[0]->SetDirectory(0); aChainKnn[0]->Add(inFileNameKnn);
+
+    TString inTreeKnnFrnd = (TString)glob->GetOptC("treeName")+"_train";
+    TString inFileKnnFrnd = (TString)glob->GetOptC("inputTreeDirName")+inTreeKnnFrnd+"*.root";
+    aChainKnn[1] = new TChain(inTreeKnnFrnd,inTreeKnnFrnd); aChainKnn[1]->SetDirectory(0); aChainKnn[1]->Add(inFileKnnFrnd);
+
+    aChainKnn[0]->AddFriend(aChainKnn[1],utils->nextTreeFriendName(aChainKnn[0]));
+
+    int nEntriesChainKnn = aChainKnn[0]->GetEntries();
+    aLOG(Log::INFO) <<coutRed<<" - Created KnnErr chain  "<<coutGreen<<inTreeNameKnn<<coutRed<<"+"<<coutBlue<<inTreeKnnFrnd
+                    <<"("<<nEntriesChainKnn<<")"<<" from "<<coutGreen<<inFileNameKnn<<coutRed<<"+"<<coutBlue<<inFileKnnFrnd<<coutDef<<endl;
 
     varKNN = new VarMaps(glob,utils,"varKNN");
-    varKNN->connectTreeBranches(aChainKnn);  // connect the tree so as to allocate memory for cut variables
+    varKNN->connectTreeBranches(aChainKnn[0]);  // connect the tree so as to allocate memory for cut variables
 
     for(int nMLMinNow=0; nMLMinNow<nMLMsIn; nMLMinNow++) {
       TString MLMname = optimMLMv[nMLMinNow]; if(mlmSkipNow[MLMname]) continue;
@@ -576,11 +587,40 @@ void  ANNZ::doEvalCls() {
 
       setMethodCuts(varKNN,nMLMnow,false);
 
-      TCut    cutsNow(varKNN->getTreeCuts("_comn") + varKNN->getTreeCuts(MLMname+"_valid")),
-              cutsSig(getTrainTestCuts("_sig",nMLMnow)), cutsBck(getTrainTestCuts("_bck",nMLMnow));
-      TString wgtReg("1"), wgtSig(userWgtsM[MLMname+"_valid"]), wgtBck(userWgtsM[MLMname+"_valid"]);
+      TCut    cutsNow(varKNN->getTreeCuts("_comn") + varKNN->getTreeCuts(MLMname+"_valid"));
+      TString wgtCls(userWgtsM[MLMname+"_valid"]);
 
-      setupKdTreeKNN( aChainKnn,cutsNow,nMLMnow,knnErrOutFile[MLMname],knnErrFactory[MLMname],knnErrModule[MLMname],cutsSig,cutsBck,wgtReg,wgtSig,wgtBck );
+      TString inputComboNow = (TString)"[__ANNZ_VAR__]"+inputVariableV[nMLMnow]+"[__ANNZ_WGT__]"+wgtCls+"[__ANNZ_CUT__]"+(TString)cutsNow;
+      inputComboNow.ReplaceAll(" ","").ReplaceAll("[__"," [__").ReplaceAll("__]","__] ");
+
+      // if this is a new combination of variables/weights/cuts, create a new kd-tree
+      if((allInputCombos.find(inputComboNow) == allInputCombos.end())) {
+        allInputCombos[inputComboNow] = nMLMnow;
+
+        aLOG(Log::DEBUG_2) <<coutBlue<<" - registering a new cmbination of input-variables and cuts ["<<coutYellow<<inputComboNow<<coutBlue
+                           <<"] - in "<<coutGreen<<MLMname<<coutDef<<endl;
+
+        setupKdTreeKNN(aChainKnn[0],knnErrOutFile[nMLMnow],knnErrFactory[nMLMnow],knnErrModule[nMLMnow],trgIndexV,nMLMnow,cutsNow,wgtCls);
+      }
+      // if existing combination of variables and cuts, assign to the correct index
+      else {
+        int nMLMprev = allInputCombos[inputComboNow];
+
+        knnErrOutFile[nMLMnow] = knnErrOutFile[nMLMprev]; knnErrFactory[nMLMnow] = knnErrFactory[nMLMprev]; knnErrModule[nMLMnow] = knnErrModule[nMLMprev];
+
+        aLOG(Log::DEBUG_1) <<coutPurple<<" - For "<<coutYellow<<MLMname<<coutPurple<<" found existing combination of variables/cuts"
+                           <<" for kd-tree from "<<coutGreen<<getTagName(nMLMprev)<<coutDef<<endl;
+        aLOG(Log::DEBUG_2) <<coutPurple<<"   --> ["<<coutYellow<<inputComboNow<<coutPurple<<"] ..."<<coutDef<<endl;
+      }
+    }
+
+    // get the MLMs which are associated with each unique knnErrModule
+    // -----------------------------------------------------------------------------------------------------------
+    for(int nMLMinNow=0; nMLMinNow<nMLMsIn; nMLMinNow++) {
+      TString MLMname = optimMLMv[nMLMinNow]; if(mlmSkipNow[MLMname]) continue;
+      int     nMLMnow = getTagNow(MLMname);   if(!isErrKNNv[nMLMnow]) continue;
+
+      getErrKNN[ knnErrModule[nMLMnow] ].push_back(nMLMnow);
     }
   }
 
@@ -655,6 +695,8 @@ void  ANNZ::doEvalCls() {
   // -----------------------------------------------------------------------------------------------------------
   // loop on the tree
   // -----------------------------------------------------------------------------------------------------------
+  vector < vector <double> > regErrV(nMLMs,vector<double>(3,0));
+
   bool  breakLoop(false), mayWriteObjects(false);
   int   nObjectsToWrite(glob->GetOptI("nObjectsToWrite"));
   var_0->clearCntr();
@@ -672,6 +714,15 @@ void  ANNZ::doEvalCls() {
     // copy current content of all common variables (index + content of addVarV)
     var_1->copyVarData(var_0);
 
+    // -----------------------------------------------------------------------------------------------------------
+    // calculate the KNN errors if needed, for each variation of knnErrModule
+    // -----------------------------------------------------------------------------------------------------------
+    if(hasErrKNN) {
+      for(map < TMVA::kNN::ModulekNN*,vector<int> >::iterator Itr=getErrKNN.begin(); Itr!=getErrKNN.end(); ++Itr) {
+        getRegClsErrKNN(var_0,Itr->first,trgIndexV,Itr->second,false,regErrV);
+      }
+    }
+
     // fill the output tree
     for(int nMLMinNow=0; nMLMinNow<nMLMsIn; nMLMinNow++) {
       TString MLMname   = optimMLMv[nMLMinNow];  if(mlmSkipNow[MLMname]) continue;
@@ -686,8 +737,8 @@ void  ANNZ::doEvalCls() {
       if(clsWgt < 0) { var_0->printVars(); VERIFY(LOCATION,(TString)"Weights can only be >= 0 ... Something is horribly wrong ?!?",false); }
 
       double  clsErr  = -1; 
-      if     (isErrKNNv[nMLMnow]) clsErr = getRegClsErrKNN(var_0,ANNZ_readType::PRB,nMLMnow,knnErrModule[MLMname]);
-      else if(isErrINPv[nMLMnow]) clsErr = getRegClsErrINP(var_0,ANNZ_readType::PRB,nMLMnow,&seed);
+      if     (isErrKNNv[nMLMnow]) clsErr = regErrV[nMLMnow][1];
+      else if(isErrINPv[nMLMnow]) clsErr = getRegClsErrINP(var_0,false,nMLMnow,&seed);
 
       var_1->SetVarF(MLMname,  clsPrb); var_1->SetVarF(MLMname_v,clasVal); var_1->SetVarF(MLMname_w,clsWgt);
       if(hasErrs) { var_1->SetVarF(MLMname_e,clsErr); }
@@ -702,6 +753,8 @@ void  ANNZ::doEvalCls() {
 
   DELNULL(var_0); DELNULL(var_1);
   DELNULL(treeOut); outputs->TreeMap.erase(outTreeName);
+
+  regErrV.clear();
 
   // -----------------------------------------------------------------------------------------------------------
   // write the combined output to an ascii file
@@ -728,24 +781,25 @@ void  ANNZ::doEvalCls() {
 
     var_2->storeTreeToAscii("ANNZ"+glob->GetOptC("_typeANNZ"),"",0,glob->GetOptI("nObjectsToWrite"),"",&addVarV,NULL);
 
-    DELNULL(var_2); DELNULL(aChain_toFriend); // aChainCls is a friend of aChain_toFriend, and so already deleted with aChain_toFriend
+    DELNULL(var_2);
+    aChain_toFriend->RemoveFriend(aChainCls); DELNULL(aChain_toFriend); DELNULL(aChainCls);
   }
 
   //cleanup
   if(hasErrKNN) {
-    for(int nMLMinNow=0; nMLMinNow<nMLMsIn; nMLMinNow++) {
-      TString MLMname = optimMLMv[nMLMinNow]; if(mlmSkipNow[MLMname]) continue;
-      int     nMLMnow   = getTagNow(MLMname); if(!isErrKNNv[nMLMnow]) continue;
-      
-      cleanupKdTreeKNN(knnErrOutFile[MLMname],knnErrFactory[MLMname]);
-      
+    for(map <TString,int>::iterator Itr=allInputCombos.begin(); Itr!=allInputCombos.end(); ++Itr) {
+      int nMLMnow = Itr->second; TString MLMname = getTagName(nMLMnow);
+
+      cleanupKdTreeKNN(knnErrOutFile[nMLMnow],knnErrFactory[nMLMnow]);
+
       utils->safeRM(getKeyWord(MLMname,"knnErrXML","outFileDirKnnErr"), inLOG(Log::DEBUG_1));
       utils->safeRM(getKeyWord(MLMname,"knnErrXML","outFileNameKnnErr"),inLOG(Log::DEBUG_1));
     }
-    knnErrOutFile.clear(); knnErrFactory.clear(); knnErrModule.clear();
-
-    DELNULL(varKNN); DELNULL(aChainKnn);
+    DELNULL(varKNN);
+    aChainKnn[0]->RemoveFriend(aChainKnn[1]); DELNULL(aChainKnn[0]); DELNULL(aChainKnn[1]);
   }
+  knnErrOutFile.clear(); knnErrFactory.clear(); knnErrModule.clear(); trgIndexV.clear(); aChainKnn.clear(); getErrKNN.clear(); allInputCombos.clear();
+
 
   DELNULL(aChain);
   optimMLMv.clear(); addVarV.clear();

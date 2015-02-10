@@ -213,8 +213,8 @@ namespace Log {
       exit(1); \
     } } while(false)
 
-    #define LINE_FILL(charFill,len) \
-      std::setfill(charFill)<<std::setw(len)<<""<<std::setfill(' ')
+  #define LINE_FILL(charFill,len) \
+    std::setfill(charFill)<<std::setw(len)<<""<<std::setfill(' ')
 
 #endif // __MY_DEFINES__
 

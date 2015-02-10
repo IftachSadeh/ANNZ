@@ -78,12 +78,12 @@ void ANNZ::doFactoryTrain(TMVA::Factory * factory) {
 
 // ===========================================================================================================
 /**
- * @brief          - Clear all registered TMVA::Reader objects
+ * @brief  - Clear all registered TMVA::Reader objects
  */
 // ===========================================================================================================
-void ANNZ::clearReaders() {
-// ========================
-  aLOG(Log::DEBUG_1) <<coutWhiteOnBlack<<coutCyan<<" - starting ANNZ::clearReaders() ..."<<coutDef<<endl;
+void ANNZ::clearReaders(Log::LOGtypes logLevel) {
+// ==============================================
+  aLOG(logLevel) <<coutWhiteOnBlack<<coutCyan<<" - starting ANNZ::clearReaders() ..."<<coutDef<<endl;
 
   for(int nMLMnow=0; nMLMnow<(int)regReaders.size(); nMLMnow++) {
     bool verb = (regReaders[nMLMnow] && inLOG(Log::DEBUG_1));
@@ -99,8 +99,7 @@ void ANNZ::clearReaders() {
 /**
  * @brief             - Load TMVA::Reader objects for all accepted MLMs.
  * 
- * @details
- *                    - For every accepted MLM, first register all input-variable names in readerInptV.
+ * @details           - For every accepted MLM, first register all input-variable names in readerInptV.
  *                    Then create TMVA::Reader objects with the corresponding input-variables for each MLM.
  *                    The content of readerInptV will be updated by a VarMaps object in the loop later one,
  *                    so that the readers may be evaluated.
@@ -115,7 +114,7 @@ void ANNZ::loadReaders(map <TString,bool> & mlmSkipNow) {
   int nMLMs = glob->GetOptI("nMLMs");
 
   // cleanup containers before initializing new readers
-  clearReaders();
+  clearReaders(Log::DEBUG_2);
 
   readerInptV.clear(); regReaders.resize(nMLMs,NULL); readerInptIndexV.resize(nMLMs);
 

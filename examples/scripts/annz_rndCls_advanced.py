@@ -282,6 +282,9 @@ if glob.annz["doOptim"] or glob.annz["doEval"]:
     #               of the parameers which were used for training)
     glob.annz["inAsciiVars"]  = "C:class; F:z; UL:objid; F:psfMag_r; F:fiberMag_r; F:modelMag_r; F:petroMag_r; F:petroRad_r; F:petroR50_r; " \
                               + " F:petroR90_r; F:lnLStar_r; F:lnLExp_r; F:lnLDeV_r; F:mE1_r; F:mE2_r; F:mRrCc_r; I:type_r; I:type"
+    # evalDirPostfix - if not empty, this string will be added to the name of the evaluation directory
+    #                  (can be used to prevent multiple evaluation of different input files from overwriting each other)
+    glob.annz["evalDirPostfix"] = ""
 
     # ===========================================================================================================
     # MLMsToStore - 

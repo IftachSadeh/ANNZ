@@ -118,7 +118,7 @@ public:
 
   void    checkPathPrefix(TString pathName = "");
   void    validDirExists(TString dirName = "", bool verbose = false);
-  bool    validFileExists(TString fileName = "", bool verif = true, bool verbose = false);
+  bool    validFileExists(TString fileName = "", bool verif = true);
   void    resetDirectory(TString OutDirName = "", bool verbose = false, bool copyCode = false);
   void    checkCmndSafety(TString cmnd = "", bool verbose = false);
   void    safeRM(TString cmnd = "", bool verbose = false);
@@ -130,7 +130,7 @@ public:
   bool    isSameWeightExpr(TString wgt0, TString wgt1);
 
   int     getNlinesAsciiFile(TString fileName, bool checkNonEmpty = true);
-  int     getNlinesAsciiFile(vector<TString> & fileNameV, bool checkNonEmpty = true);
+  int     getNlinesAsciiFile(vector<TString> & fileNameV, bool checkNonEmpty = true, vector <int> * nLineV = NULL);
 
   void    findObjPatternInCurrentDir(vector <TString> & patternV, vector <TString> & matchedObjV, TString clasType = "");
   void    getSortedArray(double * data, double *& sortedData);
