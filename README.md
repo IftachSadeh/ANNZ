@@ -437,16 +437,17 @@ A few notes:
   - There are several parameters used to tune PDFs in randomized regression. Here are a couple of principle examples:
 
     - **`minPdfWeight` -** may be used to set a minimal weights for an MLM in the PDF. For instance, setting
-        ```python
-        glob.annz["minPdfWeight"] = 0.05
-        ```
+      ```python
+      glob.annz["minPdfWeight"] = 0.05
+      ```
     will insure that each MLM will have at least 5% relative significance in the PDF. That is, in this case, no more than 20 MLMs will be used for the PDF.
 
     - **`max_sigma68_PDF`, `max_bias_PDF`, `max_frac68_PDF` -** may be set to put a threshold on the maximal value of the scatter (`max_sigma68_PDF`), bias (`max_bias_PDF`) or outlier-fraction (`max_frac68_PDF`) of an MLM, which may be included in the PDF. For instance, setting
-        ```python
-        glob.annz["max_sigma68_PDF"] = 0.04
-    ```
+      ```python
+      glob.annz["max_sigma68_PDF"] = 0.04
+      ```
     will insure that any MLM which has scatter higher than `0.04` will not be included in the PDF.
+
 
   - By default, a progress bar is drawn during training. If one is writing the output to a log file, the progress bar is important to avoid, as it will cause the size of the log file to become very large. One can either add `--isBatch` while running the example scripts, or set in `generalSettings.py` (or elsewhere),
   ```python
