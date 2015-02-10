@@ -436,15 +436,15 @@ A few notes:
 
   - There are several parameters used to tune PDFs in randomized regression. Here are a couple of principle examples:
 
-    1. **`minPdfWeight` -** may be used to set a minimal weights for an MLM in the PDF. For instance, setting
-    ```python
-    glob.annz["minPdfWeight"] = 0.05
-    ```
+    - **`minPdfWeight` -** may be used to set a minimal weights for an MLM in the PDF. For instance, setting
+        ```python
+        glob.annz["minPdfWeight"] = 0.05
+        ```
     will insure that each MLM will have at least 5% relative significance in the PDF. That is, in this case, no more than 20 MLMs will be used for the PDF.
 
-    2. **`max_sigma68_PDF`, `max_bias_PDF`, `max_frac68_PDF` -** may be set to put a threshold on the maximal value of the scatter (`max_sigma68_PDF`), bias (`max_bias_PDF`) or outlier-fraction (`max_frac68_PDF`) of an MLM, which may be included in the PDF. For instance, setting
-    ```python
-    glob.annz["max_sigma68_PDF"] = 0.04
+    - **`max_sigma68_PDF`, `max_bias_PDF`, `max_frac68_PDF` -** may be set to put a threshold on the maximal value of the scatter (`max_sigma68_PDF`), bias (`max_bias_PDF`) or outlier-fraction (`max_frac68_PDF`) of an MLM, which may be included in the PDF. For instance, setting
+        ```python
+        glob.annz["max_sigma68_PDF"] = 0.04
     ```
     will insure that any MLM which has scatter higher than `0.04` will not be included in the PDF.
 
