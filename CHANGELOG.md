@@ -1,5 +1,9 @@
 # Changelog
 
+## ANNZ 2.0.2 (10/2/2015)
+
+Fixed bug in VarMaps::storeTreeToAscii(), where variables of type `Long64_t` were treated as `Bool_t` by mistake.
+
 ## ANNZ 2.0.1 (10/2/2015)
 
 The following changes were made:
