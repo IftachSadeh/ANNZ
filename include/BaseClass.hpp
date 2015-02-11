@@ -19,11 +19,11 @@
 #ifndef BaseClass_h
 #define BaseClass_h
 
-#include <commonInclude.hpp>
-#include <OptMaps.hpp>
-#include <Utils.hpp>
-#include <VarMaps.hpp>
-#include <OutMngr.hpp>
+#include "commonInclude.hpp"
+#include "OptMaps.hpp"
+#include "Utils.hpp"
+#include "VarMaps.hpp"
+#include "OutMngr.hpp"
 
 // ===========================================================================================================
 class BaseClass {

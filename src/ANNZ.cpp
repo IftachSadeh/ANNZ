@@ -16,16 +16,16 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // ===========================================================================================================
 
-#include <ANNZ.hpp>
-#include <ANNZ_utils.cpp>
-#include <ANNZ_err.cpp>
-#include <ANNZ_TMVA.cpp>
+#include "ANNZ.hpp"
+#include "ANNZ_utils.cpp"
+#include "ANNZ_err.cpp"
+#include "ANNZ_TMVA.cpp"
 
-#include <ANNZ_train.cpp>
+#include "ANNZ_train.cpp"
 
-#include <ANNZ_loopRegCls.cpp>
-#include <ANNZ_loopCls.cpp>
-#include <ANNZ_loopReg.cpp>
+#include "ANNZ_loopRegCls.cpp"
+#include "ANNZ_loopCls.cpp"
+#include "ANNZ_loopReg.cpp"
 
 // ===========================================================================================================
 ANNZ::ANNZ   (TString aName, Utils * aUtils, OptMaps * aMaps, OutMngr * anOutMngr)

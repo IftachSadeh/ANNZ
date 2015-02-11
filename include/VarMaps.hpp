@@ -19,10 +19,10 @@
 #ifndef VarMaps_h
 #define VarMaps_h
 
-#include <commonInclude.hpp>
-#include <OptMaps.hpp>
-#include <Utils.hpp>
-#include <CntrMap.hpp>
+#include "commonInclude.hpp"
+#include "OptMaps.hpp"
+#include "Utils.hpp"
+#include "CntrMap.hpp"
 
 // ===========================================================================================================
 class VarMaps {
@@ -165,19 +165,19 @@ public:
     if     (HasVarS_ (aName)) val = static_cast<Long64_t> (GetVarS_ (aName)); else if(HasVarI_ (aName)) val = static_cast<Long64_t> (GetVarI_ (aName));
     else if(HasVarL_ (aName)) val = GetVarL_ (aName);                         else AsrtVar(false,aName+" (GetVarI)");
     return val;
-  }
+  };
   inline ULong64_t GetVarU(TString aName) {
     ULong64_t val(0);
     if     (HasVarUS_(aName)) val = static_cast<ULong64_t>(GetVarUS_(aName)); else if(HasVarUI_(aName)) val = static_cast<ULong64_t>(GetVarUI_(aName));
     else if(HasVarUL_(aName)) val = GetVarUL_(aName);                         else AsrtVar(false,aName+" (GetVarU)");
     return val;
-  }
+  };
   inline Double_t  GetVarF(TString aName) {
     Double_t val (0);
     if     (HasVarF_ (aName)) val = static_cast<Double_t> (GetVarF_ (aName));
     else if(HasVarD_ (aName)) val = GetVarD_ (aName);                         else AsrtVar(false,aName+" (GetVarF)");
     return val;
-  }
+  };
   Double_t  GetForm(TString aName);
 
   // check if a variable is already defined

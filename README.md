@@ -50,7 +50,7 @@ Randomized classification may be used for general classification problems. In th
 
 ### Download (and if needed install) ROOT
 
-ROOT is available [here](https://root.cern.ch/drupal/content/downloading-root). Version 5.34/25 was used for development, though later versions should be backward compatible (please report any issues).
+ROOT is available [here](https://root.cern.ch/drupal/content/downloading-root). ROOT v5.34/25 was used for development, and v6.02/05 for testing. Later ROOT versions should also be compatible (please report any issues).
 
 Lets assume we want to install ROOT at `/home/work/root`. We can get ROOT, in one of two ways (as explained on the ROOT site):
 

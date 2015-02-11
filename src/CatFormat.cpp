@@ -16,9 +16,9 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // ===========================================================================================================
 
-#include <CatFormat.hpp>
-#include <CatFormat_asciiToTree.cpp>
-#include <CatFormat_wgtKNN.cpp>
+#include "CatFormat.hpp"
+#include "CatFormat_asciiToTree.cpp"
+#include "CatFormat_wgtKNN.cpp"
 
 // ===========================================================================================================
 CatFormat::CatFormat(TString aName, Utils * aUtils, OptMaps * aMaps, OutMngr * anOutMngr)

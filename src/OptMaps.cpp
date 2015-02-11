@@ -16,7 +16,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // ===========================================================================================================
 
-#include <OptMaps.hpp>
+#include "OptMaps.hpp"
 
 // ===========================================================================================================
 // namespace for default options/variable values

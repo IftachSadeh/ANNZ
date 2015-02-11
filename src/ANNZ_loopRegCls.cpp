@@ -439,7 +439,7 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
   TString indexName         = glob->GetOptC("indexName");
   TString isSigName         = glob->GetOptC("isSigName");
   TString testValidType     = glob->GetOptC("testValidType");
-  UInt_t  seed              = glob->GetOptI("initSeedRnd") * 58606;
+  UInt_t  seed              = glob->GetOptI("initSeedRnd"); if(seed > 0) seed += 58606;
   bool    separateTestValid = glob->GetOptB("separateTestValid");
   bool    isCls             = glob->GetOptB("doClassification") || glob->GetOptB("doBinnedCls");
   bool    needBinClsErr     = glob->GetOptB("needBinClsErr");

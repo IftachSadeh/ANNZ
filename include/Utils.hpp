@@ -19,8 +19,8 @@
 #ifndef Utils_h
 #define Utils_h
 
-#include <commonInclude.hpp>
-#include <OptMaps.hpp>
+#include "commonInclude.hpp"
+#include "OptMaps.hpp"
 #include <TKey.h>
 #include <sys/stat.h>
 
@@ -162,7 +162,6 @@ public:
 
   // variables
   // ===========================================================================================================
-  TRandom           * rnd;
   vector <int>      colours, markers, greens, blues, reds, fillStyles;   
   
   OptMaps            * glob, * param;

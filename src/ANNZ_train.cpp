@@ -428,8 +428,8 @@ void ANNZ::Train_binnedCls() {
   TString  inputVarErrors        = glob->GetOptC("inputVarErrors");
   int      nMLMnow               = glob->GetOptI("nMLMnow");
   TString  trainDirNameFull      = glob->GetOptC("trainDirNameFull");
-  UInt_t   seed0                 = glob->GetOptI("initSeedRnd") * (76640+nMLMnow);
-  UInt_t   seed1                 = glob->GetOptI("initSeedRnd") * (12098+nMLMnow);
+  UInt_t   seed0                 = glob->GetOptI("initSeedRnd"); if(seed0 > 0) seed0 += (76640+nMLMnow);
+  UInt_t   seed1                 = glob->GetOptI("initSeedRnd"); if(seed1 > 0) seed1 += (12098+nMLMnow);
   TString  zTrgName              = glob->GetOptC("zTrg");
   TString  bckSubsetRange        = glob->GetOptC("binCls_bckSubsetRange");
   int      minObjTrainTest       = glob->GetOptI("minObjTrainTest");
@@ -863,7 +863,7 @@ void ANNZ::generateOptsMLM(OptMaps * optMap, TString userMLMopts) {
 // ================================================================
   
   TString type(""), opt("");
-  int     seed        = glob->GetOptI("initSeedRnd") + (optMap->GetOptI("nRnd0")+1) * 1e5 + optMap->GetOptI("nRnd1");
+  int     seed        = glob->GetOptI("initSeedRnd"); if(seed > 0) seed += (optMap->GetOptI("nRnd0")+1) * 1e5 + optMap->GetOptI("nRnd1");
   int     nRnd        = 14;
   double  * rndAr     = new double[nRnd];
   TRandom * rnd       = new TRandom3(seed); rnd->RndmArray(nRnd,rndAr);

@@ -19,9 +19,9 @@
 #ifndef OutMngr_h
 #define OutMngr_h
 
-#include <commonInclude.hpp>
-#include <OptMaps.hpp>
-#include <Utils.hpp>
+#include "commonInclude.hpp"
+#include "OptMaps.hpp"
+#include "Utils.hpp"
 
 class TCanvas;
 class TMultiGraph;

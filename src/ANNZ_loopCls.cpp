@@ -490,7 +490,7 @@ void  ANNZ::doEvalCls() {
   bool    doStoreToAscii    = glob->GetOptB("doStoreToAscii");
   bool    hasErrs           = glob->GetOptB("addClsKNNerr");
   TString postTrainDirName  = glob->GetOptC("postTrainDirNameFull");
-  UInt_t  seed              = glob->GetOptI("initSeedRnd") * 14320;
+  UInt_t  seed              = glob->GetOptI("initSeedRnd"); if(seed > 0) seed += 14320;
 
   // figure out which MLMs to generate an error for, using which method (KNN errors or propagation of user-defined parameter-errors)
   // -----------------------------------------------------------------------------------------------------------

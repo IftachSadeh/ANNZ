@@ -32,6 +32,8 @@ TUTDIR := $(ROOTSYS)/tutorials
 endif
 -include ../MyConfig.mk
 
+ROOTCINT = rootcint
+
 # ---------------------------------------------------------------------------------------------------
 # search path for included files and files-to-make; included ROOT libraries
 # ---------------------------------------------------------------------------------------------------

@@ -19,7 +19,7 @@
 #ifndef ANNZ_h
 #define ANNZ_h
 
-#include <BaseClass.hpp>
+#include "BaseClass.hpp"
 
 #include "TMVA/Tools.h"
 #include "TMVA/Config.h"

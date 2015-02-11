@@ -115,8 +115,8 @@ void CatFormat::asciiToFullTree(TString inAsciiFiles, TString inAsciiVars, TStri
     // -----------------------------------------------------------------------------------------------------------
     // the loop
     // -----------------------------------------------------------------------------------------------------------
-    ifstream    inputFile(inFileNameNow,std::ios::in);
-    std::string line;
+    std::ifstream inputFile(inFileNameNow,std::ios::in);
+    std::string   line;
     var->NewCntr("nLine",0);
     while(!inputFile.eof()) {
       // get an object
@@ -344,8 +344,8 @@ void CatFormat::asciiToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
     // -----------------------------------------------------------------------------------------------------------
     // the loop
     // -----------------------------------------------------------------------------------------------------------
-    ifstream    inputFile(inFileNameNow,std::ios::in);
-    std::string line;
+    std::ifstream inputFile(inFileNameNow,std::ios::in);
+    std::string   line;
     var->NewCntr("nLineFile",0);
     while(!inputFile.eof()) {
       // get an object
@@ -717,7 +717,7 @@ void CatFormat::setSplitVars(VarMaps * var, TRandom * rnd, map <TString,int> & i
 // general way to read in a csv file and split each line into local ariables
 // -----------------------------------------------------------------------------------------------------------
 // std::string inFileNameNow = "a.csv";
-// ifstream  inputFile(inFileNameNow,ios::in);
+// std::ifstream  inputFile(inFileNameNow,ios::in);
 // std::string line, item;
 // while(!inputFile.eof()) {
 //   // get an object

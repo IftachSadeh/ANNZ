@@ -16,7 +16,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // ===========================================================================================================
 
-#include <VarMaps.hpp>
+#include "VarMaps.hpp"
 
 // ===========================================================================================================
 VarMaps::VarMaps(OptMaps * aOptMaps, Utils * aUtils, TString aName) {
@@ -1207,7 +1207,7 @@ void VarMaps::storeTreeToAscii(TString outFilePrefix, TString outFileDir, int ma
 
   TObjLink         * friends(NULL);
   TString          acceptedBranches(""), outFileName("");
-  ofstream         * fout(NULL);
+  std::ofstream    * fout(NULL);
   int              nVarsIn(0), nOutFileNow(0);
   vector <TString> varNames, varTypes;
   
@@ -1309,12 +1309,12 @@ void VarMaps::storeTreeToAscii(TString outFilePrefix, TString outFileDir, int ma
 
     IncCntr("nObj"); if(GetCntr("nObj") == maxNobj) break;
 
-    if(!dynamic_cast<ofstream*>(fout) || (nLinesFile > 0 && (GetCntr("nObj") % nLinesFile == 0))) {
+    if(!dynamic_cast<std::ofstream*>(fout) || (nLinesFile > 0 && (GetCntr("nObj") % nLinesFile == 0))) {
       nOutFileNow += 1;
       outFileName  = (TString)outFileDir+outFilePrefix+"_"+TString::Format("%4.4d",nOutFileNow-1)+csvPostfix;
       
       DELNULL(fout);
-      fout = new ofstream(outFileName, std::ios::trunc);
+      fout = new std::ofstream(outFileName, std::ios::trunc);
       *fout <<header<<endl;
 
       aLOG(Log::INFO) <<coutRed<<" - Will parse  "<<coutGreen<<treeName<<"("<<nEntriesChain<<")"<<"... Now in "<<coutBlue<<outFileName<<coutDef<<endl;

@@ -19,7 +19,7 @@
 #ifndef CatFormat_h
 #define CatFormat_h
 
-#include <BaseClass.hpp>
+#include "BaseClass.hpp"
 
 #include "TMVA/Tools.h"
 #include "TMVA/Config.h"

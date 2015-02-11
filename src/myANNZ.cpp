@@ -16,12 +16,12 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // ===========================================================================================================
 
-#include <myANNZ.hpp>
-#include <Utils.hpp>
-#include <OptMaps.hpp>
-#include <OutMngr.cpp>
-#include <ANNZ.hpp>
-#include <CatFormat.hpp>
+#include "myANNZ.hpp"
+#include "Utils.hpp"
+#include "OptMaps.hpp"
+#include "OutMngr.cpp"
+#include "ANNZ.hpp"
+#include "CatFormat.hpp"
 
 // ===========================================================================================================
 /**

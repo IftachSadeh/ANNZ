@@ -331,7 +331,7 @@ void  ANNZ::fillColosureV( map < int,vector<int> >    & zRegQnt_nANNZ,   map < i
   for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) {
     TString MLMname = getTagName(nMLMnow); if(mlmSkip[MLMname]) continue;
 
-    double  mean_bias(0), mean_sigma68(0), mean_fracSig68_2(0), mean_fracSig68_3(0), sumWeights(0);
+    double  mean_bias(0), mean_sigma68(0), mean_fracSig68_2(0), mean_fracSig68_3(0), sumWeights(0), avgFracSig68(0);
     for(int nBinNow=0; nBinNow<nBinsZ; nBinNow++) {
       double  quant_mean(-1), quant_sigma_68(-1), quant_fracSig68_2(-1), quant_fracSig68_3(-1), quant_fracSig68_23(-1);
 
@@ -345,7 +345,7 @@ void  ANNZ::fillColosureV( map < int,vector<int> >    & zRegQnt_nANNZ,   map < i
         quant_sigma_68      = utils->param->GetOptF("quant_sigma_68");
         quant_fracSig68_2   = utils->param->GetOptF("quant_fracSig68_2");
         quant_fracSig68_3   = utils->param->GetOptF("quant_fracSig68_3");
-        quant_fracSig68_23  = (quant_fracSig68_2+quant_fracSig68_3)/2.;
+        quant_fracSig68_23  = 0.5 * (quant_fracSig68_2 + quant_fracSig68_3);
 
         // update values for the average calculation
         sumWeights       += sumWeightsBin[nBinNow];
@@ -362,17 +362,17 @@ void  ANNZ::fillColosureV( map < int,vector<int> >    & zRegQnt_nANNZ,   map < i
     }
     // store the average of the metrics
     if(sumWeights > 0) {
-      mean_bias /= sumWeights; mean_sigma68 /= sumWeights; mean_fracSig68_2 /= sumWeights; mean_fracSig68_3 /= sumWeights;
+      mean_bias /= sumWeights; mean_sigma68 /= sumWeights; avgFracSig68 = 0.5 * (mean_fracSig68_2 + mean_fracSig68_3) / sumWeights;
     }
-    else mean_bias = mean_sigma68 = mean_fracSig68_2 = mean_fracSig68_3 = -1;
+    else mean_bias = mean_sigma68 = avgFracSig68 = -1;
 
     zRegQnt_nANNZ    [-1].push_back(nMLMnow);
     zRegQnt_bias     [-1].push_back(mean_bias);
     zRegQnt_sigma68  [-1].push_back(mean_sigma68);
-    zRegQnt_fracSig68[-1].push_back((mean_fracSig68_2+mean_fracSig68_3)/2.);
+    zRegQnt_fracSig68[-1].push_back(avgFracSig68);
 
     aLOG(Log::INFO) <<coutCyan<<" - nMLMnow,<bias>,<sig68>,<fracSig68_2,3>:  "<<coutYellow<<nMLMnow<<CT<<coutPurple<<mean_bias
-                    <<CT<<coutGreen<<mean_sigma68<<coutPurple<<CT<<mean_fracSig68_2<<CT<<coutGreen<<mean_fracSig68_3<<coutDef<<endl;
+                    <<CT<<coutGreen<<mean_sigma68<<coutBlue<<CT<<avgFracSig68<<coutDef<<endl;
   }
   aLOG(Log::INFO) <<coutCyan<<" ------------------------------------------------------------------------------------------------- "<<coutDef<<endl;
 
@@ -651,7 +651,7 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
   TString zTrgTitle          = glob->GetOptC("zTrgTitle");
   TString _typeANNZ          = glob->GetOptC("_typeANNZ");
   TString zRegTitle          = glob->GetOptC("zRegTitle");
-  UInt_t  seed               = glob->GetOptI("initSeedRnd") * 98187;
+  UInt_t  seed               = glob->GetOptI("initSeedRnd"); if(seed > 0) seed += 98187;
   int     closHisN           = glob->GetOptI("closHisN");
   double  closHisL           = glob->GetOptF("closHisL");
   double  closHisH           = glob->GetOptF("closHisH");
@@ -1632,7 +1632,7 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
   double  maxValZ           = glob->GetOptF("maxValZ");
   int     nSmearsRnd        = glob->GetOptI("nSmearsRnd");
   TString _typeANNZ         = glob->GetOptC("_typeANNZ");
-  UInt_t  seed              = glob->GetOptI("initSeedRnd") * 11825;
+  UInt_t  seed              = glob->GetOptI("initSeedRnd"); if(seed > 0) seed += 11825;
   TString baseTag_v         = glob->GetOptC("baseTag_v");
   TString baseTag_e         = glob->GetOptC("baseTag_e");
   TString baseTag_w         = glob->GetOptC("baseTag_w");

@@ -16,7 +16,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // ===========================================================================================================
 
-#include <Utils.hpp>
+#include "Utils.hpp"
 
 // ===========================================================================================================
 // namespace for sorting logic functions
@@ -313,7 +313,7 @@ bool Utils::validFileExists(TString fileName, bool verif) {
 // ========================================================
   VERIFY(LOCATION,(TString)"Trying to check existance of file with empty name ("+fileName+")",(fileName != ""));
 
-  ifstream inputFile(fileName,std::ios::in);
+  std::ifstream inputFile(fileName,std::ios::in);
   bool isGood = inputFile.good();
   inputFile.close();
 
@@ -505,7 +505,7 @@ void Utils::optToFromFile(vector<TString> * optNames, OptMaps * optMap, TString 
 
     // read the input files
     vector <TString> inputLineV;
-    ifstream  inputFile(fileName,std::ios::in); validFileExists(fileName);
+    std::ifstream inputFile(fileName,std::ios::in); validFileExists(fileName);
 
     while(!inputFile.eof()) {
       std::string line;     getline(inputFile, line);
@@ -899,8 +899,8 @@ void Utils::flushHisBufferBinsZ(TH1 * his, int nBinsZ) {
   else  glob->NewOptB((TString)"hasFlushed_"+his->GetName(),true);
 
   if(dynamic_cast<TH3*>(his)) {
+    his->BufferEmpty();
     TH3 * his3 = (TH3*)his->Clone("TMPhis");
-    his3->BufferEmpty();
 
     double xLim0 = his3->GetXaxis()->GetBinLowEdge(his3->GetXaxis()->GetFirst());
     double xLim1 = his3->GetXaxis()->GetBinUpEdge (his3->GetXaxis()->GetLast ());
@@ -935,10 +935,12 @@ void Utils::flushHisBufferBinsZ(TH1 * his, int nBinsZ) {
 void Utils::doPolyFit(TNamed * inputObject, map < TString , double > * fitParMap, TString theFunc) {
 // ===================================================================================================
  
-  TString hisName(""); //theFunc("[0]+[1]*x") //theFunc("pol1")
-  TH1     * his  = dynamic_cast<TH1*>    (inputObject);
-  TGraph  * grph = dynamic_cast<TGraph*> (inputObject);
-  assert(his || grph);
+  TString hisName("");
+  TH1     * his  = (dynamic_cast<TH1*>   (inputObject));
+  TGraph  * grph = (dynamic_cast<TGraph*>(inputObject));
+  VERIFY(LOCATION,(TString)"Trying to use doPolyFit() without a valid TH1 or TGraph object... Something is horribly wrong !!!",(his || grph));
+  
+  if(his) his->BufferEmpty();
 
   gStyle->SetOptFit(0000);
   int      fitStatus(-1);
@@ -998,7 +1000,9 @@ void Utils::doFitFuncByHisContent(OptMaps * fitOpts, TNamed * inputObject, vecto
   TString fitFuncName("fitFuncByHisContent"), fitOpt("R0M");  if(!fitOpts->OptOrNullB("doVerboseFit")) fitOpt += "Q";
   gStyle->SetOptFit(0000);
 
-  TH1 * hisIn = dynamic_cast<TH1*>(inputObject); assert(hisIn);
+  TH1 * hisIn = dynamic_cast<TH1*>(inputObject);
+  VERIFY(LOCATION,(TString)"Trying to use doFitFuncByHisContent() without a valid hisIn object... Something is horribly wrong !!!",(hisIn));
+
   hisIn = (TH1*)hisIn->Clone("fitFuncByHisContentHisToFit");
   
   // cleanup possible old fir histograms
@@ -1071,7 +1075,8 @@ void Utils::doFitFuncByHisContent(OptMaps * fitOpts, TNamed * inputObject, vecto
 // ===========================================================================================================
 void Utils::his2d_to_his1dV(OptMaps * optMap, TH1 * his2, vector <TH1*> & hisV) {
 // ==============================================================================
-  TH1   * his1(NULL);
+  VERIFY(LOCATION,(TString)"Trying to use his2d_to_his1dV() without a valid his2 object... Something is horribly wrong !!!",(his2));
+  his2->BufferEmpty();
 
   bool  isInvAxis(false);
   TAxis * xAxis(his2->GetXaxis()), * yAxis(his2->GetYaxis());
@@ -1082,8 +1087,8 @@ void Utils::his2d_to_his1dV(OptMaps * optMap, TH1 * his2, vector <TH1*> & hisV) 
   }
 
   TString hisName2d = (TString)his2->GetName();
-  int     nBinsX    = xAxis->GetNbins(); //his2->GetNbinsX();
-  int     nBinsY    = yAxis->GetNbins(); //his2->GetNbinsY();
+  int     nBinsX    = xAxis->GetNbins();
+  int     nBinsY    = yAxis->GetNbins();
   double  lowEdgeX  = xAxis->GetBinLowEdge( xAxis->GetFirst() );
   double  lowEdgeY  = yAxis->GetBinLowEdge( yAxis->GetFirst() );
   double  highEdgeX = xAxis->GetBinUpEdge ( xAxis->GetLast()  );
@@ -1113,6 +1118,7 @@ void Utils::his2d_to_his1dV(OptMaps * optMap, TH1 * his2, vector <TH1*> & hisV) 
       }
     }
 
+    TH1 * his1(NULL);
     if     (dynamic_cast<TH2D*>(his2)) {
       if(xAxis->GetXbins()->GetSize() > 0)  his1 = new TH1D(hisName1d,hisName1d,nBinsX,xAxis->GetXbins()->GetArray());
       else                                  his1 = new TH1D(hisName1d,hisName1d,nBinsX,lowEdgeX,highEdgeX);
@@ -1337,11 +1343,9 @@ int Utils::getQuantileV(vector <double> & fracV, vector <double> & quantV, doubl
   if(!param->HasOptI("nArrEntries")) param->NewOptI("nArrEntries" , 0);
 
   bool hasArr = dataArr && (param->GetOptI("nArrEntries") > 0);
-  bool hasHis = dynamic_cast<TH1*>(dataHis); if(hasHis) hasHis = (fabs(dataHis->Integral()) > 0); //(dataHis->GetEntries() > 0);
+  bool hasHis = dynamic_cast<TH1*>(dataHis); if(hasHis) { dataHis->BufferEmpty(); hasHis = (dataHis->GetEntries() > EPS); }
   if(!hasArr && !hasHis) return 0;
   if(nQuant == 0)        return 0;
-
-  if(hasHis) dataHis->BufferEmpty();
 
   // -----------------------------------------------------------------------------------------------------------
   // basic quantile calculation
@@ -1352,8 +1356,8 @@ int Utils::getQuantileV(vector <double> & fracV, vector <double> & quantV, doubl
 
   for(int nQuantNow=0; nQuantNow<nQuant; nQuantNow++) probQuant[nQuantNow] = fracV[nQuantNow];
 
-  if(dynamic_cast<TH1*>(dataHis)) dataHis->GetQuantiles(nQuant,quantiles,probQuant);
-  else                            TMath::Quantiles(param->GetOptI("nArrEntries"),nQuant,dataArr,quantiles,probQuant,false,sortIndices,7);
+  if(hasHis) dataHis->GetQuantiles(nQuant,quantiles,probQuant);
+  else       TMath::Quantiles(param->GetOptI("nArrEntries"),nQuant,dataArr,quantiles,probQuant,false,sortIndices,7);
 
   quantV.resize(nQuant);
   for(int nQuantNow=0; nQuantNow<nQuant; nQuantNow++) quantV[nQuantNow] = quantiles[nQuantNow];
@@ -1375,8 +1379,8 @@ int Utils::getInterQuantileStats(double * dataArr, TH1 * dataHis) {
 // =================================================================
   if(!param->HasOptI("nArrEntries")) param->NewOptI("nArrEntries" , 0);
 
-  bool hasArr = (dataArr != NULL);           if(hasArr) hasArr = (param->GetOptI("nArrEntries") > EPS);
-  bool hasHis = dynamic_cast<TH1*>(dataHis); if(hasHis) hasHis = (dataHis->GetEntries()         > EPS);
+  bool hasArr = (dataArr != NULL);           if(hasArr) { hasArr = (param->GetOptI("nArrEntries") > EPS);                 }
+  bool hasHis = dynamic_cast<TH1*>(dataHis); if(hasHis) { dataHis->BufferEmpty(); hasHis = (dataHis->GetEntries() > EPS); }
   if(!hasArr && !hasHis) return 0;
   
   if(param->OptOrNullB("doFracLargerSigma"))  param->NewOptB("doNotComputeNominalParams" , false);
@@ -1570,9 +1574,8 @@ int Utils::getInterQuantileStats(double * dataArr, TH1 * dataHis) {
 // ===========================================================================================================
 Utils::Utils(OptMaps * aMaps) { 
 // ============================
-  glob        = aMaps;
-  param       = new OptMaps("param");
-  rnd         = new TRandom3(0); // must be a different random seed each time (used for temporary file-name generation) !
+  glob  = aMaps;
+  param = new OptMaps("param");
   
   setColors();
 
@@ -1590,7 +1593,7 @@ Utils::Utils(OptMaps * aMaps) {
 // ===========================================================================================================
 Utils::~Utils() { 
 // ==============
-  DELNULL(param); DELNULL(rnd);
+  DELNULL(param);
   colours.clear(); markers.clear(); greens.clear(); blues.clear(); reds.clear(); fillStyles.clear();
   return;
 }

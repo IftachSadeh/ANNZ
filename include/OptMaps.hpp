@@ -19,7 +19,7 @@
 #ifndef OptMaps_h
 #define OptMaps_h
 
-#include <commonInclude.hpp>
+#include "commonInclude.hpp"
 
 // ===========================================================================================================
 // namespace for default options/variable values - see http://root.cern.ch/root/html/Rtypes.h

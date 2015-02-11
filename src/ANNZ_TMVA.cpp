@@ -301,20 +301,26 @@ TMVA::Types::EMVA  ANNZ::getTypeMLMbyName(TString typeName) {
 // ===========================================================================================================
 bool ANNZ::verifyXML(TString outXmlFileName) {
 // ===========================================
-  ifstream * testFile = new ifstream(outXmlFileName);
-  bool isGoodXML = testFile->good();
-  if(isGoodXML) {
-    // minimal verification that the XML is good and has a definition of a "Method"
-    // see: http://root.cern.ch/root/html/TMVA__Reader.html#TMVA__Reader:GetMethodTypeFromFile
-    void  * doc      = TMVA::gTools().xmlengine().ParseFile(outXmlFileName,TMVA::gTools().xmlenginebuffersize());
-    void  * rootnode = TMVA::gTools().xmlengine().DocGetRootElement(doc);
-    isGoodXML = TMVA::gTools().HasAttr(rootnode, "Method");
+  bool          isGoodXML  = false;
+  std::ifstream * testFile = new std::ifstream(outXmlFileName);
 
-    if(!isGoodXML) aLOG(Log::DEBUG_1)<<coutRed<<" ... Found bad XML file - "<<coutCyan<<outXmlFileName<<coutDef<<endl;
+  if(testFile) {
+    isGoodXML = testFile->good();
+
+    if(isGoodXML) {
+      // minimal verification that the XML is good and has a definition of a "Method"
+      // see: http://root.cern.ch/root/html/TMVA__Reader.html#TMVA__Reader:GetMethodTypeFromFile
+      void  * doc      = TMVA::gTools().xmlengine().ParseFile(outXmlFileName,TMVA::gTools().xmlenginebuffersize());
+      void  * rootnode = TMVA::gTools().xmlengine().DocGetRootElement(doc);
+      isGoodXML = TMVA::gTools().HasAttr(rootnode, "Method");
+
+      if(!isGoodXML) aLOG(Log::DEBUG_1)<<coutRed<<" ... Found bad XML file - "<<coutCyan<<outXmlFileName<<coutDef<<endl;
+    }
+    else aLOG(Log::DEBUG_1)<<coutRed<<" ... Did not find the XML file - "<<coutCyan<<outXmlFileName<<coutDef<<endl;
+
+    DELNULL(testFile);
   }
-  else aLOG(Log::DEBUG_1)<<coutRed<<" ... Did not find the XML file - "<<coutCyan<<outXmlFileName<<coutDef<<endl;
-
-  DELNULL(testFile);
+  
   return isGoodXML;
 }
 

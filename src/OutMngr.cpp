@@ -24,9 +24,9 @@
 #include <TPaveText.h>
 #include <TFrame.h>
  
-#include <OutMngr.hpp>
-#include <OutMngr_utils.cpp> 
-#include <OutMngr_draw.cpp> 
+#include "OutMngr.hpp"
+#include "OutMngr_utils.cpp"
+#include "OutMngr_draw.cpp"
 
 // ===========================================================================================================
 OutMngr::OutMngr(TString aName, Utils * aUtils, OptMaps * aMaps) {
