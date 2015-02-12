@@ -311,7 +311,7 @@ We define the following name-tags:
   
   5. **ANNZ PDF 0 (`PDF_0_*`)**: The full PDF solution.
   
-  6. **`ANNZ_best`, `ANNZ_MLM_avg_1`, `ANNZ_PDF_max_1` and `PDF_1_*`**: The corresponding estimators for the second PDF.
+  6. **`ANNZ_MLM_avg_1`, `ANNZ_PDF_max_1` and `PDF_1_*`**: The corresponding estimators for the second PDF.
 
 #### Optimization
 
