@@ -301,15 +301,17 @@ Two PDFs may be generated, derived by choosing a weighting for the trained MLMs,
 
 We define the following name-tags:
 
-  1. **ANNZ best**: The *best* MLM solution, that is, the solution which achieved the best combination of performance metrics (bias, scatter and outlier fractions).
+  1. **ANNZ best (`ANNZ_best`)**: The *best* MLM solution, that is, the solution which achieved the best combination of performance metrics (bias, scatter and outlier fractions).
   
-  2. **ANNZ MLM average 0**: The un-weighted average of all MLMs which are included in the first PDF. In general, the PDF is composed by setting relative weights for the various MLMs, and convolving the MLM solutions with the corresponding uncertainty estimators. In this context, *un-weighted* means that the PDF weights are not used and that the MLMs are not convolved with the uncertainty estimators. In essence, this solution corresponds to the average solution of all MLMs which have non-zero PDF weights (the subset of the MLMs that have good performance metrics).
+  2. **ANNZ MLM average 0 (`ANNZ_MLM_avg_0`)**: The un-weighted average of all MLMs which are included in the first PDF. In general, the PDF is composed by setting relative weights for the various MLMs, and convolving the MLM solutions with the corresponding uncertainty estimators. In this context, *un-weighted* means that the PDF weights are not used and that the MLMs are not convolved with the uncertainty estimators. In essence, this solution corresponds to the average solution of all MLMs which have non-zero PDF weights (the subset of the MLMs that have good performance metrics).
   
-  3. **ANNZ PDF average 0**: The average of the first PDF (using the full weighted set of MLMs, convolved with uncertainty estimators).
+  3. **ANNZ PDF average 0 (`ANNZ_PDF_avg_0`)**: The average of the first PDF (using the full weighted set of MLMs, convolved with uncertainty estimators).
+
+  4. **ANNZ PDF maximum 0 (`ANNZ_PDF_max_0`)**: The maximal value (the peak) of the first PDF.
   
-  4. **ANNZ PDF 0**: The full PDF solution.
+  5. **ANNZ PDF 0 (`PDF_0_*`)**: The full PDF solution.
   
-  5. **ANNZ MLM average 1, ANNZ PDF average 1, ANNZ PDF 1**: The corresponding estimators for the second PDF.
+  6. **`ANNZ_best`, `ANNZ_MLM_avg_1`, `ANNZ_PDF_max_1` and `PDF_1_*`**: The corresponding estimators for the second PDF.
 
 #### Optimization
 

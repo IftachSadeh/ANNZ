@@ -470,6 +470,7 @@ void myANNZ::Init() {
   glob->NewOptC("testValidType"       ,"ANNZ_tvType");    // index to keep track of testing/validation sub-sample withn the _valid trees
   glob->NewOptC("baseName_regBest"    ,"ANNZ_best");      // the "best"-performing MLM in randomized regression
   glob->NewOptC("baseName_regMLM_avg" ,"ANNZ_MLM_avg_");  // base-name for the average MLM solution (and its error) in randomized regression
+  glob->NewOptC("baseName_regPDF_max" ,"ANNZ_PDF_max_");  // base-name for the peak of the pdf solution (and its error) in randomized regression
   glob->NewOptC("baseName_regPDF_avg" ,"ANNZ_PDF_avg_");  // base-name for the average pdf solution (and its error) in randomized regression
   glob->NewOptC("baseName_knnErr"     ,"_knnErr");        // name-postfix of error variable derived with the KNN estimator 
 

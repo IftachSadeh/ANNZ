@@ -1664,8 +1664,10 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
   // extract the requested added variables
   vector <TString> addVarV = utils->splitStringByChar(addOutputVars,';');
 
-  vector <TString> tagNameV(2);
-  tagNameV[0] = glob->GetOptC("baseTag_MLM_a"); tagNameV[1] = glob->GetOptC("baseTag_PDF_a");
+  int              nPdfTypes(3);
+  vector <TString> tagNameV(nPdfTypes);
+  tagNameV[0] = glob->GetOptC("baseTag_MLM_avg"); tagNameV[1] = glob->GetOptC("baseTag_PDF_avg"); tagNameV[2] = glob->GetOptC("baseTag_PDF_max");
+
 
   // figure out which MLMs to generate an error for, using which method (KNN errors or propagation of user-defined parameter-errors)
   // -----------------------------------------------------------------------------------------------------------
@@ -2085,12 +2087,14 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
           }
 
           // average unweighted and weighted pdf values and corresponding errors
-          for(int nPdfTypeNow=0; nPdfTypeNow<2; nPdfTypeNow++) {
+          for(int nPdfTypeNow=0; nPdfTypeNow<nPdfTypes; nPdfTypeNow++) {
             if(isBinCls && nPdfTypeNow == 0) continue;
 
-            TString pdfAvgName    = getTagPdfAvgName(nPDFnow,(TString)baseTag_v+tagNameV[nPdfTypeNow]); var_1->NewVarF(pdfAvgName);
-            TString pdfAvgErrName = getTagPdfAvgName(nPDFnow,(TString)baseTag_e+tagNameV[nPdfTypeNow]); var_1->NewVarF(pdfAvgErrName);
-            TString pdfAvgWgtName = getTagPdfAvgName(nPDFnow,(TString)baseTag_w+tagNameV[nPdfTypeNow]); var_1->NewVarF(pdfAvgWgtName);
+            TString pdfAvgName    = getTagPdfAvgName(nPDFnow,(TString)baseTag_v+tagNameV[nPdfTypeNow]);
+            TString pdfAvgErrName = getTagPdfAvgName(nPDFnow,(TString)baseTag_e+tagNameV[nPdfTypeNow]);
+            TString pdfAvgWgtName = getTagPdfAvgName(nPDFnow,(TString)baseTag_w+tagNameV[nPdfTypeNow]);
+
+            var_1->NewVarF(pdfAvgName); if(nPdfTypeNow < 2) { var_1->NewVarF(pdfAvgErrName); var_1->NewVarF(pdfAvgWgtName); }
           }
         }
       }
@@ -2240,7 +2244,6 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
                       double totWgtSmr = binSmr * binWgt * clsWgt;
 
                       hisPDF_w[nPDFnow]->Fill(zPDF_binC[nPdfBinNow],totWgtSmr);
-                      // if(loopEntry<20)cout <<nSmearRndNow<<CT<<binVal<<CT<<sfNow<<CT<<binSmr<<endl;
                       
                       pdfWgtValV[nPDFnow][1] += totWgtSmr;
                       pdfWgtNumV[nPDFnow][1] += binSmr * binWgt;
@@ -2337,8 +2340,8 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
 
                 var_1->SetVarF(pdfBinName,0);
               }
-              for(int nPdfTypeNow=0; nPdfTypeNow<2; nPdfTypeNow++) {
-                if(isBinCls && nPdfTypeNow == 0) continue;
+              for(int nPdfTypeNow=0; nPdfTypeNow<nPdfTypes; nPdfTypeNow++) {
+                if((isBinCls && nPdfTypeNow == 0) || nPdfTypeNow == 2) continue;
 
                 TString pdfAvgErrName = getTagPdfAvgName(nPDFnow,(TString)baseTag_e+tagNameV[nPdfTypeNow]);
                 TString pdfAvgWgtName = getTagPdfAvgName(nPDFnow,(TString)baseTag_w+tagNameV[nPdfTypeNow]);
@@ -2360,7 +2363,7 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
             }
 
             // the average value and the width of the pdf distribution
-            for(int nPdfTypeNow=0; nPdfTypeNow<2; nPdfTypeNow++) {
+            for(int nPdfTypeNow=0; nPdfTypeNow<nPdfTypes; nPdfTypeNow++) {
               if(isBinCls && nPdfTypeNow == 0) continue;
 
               TString pdfAvgName    = getTagPdfAvgName(nPDFnow,(TString)baseTag_v+tagNameV[nPdfTypeNow]);
@@ -2381,7 +2384,7 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
                   var_1->SetVarF(pdfAvgErrName,avg_err/sum_wgt);
                 }
               }
-              else {
+              else if(nPdfTypeNow == 1) {
                 utils->param->clearAll();
                 utils->param->NewOptF("meanWithoutOutliers",2);
                 if(utils->getInterQuantileStats(hisPDF_w[nPDFnow])) {
@@ -2392,13 +2395,20 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
                   var_1->SetVarF(pdfAvgErrName,regAvgPdfErr);
                 }
               }
+              else if(nPdfTypeNow == 2) {
+                int maxBin = hisPDF_w[nPDFnow]->GetMaximumBin() - 1; // histogram bins start at 1, not at 0
 
-              VERIFY(LOCATION,(TString)"If intgrPDF_w>0 then there is no way that pdfWgtNumV==0 ... something is horribly wrong ?!?!"
-                             ,(pdfWgtNumV[nPDFnow][nPdfTypeNow] > 0));
+                var_1->SetVarF(pdfAvgName,zPDF_binC[maxBin]);
+              }
 
-              pdfWgtValV[nPDFnow][nPdfTypeNow] /= pdfWgtNumV[nPDFnow][nPdfTypeNow];
-              
-              var_1->SetVarF(pdfAvgWgtName,pdfWgtValV[nPDFnow][nPdfTypeNow]);
+              if(nPdfTypeNow < 2) {
+                VERIFY(LOCATION,(TString)"If intgrPDF_w>0 then there is no way that pdfWgtNumV==0 ... something is horribly wrong ?!?!"
+                               ,(pdfWgtNumV[nPDFnow][nPdfTypeNow] > 0));
+
+                pdfWgtValV[nPDFnow][nPdfTypeNow] /= pdfWgtNumV[nPDFnow][nPdfTypeNow];
+                
+                var_1->SetVarF(pdfAvgWgtName,pdfWgtValV[nPDFnow][nPdfTypeNow]);
+              }
             }
           }
         }
@@ -2472,12 +2482,14 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
 
     for(int nPDFnow=0; nPDFnow<nPDFs; nPDFnow++) {
       // average unweighted and weighted pdf values and corresponding errors
-      for(int nPdfTypeNow=0; nPdfTypeNow<2; nPdfTypeNow++) {
+      for(int nPdfTypeNow=0; nPdfTypeNow<nPdfTypes; nPdfTypeNow++) {
         if(isBinCls && nPdfTypeNow == 0) continue;
 
-        TString pdfAvgName    = getTagPdfAvgName(nPDFnow,(TString)baseTag_v+tagNameV[nPdfTypeNow]); addVarV.push_back(pdfAvgName);
-        TString pdfAvgErrName = getTagPdfAvgName(nPDFnow,(TString)baseTag_e+tagNameV[nPdfTypeNow]); addVarV.push_back(pdfAvgErrName);
-        TString pdfAvgWgtName = getTagPdfAvgName(nPDFnow,(TString)baseTag_w+tagNameV[nPdfTypeNow]); addVarV.push_back(pdfAvgWgtName);
+        TString pdfAvgName    = getTagPdfAvgName(nPDFnow,(TString)baseTag_v+tagNameV[nPdfTypeNow]);
+        TString pdfAvgErrName = getTagPdfAvgName(nPDFnow,(TString)baseTag_e+tagNameV[nPdfTypeNow]);
+        TString pdfAvgWgtName = getTagPdfAvgName(nPDFnow,(TString)baseTag_w+tagNameV[nPdfTypeNow]);
+
+        addVarV.push_back(pdfAvgName); if(nPdfTypeNow < 2) { addVarV.push_back(pdfAvgErrName); addVarV.push_back(pdfAvgWgtName); }
       }
 
       // pdf value in each pdf-bin
@@ -2548,6 +2560,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
   TString plotExt             = glob->GetOptC("printPlotExtension");
   TString baseName_ANNZ       = glob->GetOptC("baseName_ANNZ");
   TString baseName_regMLM_avg = glob->GetOptC("baseName_regMLM_avg");
+  TString baseName_regPDF_max = glob->GetOptC("baseName_regPDF_max");
   TString baseName_regPDF_avg = glob->GetOptC("baseName_regPDF_avg");
   TString baseName_nPDF       = glob->GetOptC("baseName_nPDF");
   TString baseName_regBest    = glob->GetOptC("baseName_regBest");
@@ -2574,8 +2587,9 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
   TString regBestNameErr = getTagBestMLMname(baseTag_e);
   TString regBestNameWgt = getTagBestMLMname(baseTag_w);
 
-  vector <TString> tagNameV(2);
-  tagNameV[0] = glob->GetOptC("baseTag_MLM_a"); tagNameV[1] = glob->GetOptC("baseTag_PDF_a");
+  int              nPdfTypes(3);
+  vector <TString> tagNameV(nPdfTypes);
+  tagNameV[0] = glob->GetOptC("baseTag_MLM_avg"); tagNameV[1] = glob->GetOptC("baseTag_PDF_avg"); tagNameV[2] = glob->GetOptC("baseTag_PDF_max");
 
   vector < TString > pdfTagWgtV(nPDFs), pdfTagErrV(nPDFs);
   for(int nPDFnow=0; nPDFnow<nPDFs; nPDFnow++) {
@@ -2674,12 +2688,14 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
     }
 
     // search for format like "ANNZ_MLM_avg_0", "ANNZ_MLM_avg_0_err" and "ANNZ_MLM_avg_0_wgt"
-    for(int nPdfTypeNow=0; nPdfTypeNow<2; nPdfTypeNow++) {
+    for(int nPdfTypeNow=0; nPdfTypeNow<nPdfTypes; nPdfTypeNow++) {
       if(isBinCls && nPdfTypeNow == 0) continue;
 
-      TString pdfAvgName    = getTagPdfAvgName(nPDFnow,(TString)baseTag_v+tagNameV[nPdfTypeNow]);
-      TString pdfAvgErrName = getTagPdfAvgName(nPDFnow,(TString)baseTag_e+tagNameV[nPdfTypeNow]);
-      TString pdfAvgWgtName = getTagPdfAvgName(nPDFnow,(TString)baseTag_w+tagNameV[nPdfTypeNow]);
+      // since the baseTag_PDF_max does not have its own branches for the error and weight, we use
+      // the corresponding values for baseTag_PDF_avg for pdfAvgErrName and pdfAvgWgtName
+      TString pdfAvgName    = getTagPdfAvgName(nPDFnow,(TString)baseTag_v+tagNameV[                        nPdfTypeNow ]);
+      TString pdfAvgErrName = getTagPdfAvgName(nPDFnow,(TString)baseTag_e+tagNameV[ (nPdfTypeNow==2) ? 1 : nPdfTypeNow ]);
+      TString pdfAvgWgtName = getTagPdfAvgName(nPDFnow,(TString)baseTag_w+tagNameV[ (nPdfTypeNow==2) ? 1 : nPdfTypeNow ]);
 
       nameV_MLM_v.push_back(pdfAvgName);    nameV_MLM_e.push_back(pdfAvgErrName);
       nameV_MLM_w.push_back(pdfAvgWgtName); titleV_MLM.push_back((TString)titlePDF+" ("+tagNameV[nPdfTypeNow]+" avg.)"); 
@@ -3234,49 +3250,64 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
 
   // -----------------------------------------------------------------------------------------------------------
   // create a plot of the distribution of the regression target, compared to all of the different solutions
+  // first draw only the various PDF metrics vs the target distribution (nDrawNow<nPDFs), then draw all together
   // -----------------------------------------------------------------------------------------------------------
-  vector <TH1*> hisRegTrgV;
+  for(int nDrawNow=0; nDrawNow<nPDFs+1; nDrawNow++) {
+    TString nDrawNowStr = utils->intToStr(nDrawNow);
+    if(nPDFs == 1 && nDrawNow > 0) continue;
+    
+    vector <TH1*> hisRegTrgV;
+    for(int nTypeMLMnow=0; nTypeMLMnow<2; nTypeMLMnow++) {
+      int nTypeIn = (nTypeMLMnow == 0) ? nMLMsIn : nPDFsIn;
 
-  for(int nTypeMLMnow=0; nTypeMLMnow<2; nTypeMLMnow++) {
-    int nTypeIn = (nTypeMLMnow == 0) ? nMLMsIn : nPDFsIn;
+      for(int nTypeInNow=0; nTypeInNow<nTypeIn; nTypeInNow++) {
+        TString typeName = (nTypeMLMnow == 0) ? nameV_MLM_v[nTypeInNow] : nameV_PDF[nTypeInNow];
 
-    for(int nTypeInNow=0; nTypeInNow<nTypeIn; nTypeInNow++) {
-      TString typeName = (nTypeMLMnow == 0) ? nameV_MLM_v[nTypeInNow] : nameV_PDF[nTypeInNow];
+        if(nDrawNow < nPDFs) {
+          if(nTypeMLMnow == 0) {
+            if(typeName.Contains(baseName_regMLM_avg) && typeName != (TString)baseName_regMLM_avg+nDrawNowStr) continue;
+            if(typeName.Contains(baseName_regPDF_max) && typeName != (TString)baseName_regPDF_max+nDrawNowStr) continue;
+            if(typeName.Contains(baseName_regPDF_avg) && typeName != (TString)baseName_regPDF_avg+nDrawNowStr) continue;
+          }
+          else { if(typeName != (TString)baseName_nPDF+nDrawNowStr) continue; }
+        }
 
-      TH1     * his1(NULL);
-      // int     rebinX     = static_cast<int>(floor(0.1+closHisN/double(nDrawBins_zTrg)));
-      double  binW       = (maxValZ-minValZ)/double(nDrawBins_zTrg);
-      TString yAxisTitle = TString::Format("Entries/%1.2g",binW);
-      // TString yAxisTitle = (TString)"1/N dN/d("+zRegTitle+")";
+        TH1     * his1(NULL);
+        // int     rebinX     = static_cast<int>(floor(0.1+closHisN/double(nDrawBins_zTrg)));
+        double  binW       = (maxValZ-minValZ)/double(nDrawBins_zTrg);
+        TString yAxisTitle = TString::Format("Entries/%1.2g",binW);
+        // TString yAxisTitle = (TString)"1/N dN/d("+zRegTitle+")";
 
-      if((int)hisRegTrgV.size() == 0) {
-        his1 = (TH1F*)his_regTrgZ[typeName][0]->Clone((TString)his_regTrgZ[typeName][0]->GetName()+"_cln");
-        his1->SetTitle(zTrgTitle);
-        his1->GetXaxis()->SetTitle((TString)zTrgTitle+" , "+zRegTitle);
+        if((int)hisRegTrgV.size() == 0) {
+          his1 = (TH1F*)his_regTrgZ[typeName][0]->Clone((TString)his_regTrgZ[typeName][0]->GetName()+"_cln_"+nDrawNowStr);
+          his1->SetTitle(zTrgTitle);
+          his1->GetXaxis()->SetTitle((TString)zTrgTitle+" , "+zRegTitle);
+          his1->GetYaxis()->SetTitle(yAxisTitle);
+          // his1->Rebin(rebinX);
+          hisRegTrgV.push_back(his1);
+        }
+
+        his1 = (TH1F*)his_regTrgZ[typeName][1]->Clone((TString)his_regTrgZ[typeName][1]->GetName()+"_cln_"+nDrawNowStr);
+        his1->GetXaxis()->SetTitle(zRegTitle);
         his1->GetYaxis()->SetTitle(yAxisTitle);
         // his1->Rebin(rebinX);
         hisRegTrgV.push_back(his1);
       }
-
-      his1 = (TH1F*)his_regTrgZ[typeName][1]->Clone((TString)his_regTrgZ[typeName][1]->GetName()+"_cln");
-      his1->GetXaxis()->SetTitle(zRegTitle);
-      his1->GetYaxis()->SetTitle(yAxisTitle);
-      // his1->Rebin(rebinX);
-      hisRegTrgV.push_back(his1);
     }
-  }
 
-  if((int)hisRegTrgV.size() > 0) {
-    outputs->optClear();
-    outputs->draw->NewOptB("multiCnvs"           , true);
-    outputs->draw->NewOptC("drawOpt"             , "e1p");
-    outputs->draw->NewOptC("drawOpt_0"           , "HIST");
-    outputs->draw->NewOptC("maxDrawMark"         , "100");
-    outputs->draw->NewOptB("wideCnvs"            , true);
-    // outputs->draw->NewOptB("doNormIntegralWidth" , true);
-    outputs->draw->NewOptC("axisTitleX"          , hisRegTrgV[0]->GetXaxis()->GetTitle());
-    outputs->draw->NewOptC("axisTitleY"          , hisRegTrgV[0]->GetYaxis()->GetTitle());
-    outputs->drawHis1dV(hisRegTrgV);
+    if((int)hisRegTrgV.size() > 0) {
+      outputs->optClear();
+      outputs->draw->NewOptB("multiCnvs"           , true);
+      outputs->draw->NewOptC("drawOpt"             , "e1p");
+      outputs->draw->NewOptC("drawOpt_0"           , "HIST");
+      outputs->draw->NewOptC("maxDrawMark"         , "100");
+      outputs->draw->NewOptB("wideCnvs"            , true);
+      // outputs->draw->NewOptB("doNormIntegralWidth" , true);
+      outputs->draw->NewOptC("axisTitleX"          , hisRegTrgV[0]->GetXaxis()->GetTitle());
+      outputs->draw->NewOptC("axisTitleY"          , hisRegTrgV[0]->GetYaxis()->GetTitle());
+      outputs->drawHis1dV(hisRegTrgV);
+    }
+    hisRegTrgV.clear();
   }
 
 
@@ -3303,7 +3334,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
   plotVars.clear(); varPlot_binE.clear(); varPlot_binC.clear();
   typeTitleV.clear(); metricNameV.clear(); metricTitleV.clear();
   graphAvg_Xv.clear(); graphAvg_Xe.clear(); graphAvg_Yv.clear(); graphAvg_Ye.clear();
-  mltGrphAvgV.clear(); hisRegTrgV.clear();
+  mltGrphAvgV.clear();
 
   return;
 }

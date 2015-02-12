@@ -1,5 +1,15 @@
 # Changelog
 
+## Master version
+
+- Added `ANNZ_PDF_max`, the most likely value of a PDF (the peak of the PDF), to the outputs regression.
+
+- Fixed compatibility issues with ROOT v6.02.
+
+- Fixed bug in `VarMaps::storeTreeToAscii()`, where variables of type `Long64_t` were treated as `Bool_t` by mistake, causing a crash.
+
+- Other minor modifications.
+
 ## ANNZ 2.0.2 (10/2/2015)
 
 Fixed bug in VarMaps::storeTreeToAscii(), where variables of type `Long64_t` were treated as `Bool_t` by mistake, causing a crash.

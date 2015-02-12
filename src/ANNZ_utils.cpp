@@ -431,12 +431,13 @@ void ANNZ::setTags() {
   int nPDFbins = glob->GetOptI("nPDFbins");
 
   // set the base tag names for the different MLM and PDF components
-  TString baseTag_v      = "_val";    glob->NewOptC("baseTag_v",     baseTag_v);
-  TString baseTag_e      = "_err";    glob->NewOptC("baseTag_e",     baseTag_e);
-  TString baseTag_w      = "_wgt";    glob->NewOptC("baseTag_w",     baseTag_w);
-  TString baseTag_MLM_a  = "_MLM";    glob->NewOptC("baseTag_MLM_a", baseTag_MLM_a);
-  TString baseTag_PDF_a  = "_PDF";    glob->NewOptC("baseTag_PDF_a", baseTag_PDF_a);
-  TString baseTag_errKNN = "_dzTrg";  glob->NewOptC("baseTag_errKNN",baseTag_errKNN);
+  TString baseTag_v      = "_val";    glob->NewOptC("baseTag_v",      baseTag_v);
+  TString baseTag_e      = "_err";    glob->NewOptC("baseTag_e",      baseTag_e);
+  TString baseTag_w      = "_wgt";    glob->NewOptC("baseTag_w",      baseTag_w);
+  TString baseTag_MLM_a  = "_MLM_a";  glob->NewOptC("baseTag_MLM_avg",baseTag_MLM_a);
+  TString baseTag_PDF_a  = "_PDF_a";  glob->NewOptC("baseTag_PDF_avg",baseTag_PDF_a);
+  TString baseTag_PDF_m  = "_PDF_m";  glob->NewOptC("baseTag_PDF_max",baseTag_PDF_m);
+  TString baseTag_errKNN = "_dzTrg";  glob->NewOptC("baseTag_errKNN", baseTag_errKNN);
 
   mlmTagName  .resize(nMLMs); mlmTagErr   .resize(nMLMs); mlmTagErrKNN.resize(nMLMs);
   mlmTagWeight.resize(nMLMs); mlmTagClsVal.resize(nMLMs); mlmTagIndex .resize(nMLMs);
@@ -467,10 +468,11 @@ void ANNZ::setTags() {
       }
 
       // average unweighted and weighted pdf values and corresponding errors
-      for(int nPdfTypeNow=0; nPdfTypeNow<2; nPdfTypeNow++) {
+      for(int nPdfTypeNow=0; nPdfTypeNow<3; nPdfTypeNow++) {
         TString tagName(""), baseName("");
-        if(nPdfTypeNow == 0) { tagName = baseTag_MLM_a; baseName = glob->GetOptC("baseName_regMLM_avg"); } // unweighted average
-        else                 { tagName = baseTag_PDF_a; baseName = glob->GetOptC("baseName_regPDF_avg"); } // full pdf average
+        if     (nPdfTypeNow == 0) { tagName = baseTag_MLM_a; baseName = glob->GetOptC("baseName_regMLM_avg"); } // unweighted average
+        else if(nPdfTypeNow == 1) { tagName = baseTag_PDF_m; baseName = glob->GetOptC("baseName_regPDF_max"); } // peak of pdf
+        else if(nPdfTypeNow == 2) { tagName = baseTag_PDF_a; baseName = glob->GetOptC("baseName_regPDF_avg"); } // full pdf average
 
         pdfAvgNames[nPdfNow][baseTag_v+tagName] = (TString)baseName+utils->intToStr(nPdfNow);
         pdfAvgNames[nPdfNow][baseTag_e+tagName] = (TString)baseName+utils->intToStr(nPdfNow)+baseTag_e;
