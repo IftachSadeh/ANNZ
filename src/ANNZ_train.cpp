@@ -144,6 +144,7 @@ void ANNZ::Train_singleCls() {
 
   TString trainValidStr = (TString)sigBckStr+":SplitMode=Random:"+factoryNorm;
 
+  aLOG(Log::INFO) <<coutCyan<<LINE_FILL('-',100)<<coutDef<<endl;
   aLOG(Log::INFO) <<coutLightBlue<<" - will book ("<<coutYellow<<MLMname<<coutLightBlue<<") method("
                   <<coutYellow<<mlmType<<coutLightBlue<<") with options: "<<coutCyan<<mlmOpt<<coutDef<<endl;
 
@@ -153,6 +154,7 @@ void ANNZ::Train_singleCls() {
   aLOG(Log::INFO) <<coutLightBlue<<"     cuts (valid):       "<<coutCyan<<cutValid                                        <<coutDef<<endl;
   aLOG(Log::INFO) <<coutLightBlue<<"   - weights (train):    "<<coutCyan<<userWgtsM[MLMname+"_train"]                     <<coutDef<<endl;
   aLOG(Log::INFO) <<coutLightBlue<<"     weights (valid):    "<<coutCyan<<userWgtsM[MLMname+"_valid"]                     <<coutDef<<endl;
+  aLOG(Log::INFO) <<coutCyan<<LINE_FILL('-',100)<<coutDef<<endl;
 
   // cuts have already been applied during splitToSigBckTrees(), so leave empty here
   factory->PrepareTrainingAndTestTree((TCut)"",trainValidStr);
@@ -334,6 +336,7 @@ void ANNZ::Train_singleReg() {
   VERIFY(LOCATION,(TString)"Got the following ["+trainValidStr+"] , where all should be larger than "+utils->intToStr(minObjTrainTest)
                           +" ... Something is horribly wrong ?!?!" ,(nTrain >= minObjTrainTest && nValid >= minObjTrainTest));
 
+  aLOG(Log::INFO) <<coutCyan<<LINE_FILL('-',100)<<coutDef<<endl;
   aLOG(Log::INFO) <<coutLightBlue<<" - will book ("<<coutYellow<<MLMname<<coutLightBlue<<") method("
                   <<coutYellow<<mlmType<<coutLightBlue<<") with options: "<<coutCyan<<mlmOpt<<coutDef<<endl;
 
@@ -343,6 +346,7 @@ void ANNZ::Train_singleReg() {
   aLOG(Log::INFO) <<coutLightBlue<<"     cuts (valid):       "<<coutCyan<<cutValid                                        <<coutDef<<endl;
   aLOG(Log::INFO) <<coutLightBlue<<"   - weights (train):    "<<coutCyan<<userWgtsM[MLMname+"_train"]                     <<coutDef<<endl;
   aLOG(Log::INFO) <<coutLightBlue<<"     weights (valid):    "<<coutCyan<<userWgtsM[MLMname+"_valid"]                     <<coutDef<<endl;
+  aLOG(Log::INFO) <<coutCyan<<LINE_FILL('-',100)<<coutDef<<endl;
 
   factory->PrepareTrainingAndTestTree(cutM["_combined"],trainValidStr);
 
@@ -436,6 +440,7 @@ void ANNZ::Train_binnedCls() {
   double   bckShiftMin           = glob->GetOptF("binCls_bckShiftMin");
   double   bckShiftMax           = glob->GetOptF("binCls_bckShiftMax");
   bool     useBckShift           = ((fabs(bckShiftMax - bckShiftMin) < EPS || bckShiftMax > bckShiftMin) && (bckShiftMax > 0 && bckShiftMin > 0));
+  bool     doMultiCls            = glob->GetOptB("doMultiCls");
 
   TString  MLMname               = getTagName(nMLMnow);
   TString  saveFileName          = getKeyWord(MLMname,"trainXML","configSaveFileName");
@@ -488,9 +493,8 @@ void ANNZ::Train_binnedCls() {
   // with makeTreeRegClsOneMLM(), and compute the corresponding value of the separation between signal
   // and background.
   // -----------------------------------------------------------------------------------------------------------
-  TString sigBckStr("");
-  TCut    cutTrain(""), cutValid("");
-  int     nTrain_sig(0), nTrain_bck(0), nValid_sig(0), nValid_bck(0);
+  TCut cutTrain(""), cutValid("");
+  int  nTrain_sig(0), nTrain_bck(0), nValid_sig(0), nValid_bck(0);
 
   for(int nTryNow=0; nTryNow<nTries; nTryNow++) {
     TString nTryName = TString::Format("nTry_%d",nTryNow);
@@ -581,106 +585,181 @@ void ANNZ::Train_binnedCls() {
       nValid_sig = optMap->GetOptI("ANNZ_nValid_sig");
       nValid_bck = optMap->GetOptI("ANNZ_nValid_bck");
 
-      sigBckStr = TString::Format("nTrain_Signal=%d:nTrain_Background=%d:nTest_Signal=%d:nTest_Background=%d"
-                                  ,nTrain_sig,nTrain_bck,nValid_sig,nValid_bck);
+      TString sigBckStr = TString::Format("nTrain_Signal=%d:nTrain_Background=%d:nTest_Signal=%d:nTest_Background=%d",0,0,0,0);
 
       VERIFY(LOCATION,(TString)"Got the following ["+sigBckStr+"] , where all should be larger than "+utils->intToStr(minObjTrainTest)+", and the "
                               +"background samples are expected to be larger than the corresponding  signal samples... Something is horribly wrong ?!?!"
                               ,(nTrain_bck >= nTrain_sig && nValid_bck >= nValid_sig && nTrain_sig >= minObjTrainTest && nValid_sig >= minObjTrainTest));
     }
 
-    double  clsWeight(1.0); // weight for the entire sample
-    factory->AddSignalTree    (chainM["_train_sig"],clsWeight,TMVA::Types::kTraining);
-    factory->AddSignalTree    (chainM["_valid_sig"],clsWeight,TMVA::Types::kTesting );
-    factory->AddBackgroundTree(chainM["_train_bck"],clsWeight,TMVA::Types::kTraining);
-    factory->AddBackgroundTree(chainM["_valid_bck"],clsWeight,TMVA::Types::kTesting );
+    // for nTryNow>0 this is needed for chain->Draw(), as the factory turnes off branches from the chain during training
+    chainM["_train_sig"]->SetBranchStatus("*",1); chainM["_valid_sig"]->SetBranchStatus("*",1);
+    chainM["_train_bck"]->SetBranchStatus("*",1); chainM["_train_bck"]->SetBranchStatus("*",1);
 
     // -----------------------------------------------------------------------------------------------------------
-    // set the sample-weights, including special background cuts (if requested by the user)
+    // log-in the signal/background samples in the factory. include user0defined cuts if needed.
+    // for each sample, set the sum of weights to 1 after all cuts
     // -----------------------------------------------------------------------------------------------------------
-    TString wgt_sig(userWgtsM[MLMname+"_train"]), wgt_bck(userWgtsM[MLMname+"_train"]);    
-    
-    // use bckShiftMax to define cuts (zero weights) for a region of background just around the signal region
-    if(useBckShift) {
-      double  bckShiftVal = bckShiftMin + rnd0->Rndm() * (bckShiftMax - bckShiftMin);
-      TString bckShiftCut = TString::Format( (TString)"("+zTrgName+" <= %f || "+zTrgName+"  > %f)",
-                                              zBinCls_binE[nMLMnow]-bckShiftVal, zBinCls_binE[nMLMnow+1]+bckShiftVal );
-    
-      wgt_bck = (TString)"("+wgt_bck+")*("+bckShiftCut+")";
+    double  clsWeight(1);                                           // weight for the entire sample
+    TCut    bckShiftCut(""), bckSubsetCut(""), fullCut("");         // optional user-defined cuts
+    TString clsWgtExp(userWgtsM[MLMname+"_train"]), fullWgtCut(""); // object-weight expressions
 
-      aLOG(Log::INFO) <<coutPurple<<" - background cut, nTryNow("<<coutGreen<<nTryNow<<coutPurple<<"): "<<coutBlue<<bckShiftCut<<coutDef<<endl;
-    }
-    // only use some percentage of the background
-    if(bckSubsetRange != "") {
-      vector <TString> objRatioV; objRatioV = utils->splitStringByChar(bckSubsetRange,'_');
+    // -----------------------------------------------------------------------------------------------------------
+    // all background objects treated as one sample
+    // -----------------------------------------------------------------------------------------------------------
+    if(!doMultiCls) {
+      // special background cuts (if requested by the user)
+      // -----------------------------------------------------------------------------------------------------------
+      // use bckShiftMax to define cuts (zero weights) for a region of background just around the signal region
+      if(useBckShift) {
+        double bckShiftVal = bckShiftMin + rnd0->Rndm() * (bckShiftMax - bckShiftMin);
+        bckShiftCut = TString::Format( (TString)"("+zTrgName+" <= %f || "+zTrgName+"  > %f)",
+                                       zBinCls_binE[nMLMnow]-bckShiftVal, zBinCls_binE[nMLMnow+1]+bckShiftVal );
       
-      bool isGoodFormat(objRatioV.size() == 3);
-      if(isGoodFormat) isGoodFormat = (objRatioV[0].IsDigit() && objRatioV[1].IsDigit() && objRatioV[2].IsDigit());
-      
-      VERIFY(LOCATION,(TString)"If using binCls_bckSubsetRange, must set format like e.g., \"5_50_90\" (use between 5 and "
-                              +"50 times the number of background objects as signal objects, used 90 percent of the time).",isGoodFormat);
+        aLOG(Log::INFO) <<coutPurple<<" - background cut, nTryNow("<<coutGreen<<nTryNow<<coutPurple<<"): "<<coutBlue<<bckShiftCut<<coutDef<<endl;
+      }
+      // only use some percentage of the background
+      if(bckSubsetRange != "") {
+        vector <TString> objRatioV; objRatioV = utils->splitStringByChar(bckSubsetRange,'_');
+        
+        bool isGoodFormat(objRatioV.size() == 3);
+        if(isGoodFormat) isGoodFormat = (objRatioV[0].IsDigit() && objRatioV[1].IsDigit() && objRatioV[2].IsDigit());
+        
+        VERIFY(LOCATION,(TString)"If using binCls_bckSubsetRange, must set format like e.g., \"5_50_90\" (use between 5 and "
+                                +"50 times the number of background objects as signal objects, used 90 percent of the time).",isGoodFormat);
 
-      // low and high limits on the requested ratio between signal and background
-      int  bckSubsetMin(utils->strToInt(objRatioV[0])), bckSubsetMax(utils->strToInt(objRatioV[1])), useProb(utils->strToInt(objRatioV[2]));
-      VERIFY(LOCATION,(TString)"If using binCls_bckSubsetRange, than for format \"x_y_p\", set (0 < x <= y) and (0 < p <= 100)"
-                               ,(bckSubsetMin <= bckSubsetMax && bckSubsetMin > 0 && objRatioV[2] > 0 && objRatioV[2] <= 100));
+        // low and high limits on the requested ratio between signal and background
+        int  bckSubsetMin(utils->strToInt(objRatioV[0])), bckSubsetMax(utils->strToInt(objRatioV[1])), useProb(utils->strToInt(objRatioV[2]));
+        VERIFY(LOCATION,(TString)"If using binCls_bckSubsetRange, than for format \"x_y_p\", set (0 < x <= y) and (0 < p <= 100)"
+                                 ,(bckSubsetMin <= bckSubsetMax && bckSubsetMin > 0 && objRatioV[2] > 0 && objRatioV[2] <= 100));
 
-      // generate a random ratio within the requested limits (bckSubsetVal) and the baseine ratio for the sample (bckSubsetRatio)
-      int  bckSubsetVal   = static_cast<int>(floor(0.500001 + rnd1->Rndm() * (bckSubsetMax - bckSubsetMin))) + bckSubsetMin;
-      int  bckSubsetRatio = static_cast<int>(ceil(nTrain_bck/double(nTrain_sig)));
+        // generate a random ratio within the requested limits (bckSubsetVal) and the baseine ratio for the sample (bckSubsetRatio)
+        int  bckSubsetVal   = static_cast<int>(floor(0.500001 + rnd1->Rndm() * (bckSubsetMax - bckSubsetMin))) + bckSubsetMin;
+        int  bckSubsetRatio = static_cast<int>(ceil(nTrain_bck/double(nTrain_sig)));
 
-      if(useProb/100. > rnd1->Rndm()) {
-        if(bckSubsetVal < bckSubsetRatio) {
-          // cout << bckSubsetVal <<CT<< bckSubsetRatio <<CT<< (bckSubsetMax - bckSubsetMin) <<CT<<  bckSubsetMin  <<endl;
-          TString bckSubsetCut = (TString)getTrainTestCuts("split",0,bckSubsetVal,bckSubsetRatio);
+        if(useProb/100. > rnd1->Rndm()) {
+          if(bckSubsetVal < bckSubsetRatio) {
+            bckSubsetCut = getTrainTestCuts("split",0,bckSubsetVal,bckSubsetRatio);
 
-          wgt_bck = (TString)"("+wgt_bck+")*("+bckSubsetCut+")";
-
-          aLOG(Log::INFO) <<coutPurple<<" - background cut, nTryNow("<<coutGreen<<nTryNow<<coutPurple<<"): "<<coutYellow<<bckSubsetRange
-                          <<coutPurple<<" -> "<<coutBlue<<bckSubsetCut<<coutDef<<endl;
+            aLOG(Log::INFO) <<coutPurple<<" - background cut, nTryNow("<<coutGreen<<nTryNow<<coutPurple<<"): "<<coutYellow<<bckSubsetRange
+                            <<coutPurple<<" -> "<<coutBlue<<bckSubsetCut<<coutDef<<endl;
+          }
+          else {
+            aLOG(Log::INFO) <<coutPurple<<" - background cut, nTryNow("<<coutGreen<<nTryNow<<coutPurple<<"): "<<coutYellow<<bckSubsetRange
+                            <<coutPurple<<" larger than the ratio [bck/sig = "<<coutYellow<<bckSubsetRatio
+                            <<coutPurple<<"] in the entire sample... No further cut needed."<<coutDef<<endl;
+          }
         }
         else {
-          aLOG(Log::INFO) <<coutPurple<<" - background cut, nTryNow("<<coutGreen<<nTryNow<<coutPurple<<"): "<<coutYellow<<bckSubsetRange
-                          <<coutPurple<<" larger than the ratio [bck/sig = "<<coutYellow<<bckSubsetRatio
-                          <<coutPurple<<"] in the entire sample... No further cut needed."<<coutDef<<endl;
+          aLOG(Log::INFO) <<coutPurple<<" - background cut, nTryNow("<<coutGreen<<nTryNow<<coutPurple<<"): "<<coutRed
+                          <<" will not use cut due to "<<coutGreen<<useProb<<coutRed<<"\% use-limit..."<<coutDef<<endl;
         }
       }
-      else {
-        aLOG(Log::INFO) <<coutPurple<<" - background cut, nTryNow("<<coutGreen<<nTryNow<<coutPurple<<"): "<<coutRed
-                        <<" will not use cut due to "<<coutGreen<<useProb<<coutRed<<"\% use-limit..."<<coutDef<<endl;
-      }
+
+      fullCut    = bckShiftCut + bckSubsetCut;
+      fullWgtCut = utils->cleanWeightExpr((TString)"("+(TString)fullCut+")*("+clsWgtExp+")");
+
+      clsWeight = chainM["_train_sig"]->Draw(zTrgName,clsWgtExp); clsWeight = (clsWeight > 0) ? 1/clsWeight : 0;
+      factory->AddTree(chainM["_train_sig"],"Signal",clsWeight,"",TMVA::Types::kTraining);
+
+      clsWeight = chainM["_valid_sig"]->Draw(zTrgName,clsWgtExp); clsWeight = (clsWeight > 0) ? 1/clsWeight : 0;
+      factory->AddTree(chainM["_valid_sig"],"Signal",clsWeight,"",TMVA::Types::kTesting );
+
+      clsWeight = chainM["_train_bck"]->Draw(zTrgName,fullWgtCut); clsWeight = (clsWeight > 0) ? 1/clsWeight : 0;
+      factory->AddTree(chainM["_train_bck"],"Background",clsWeight,fullCut,TMVA::Types::kTraining);
+
+      clsWeight = chainM["_valid_bck"]->Draw(zTrgName,fullWgtCut); clsWeight = (clsWeight > 0) ? 1/clsWeight : 0;
+      factory->AddTree(chainM["_valid_bck"],"Background",clsWeight,fullCut,TMVA::Types::kTesting );
+
+      factory->SetWeightExpression(clsWgtExp,"Signal");
+      factory->SetWeightExpression(clsWgtExp,"Background");
     }
-    wgt_sig = utils->cleanWeightExpr(wgt_sig); wgt_bck = utils->cleanWeightExpr(wgt_bck);
-    
-    factory->SetWeightExpression(wgt_sig,"Signal");
-    factory->SetWeightExpression(wgt_bck,"Background");
 
-    TString trainValidStr = (TString)sigBckStr+":SplitMode=Random:"+factoryNorm;
+    // -----------------------------------------------------------------------------------------------------------
+    // each classification-bin is treated as an individual background class
+    // -----------------------------------------------------------------------------------------------------------
+    if(doMultiCls) {
+      VERIFY(LOCATION,(TString)"Only the following MLM types are accepted for multiclass: BDT, ANN, FDA and PDEFoam ...",
+                      (mlmType == "BDT" || mlmType == "ANN" || mlmType == "FDA" || mlmType == "PDEFoam"));
 
-    aLOG(Log::INFO) <<coutCyan<<"----------------------------------------------------------------------------------------------------------------"<<coutDef<<endl;
-    aLOG(Log::INFO) <<coutGreen<<" - For try "<<coutYellow<<nTryNow+1<<coutGreen<<"/"<<coutPurple<<nTries<<coutGreen<<" ..."<<coutDef<<endl;
-    aLOG(Log::INFO) <<coutGreen<<"   got input variables:   "<<coutPurple<<inputVariables<<coutDef<<endl;
-    if(inputVarErrors != "") aLOG(Log::INFO) <<coutGreen<<"   got input var' errors: "<<coutPurple<<inputVarErrors<<coutDef<<endl;
+      TCanvas * tmpCnvs  = new TCanvas("tmpCnvs","tmpCnvs");
 
-    aLOG(Log::INFO) <<coutLightBlue<<" - will book ("<<coutYellow<<MLMname<<coutLightBlue<<") method("
-                    <<coutYellow<<mlmType<<coutLightBlue<<") with options: "<<coutCyan<<mlmOpt<<coutDef<<endl;
+      clsWeight = chainM["_train_sig"]->Draw(zTrgName,clsWgtExp); clsWeight = (clsWeight > 0) ? 1/clsWeight : 0;
+      factory->AddTree(chainM["_train_sig"],"Signal",clsWeight,"",TMVA::Types::kTraining);
 
-    aLOG(Log::INFO) <<coutLightBlue<<"   - factory settings:     "<<coutCyan<<trainValidStr                                   <<coutDef<<endl;
-    aLOG(Log::INFO) <<coutLightBlue<<"   - cuts (all):           "<<coutCyan<<cutM["_comn"]              <<coutLightBlue<<" ,"<<coutDef<<endl;
-    aLOG(Log::INFO) <<coutLightBlue<<"     cuts (train):         "<<coutCyan<<cutTrain                   <<coutLightBlue<<" ,"<<coutDef<<endl;
-    aLOG(Log::INFO) <<coutLightBlue<<"     cuts (valid):         "<<coutCyan<<cutValid                                        <<coutDef<<endl;
-    aLOG(Log::INFO) <<coutLightBlue<<"   - weights (signal):     "<<coutCyan<<wgt_sig                    <<coutLightBlue<<" ,"<<coutDef<<endl;
-    aLOG(Log::INFO) <<coutLightBlue<<"     weights (background): "<<coutCyan<<wgt_bck                                         <<coutDef<<endl;
-    aLOG(Log::INFO) <<coutLightBlue<<"   - weights (train):      "<<coutCyan<<userWgtsM[MLMname+"_train"]                     <<coutDef<<endl;
-    aLOG(Log::INFO) <<coutLightBlue<<"     weights (valid):      "<<coutCyan<<userWgtsM[MLMname+"_valid"]                     <<coutDef<<endl;
-    aLOG(Log::INFO) <<coutCyan<<"----------------------------------------------------------------------------------------------------------------"<<coutDef<<endl;
+      clsWeight = chainM["_valid_sig"]->Draw(zTrgName,clsWgtExp); clsWeight = (clsWeight > 0) ? 1/clsWeight : 0;
+      factory->AddTree(chainM["_valid_sig"],"Signal",clsWeight,"",TMVA::Types::kTesting );
+
+      factory->SetWeightExpression(clsWgtExp,"Signal");
+
+      for(int nClsBinNow=0; nClsBinNow<(int)zBinCls_binE.size()-1; nClsBinNow++) {
+        if(nClsBinNow == nMLMnow) continue;
+
+        TString bckName = TString::Format("Background_%d",nClsBinNow);
+        TCut    bckCut  = (TCut)(TString::Format((TString)"("+zTrgName+" > %f && "+zTrgName+" <= %f)",zBinCls_binE[nClsBinNow],zBinCls_binE[nClsBinNow+1]));
+
+        fullWgtCut      = utils->cleanWeightExpr((TString)"("+(TString)bckCut+")*("+clsWgtExp+")");
+
+        // check that the unweighted number of objects is sufficient
+        clsWeight = chainM["_train_bck"]->Draw(zTrgName,bckCut);
+        if(clsWeight < minObjTrainTest) continue;
+
+        clsWeight = chainM["_train_bck"]->Draw(zTrgName,fullWgtCut); clsWeight = (clsWeight > 0) ? 1/clsWeight : 0;
+        factory->AddTree(chainM["_train_bck"],bckName,clsWeight,bckCut,TMVA::Types::kTraining);
+
+        clsWeight = chainM["_valid_bck"]->Draw(zTrgName,fullWgtCut); clsWeight = (clsWeight > 0) ? 1/clsWeight : 0;
+        factory->AddTree(chainM["_valid_bck"],bckName,clsWeight,bckCut,TMVA::Types::kTesting );
+        
+        factory->SetWeightExpression(clsWgtExp,bckName);
+      }
+
+      DELNULL(tmpCnvs);
+
+      // only gradient boosted decision trees have multiclass support
+      if(mlmType == "BDT") {
+        if(mlmOpt.Contains("AdaBoost") || mlmOpt.Contains("Bagging")) {
+          aLOG(Log::WARNING) <<coutRed<<" - In multiclass mode, only gradient boosted decision trees are allowed - replacing"
+                             <<" BoostType \"AdaBoost\" or \"Bagging\" options with \"BoostType=Grad\" ..."<<coutDef<<endl;
+          
+          mlmOpt.ReplaceAll(" ","").ReplaceAll("BoostType=AdaBoost","BoostType=Grad").ReplaceAll("BoostType=Bagging","BoostType=Grad");
+        }
+        else if(!mlmOpt.Contains("BoostType=Grad")) { mlmOpt += ":BoostType=Grad"; }
+      }
+
+      // the CreateMVAPdfs option is not available in multiclass
+      // -> will need to calculate the response->probability relation by hand later using deriveHisClsPrb()
+      mlmOpt.ReplaceAll(glob->GetOptC("pdfStr"),"");
+    }
+
+
+    TString trainValidStr = (TString)":SplitMode=Random:"+factoryNorm;
+
+    aLOG(Log::INFO)   <<coutCyan<<LINE_FILL('-',100)<<coutDef<<endl;
+    aLOG(Log::INFO)   <<coutGreen<<" - For try "<<coutYellow<<nTryNow+1<<coutGreen<<"/"<<coutPurple<<nTries<<coutGreen<<" ..."<<coutDef<<endl;
+    aLOG(Log::INFO)   <<coutGreen<<"   got input variables:   "<<coutPurple<<inputVariables<<coutDef<<endl;
+    if(inputVarErrors != "") {
+      aLOG(Log::INFO) <<coutGreen<<"   got input var' errors: "<<coutPurple<<inputVarErrors<<coutDef<<endl;
+    }
+    aLOG(Log::INFO)   <<coutLightBlue<<" - will book ("<<coutYellow<<MLMname<<coutLightBlue<<") method("
+                      <<coutYellow<<mlmType<<coutLightBlue<<") with options: "<<coutCyan<<mlmOpt<<coutDef<<endl;
+
+    aLOG(Log::INFO)   <<coutLightBlue<<"   - factory settings:     "<<coutCyan<<trainValidStr              <<coutDef<<endl;
+    aLOG(Log::INFO)   <<coutLightBlue<<"   - cuts (all):           "<<coutCyan<<cutM["_comn"]              <<coutDef<<endl;
+    aLOG(Log::INFO)   <<coutLightBlue<<"     cuts (train):         "<<coutCyan<<cutTrain                   <<coutDef<<endl;
+    aLOG(Log::INFO)   <<coutLightBlue<<"     cuts (valid):         "<<coutCyan<<cutValid                   <<coutDef<<endl;
+    if(!doMultiCls) {
+      aLOG(Log::INFO) <<coutLightBlue<<"     cuts (background):    "<<coutCyan<<fullCut                    <<coutDef<<endl;
+    }
+    aLOG(Log::INFO)   <<coutLightBlue<<"   - weights (train):      "<<coutCyan<<userWgtsM[MLMname+"_train"]<<coutDef<<endl;
+    aLOG(Log::INFO)   <<coutLightBlue<<"     weights (valid):      "<<coutCyan<<userWgtsM[MLMname+"_valid"]<<coutDef<<endl;
+    aLOG(Log::INFO)   <<coutCyan<<LINE_FILL('-',100)<<coutDef<<endl;
 
     // cuts have already been applied during splitToSigBckTrees(), so leave empty here
     factory->PrepareTrainingAndTestTree((TCut)"",trainValidStr);
 
     TMVA::Types::EMVA typeNow = getTypeMLMbyName(mlmType);
     factory->BookMethod(typeNow,MLMname,mlmOpt+glob->GetOptC("trainFlagsMLM")); typeMLM[nMLMnow] = typeNow;
-    
+
     // -----------------------------------------------------------------------------------------------------------
     // train the factory  
     // -----------------------------------------------------------------------------------------------------------
@@ -835,6 +914,7 @@ void ANNZ::Train_binnedCls() {
   return;
 }
 
+
 // ===========================================================================================================
 /**
  * @brief              - Generate randomized MLM training options
@@ -929,7 +1009,7 @@ void ANNZ::generateOptsMLM(OptMaps * optMap, TString userMLMopts) {
       if(rndAr[2] < 0.5) varTrans += "P";
       varTrans.ReplaceAll("NP","N,P"); if(varTrans != "") varTrans = (TString)":VarTransform="+varTrans;
 
-      int     nTreesAdd = floor(rndAr[3]*300/10.) * 10; if(rndAr[10] < 0.2) nTreesAdd *= 3; nTreesAdd = min(nTreesAdd,800);
+      int     nTreesAdd = floor(rndAr[3]*300/10.) * 10; if(rndAr[10] < 0.2) nTreesAdd *= 3; nTreesAdd = min(nTreesAdd,800); nTreesAdd += 250;
       TString nTrees    = TString::Format(":NTrees=%d", 50+max(0,nTreesAdd) );
 
       TString boostType(":BoostType=");

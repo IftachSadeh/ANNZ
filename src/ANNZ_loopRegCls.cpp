@@ -427,7 +427,7 @@ void  ANNZ::makeTreeRegClsAllMLM() {
 /**
  * @brief          - Create a "postTrain" tree for a given MLM, which includes the result of the MLM estimator.
  *
- * @param nMLMnow  - The index of the primary MLM.
+ * @param nMLMnow  - The index of the MLM.
  */
 // ===========================================================================================================
 void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
@@ -441,7 +441,8 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
   TString testValidType     = glob->GetOptC("testValidType");
   UInt_t  seed              = glob->GetOptI("initSeedRnd"); if(seed > 0) seed += 58606;
   bool    separateTestValid = glob->GetOptB("separateTestValid");
-  bool    isCls             = glob->GetOptB("doClassification") || glob->GetOptB("doBinnedCls");
+  bool    isBinCls          = glob->GetOptB("doBinnedCls");
+  bool    isCls             = glob->GetOptB("doClassification") || isBinCls;
   bool    needBinClsErr     = glob->GetOptB("needBinClsErr");
   int     nMLMs             = glob->GetOptI("nMLMs");
 
@@ -474,8 +475,13 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
     TString    MLMname  = getTagName(nMLMnow0);
     mlmSkipNow[MLMname] = (nMLMnow0 != nMLMnow);
   }
-  loadReaders(mlmSkipNow);
+  loadReaders(mlmSkipNow,false);
   mlmSkipNow.clear();
+
+  // -----------------------------------------------------------------------------------------------------------  
+  // for multiClass, must create the probability histogram by hand
+  // -----------------------------------------------------------------------------------------------------------  
+  if(isBinCls || anlysTypes[nMLMnow] == TMVA::Types::kMulticlass) deriveHisClsPrb(nMLMnow);
 
   // -----------------------------------------------------------------------------------------------------------  
   // create trees from the _train dataset which contain the input for the KNN error estimator (this is done
@@ -622,14 +628,14 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
 
       // fill the output tree
       if(isCls) {
-        double  clasVal = getReader(var_0,ANNZ_readType::CLS,true ,nMLMnow);
-        double  clsPrb  = getReader(var_0,ANNZ_readType::PRB,false,nMLMnow);
-        double  clsWgt  = var_0->GetForm(MLMname_w) * (passCuts?1:0);
+        double  clsVal = getReader(var_0,ANNZ_readType::CLS,true ,nMLMnow);
+        double  clsPrb = getReader(var_0,ANNZ_readType::PRB,false,nMLMnow);
+        double  clsWgt = var_0->GetForm(MLMname_w) * (passCuts?1:0);
 
         // sanity check that weights are properly defined
         if(clsWgt < 0) { var_0->printVars(); VERIFY(LOCATION,(TString)"Weights can only be >= 0 ... Something is horribly wrong ?!?",false); }
 
-        var_1->SetVarF(MLMname_v,clasVal); var_1->SetVarF(MLMname,clsPrb); var_1->SetVarF(MLMname_w,clsWgt);
+        var_1->SetVarF(MLMname_v,clsVal); var_1->SetVarF(MLMname,clsPrb); var_1->SetVarF(MLMname_w,clsWgt);
       }
       else {
         double  regVal  = getReader(var_0,ANNZ_readType::REG,true ,nMLMnow);
@@ -678,21 +684,39 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
       TChain * aChainOut = new TChain(inTreeName,inTreeName); aChainOut->SetDirectory(0); aChainOut->Add(outFileName); 
       aLOG(Log::DEBUG) <<coutRed<<" - added chain "<<coutGreen<<inTreeName<<"("<<aChainOut->GetEntries()<<")"<<" from "<<coutBlue<<outFileName<<coutDef<<endl;
 
-      TH1 * his1_sig(NULL), * his1_bck(NULL);
+      TCanvas * tmpCnvs = new TCanvas("tmpCnvs","tmpCnvs");
+      TH1     * his1_sig(NULL), * his1_bck(NULL), * his_all(NULL);
       for(int nSigBckNow=0; nSigBckNow<2; nSigBckNow++) {
         TString sigBckName = (TString)((nSigBckNow == 0) ? "_sig" : "_bck");
         TString sigBckCut  = (TString)((nSigBckNow == 0) ? ">0.5" : "<0.5");
-        
+
+        // get common limits for the entire sample (net necessarily between zero and one if [useBinClsPrior==true])
+        if(nSigBckNow == 0) {
+          TString hisName    = (TString)"sepHis"+"_all";
+          TString drawExprs  = (TString)MLMname+">>"+hisName;
+          
+          TString trainCut   = (TString)var_0->getTreeCuts("_train");
+          TString cutExprs   = (TString)"("+MLMname_w+" > 0)";
+          if(trainCut != "") cutExprs += (TString)" && ("+trainCut+")";
+          
+          int     nEvtPass   = aChainOut->Draw(drawExprs,cutExprs);
+          if(nEvtPass > 0) his_all = (TH1F*)gDirectory->Get(hisName);
+        }
+        if(!his_all) continue;
+
+        int    nBins = 100;
+        double binL  = his_all->GetXaxis()->GetBinLowEdge(his_all->GetXaxis()->GetFirst());
+        double binH  = his_all->GetXaxis()->GetBinUpEdge (his_all->GetXaxis()->GetLast() );
+
         TString hisName    = (TString)"sepHis"+sigBckName;
-        TH1     * his1_sb  = new TH1F(hisName,hisName,100,0,1); 
+        TH1     * his1_sb  = new TH1F(hisName,hisName,nBins,binL,binH); 
         TString drawExprs  = (TString)MLMname+">>+"+hisName;
 
         TString trainCut   = (TString)var_0->getTreeCuts("_train");
         TString cutExprs   = (TString)"("+MLMname_w+" > 0) && ("+isSigName+sigBckCut+")";
         if(trainCut != "") cutExprs += (TString)" && ("+trainCut+")";
 
-        TCanvas * tmpCnvs  = new TCanvas("tmpCnvs","tmpCnvs");
-        int     nEvtPass   = aChainOut->Draw(drawExprs,cutExprs); DELNULL(tmpCnvs);
+        int     nEvtPass   = aChainOut->Draw(drawExprs,cutExprs);
 
         if(nEvtPass > 0) {
           his1_sb->SetDirectory(0); // allowed only after the chain fills the histogram
@@ -701,6 +725,7 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
         }
         else DELNULL(his1_sb);
       }
+      DELNULL(tmpCnvs); DELNULL(his_all);
 
       if(his1_sig && his1_bck) {
         separation = getSeparation(his1_sig,his1_bck);
@@ -821,6 +846,7 @@ double ANNZ::getSeparation(TH1 * hisSig, TH1 * hisBck) {
   else {
     sbSepFracPdf = TMVA::gTools().GetSeparation(hisSig,hisBck); sbSepFracPdf = max(min(sbSepFracPdf,1.),0.);
   }
+  // TFile * outf = new TFile("out.root","RECREATE"); hisSig->Write(); hisBck->Write(); DELNULL(outf);
 
   if(normHis) {
     DELNULL(hisSig); DELNULL(hisBck); 
@@ -828,6 +854,195 @@ double ANNZ::getSeparation(TH1 * hisSig, TH1 * hisBck) {
 
   return sbSepFracPdf;
 }
+
+
+// ===========================================================================================================
+/**
+ * @brief          - Create a histogram with the classification responce to classification probability relation.
+ *
+ * @details        - This is needed for Multiclass analyses, where the corresponding PDF for the classification
+ *                 response is not internally computed. (The option, ":CreateMVAPdfs", is not valid for Multiclass.)
+ *                 - It is also used for binn-classification in general. We calculate the classification probability
+ *                 in each classification-bin by hand. This allows us to impose a "prior" on the probability
+ *                 distribution, based on the full distribution of the target variable in the training sample.
+ *
+ * @param nMLMnow  - The index of the MLM.
+ */
+// ===========================================================================================================
+void ANNZ::deriveHisClsPrb(int nMLMnow) {
+// ======================================
+  aLOG(Log::DEBUG) <<coutWhiteOnBlack<<coutGreen<<" - starting ANNZ::deriveHisClsPrb("<<coutPurple<<getTagName(nMLMnow)
+                   <<coutGreen<<") - will create cls->prb histogrma ... "<<coutDef<<endl;
+
+  int     bufSize        = glob->GetOptI("hisBufSize");
+  int     nBinsHis       = glob->GetOptI("nTMVApdfBins");
+  bool    isBinCls       = glob->GetOptB("doBinnedCls");
+  bool    useBinClsPrior = glob->GetOptB("useBinClsPrior");
+  TString MLMname        = getTagName(nMLMnow);
+  TString MLMname_w      = getTagWeight(nMLMnow);
+  TString hisPrbName     = getKeyWord(MLMname,"postTrain","hisClsPrbHis");
+  TString baseCutsName   = (TString)"_comn"+";"+MLMname+"_train";
+
+  VarMaps * var_0 = new VarMaps(glob,utils,"treeSigBck");
+
+  TString inTreeName = (TString)glob->GetOptC("treeName")+"_train";
+  TString inFileName = (TString)glob->GetOptC("inputTreeDirName")+inTreeName+"*.root";
+
+  // prepare the chain and input variables
+  TChain * aChain = new TChain(inTreeName,inTreeName); aChain->SetDirectory(0); aChain->Add(inFileName); 
+  aLOG(Log::DEBUG) <<coutRed<<" - added chain "<<coutGreen<<inTreeName<<"("<<aChain->GetEntries()<<")"<<" from "<<coutBlue<<inFileName<<coutDef<<endl;
+
+  // setup cuts for the vars we loop on for sig/bck determination
+  setMethodCuts(var_0,nMLMnow);
+
+  // override signal cuts, just in case...
+  TCut sigCuts = (userCutsM["_sig"] != "") ? userCutsM["_sig"] : userCutsM[MLMname+"_sig"];
+  VERIFY(LOCATION,(TString)"Could not determine the signal-cut ... Something is horribly wrong !!!",(sigCuts != ""));
+
+  var_0->setTreeCuts("_sig",sigCuts);
+
+  // create MLM-weight formulae for the input variables
+  var_0->NewForm(MLMname_w,userWgtsM[MLMname+"_train"]);
+
+  var_0->connectTreeBranchesForm(aChain,&readerInptV);
+
+  // create signla/background histograms
+  TString               hisName("");
+  vector < TMVA::PDF* > pdfV(2);
+  map < TString, TH1* > hisM;
+
+  hisName = "sig_0"; hisM[hisName] = new TH1F(hisName,hisName,nBinsHis,1,-1); hisM[hisName]->SetDefaultBufferSize(bufSize); hisM[hisName]->SetDirectory(0);
+  hisName = "bck_0"; hisM[hisName] = (TH1*)hisM["sig_0"]->Clone(hisName);     hisM[hisName]->SetDefaultBufferSize(bufSize); hisM[hisName]->SetDirectory(0);
+
+  // -----------------------------------------------------------------------------------------------------------
+  // loop over the tree
+  // -----------------------------------------------------------------------------------------------------------
+  bool  breakLoop(false);
+  int   nObjectsToPrint(glob->GetOptI("nObjectsToPrint"));
+  var_0->clearCntr();
+  for(Long64_t loopEntry=0; true; loopEntry++) {
+    if(!var_0->getTreeEntry(loopEntry)) breakLoop = true;
+
+    if((var_0->GetCntr("nObj") % nObjectsToPrint == 0 && var_0->GetCntr("nObj") > 0) || breakLoop) { var_0->printCntr(inTreeName,Log::DEBUG); }
+    if(breakLoop) break;
+
+    bool   passCuts = !var_0->hasFailedTreeCuts(baseCutsName);
+    bool   isSig    = !var_0->hasFailedTreeCuts("_sig");
+    double clsVal   = getReader(var_0,ANNZ_readType::CLS,true,nMLMnow);
+    double clsWgt   = var_0->GetForm(MLMname_w) * (passCuts?1:0);
+
+    if(isSig) hisM["sig_0"]->Fill(clsVal,clsWgt);
+    else      hisM["bck_0"]->Fill(clsVal,clsWgt);
+
+    var_0->IncCntr("nObj");
+  }
+  if(!breakLoop) { var_0->printCntr(inTreeName,Log::DEBUG); }
+
+  DELNULL(var_0); DELNULL(aChain);
+
+
+  // -----------------------------------------------------------------------------------------------------------
+  // create new histograms for sig/bck with shared ranges. use these to derive the corresponding sig/bck PDFs
+  // -----------------------------------------------------------------------------------------------------------
+  hisM["sig_0"]->BufferEmpty(); hisM["bck_0"]->BufferEmpty();
+
+  double min_sig = hisM["sig_0"]->GetXaxis()->GetBinLowEdge(hisM["sig_0"]->GetXaxis()->GetFirst());
+  double min_bck = hisM["bck_0"]->GetXaxis()->GetBinLowEdge(hisM["bck_0"]->GetXaxis()->GetFirst());
+  double max_sig = hisM["sig_0"]->GetXaxis()->GetBinUpEdge (hisM["sig_0"]->GetXaxis()->GetLast());
+  double max_bck = hisM["bck_0"]->GetXaxis()->GetBinUpEdge (hisM["bck_0"]->GetXaxis()->GetLast());
+  double min_prb = min(min_sig,min_bck);
+  double max_prb = max(max_sig,max_bck);
+
+  hisName = "sig_1"; hisM[hisName] = new TH1F(hisName,hisName,nBinsHis,min_prb,max_prb); hisM[hisName]->SetDirectory(0);
+  hisName = "bck_1"; hisM[hisName] = new TH1F(hisName,hisName,nBinsHis,min_prb,max_prb); hisM[hisName]->SetDirectory(0);
+
+  double intgrSigBck[3];
+  for(int nHisNow=0; nHisNow<2; nHisNow++) {
+    TString tag_0 = (nHisNow == 0) ? "sig_0" : "bck_0";
+    TString tag_1 = (nHisNow == 0) ? "sig_1" : "bck_1";
+
+    for(int nBinNow=1; nBinNow<nBinsHis+1; nBinNow++) {
+      double pos   = hisM[tag_0]->GetBinCenter(nBinNow);
+      double val   = hisM[tag_0]->GetBinContent(nBinNow);
+      double err0  = hisM[tag_0]->GetBinError(nBinNow);
+      int    nBin1 = hisM[tag_1]->GetXaxis()->FindBin(pos);
+      double err1  = hisM[tag_1]->GetBinError(nBin1);
+      
+      double nObj  = ((err0 > 0) ? pow(err0,2) : 0) + ((err1 > 0) ? pow(err1,2) : 0);
+      double err01 =  (nObj > 0) ? sqrt(nObj)  : 0;
+
+      hisM[tag_1]->Fill(pos,val);
+      hisM[tag_1]->SetBinError(nBin1,err01);
+    }
+
+    double intgr = hisM[tag_1]->Integral();  VERIFY(LOCATION,(TString)"Got empty "+tag_1+" histogram ... Something is horribly wrong ?!?", (intgr > 0));
+    hisM[tag_1]->Scale(1/intgr);             intgrSigBck[nHisNow] = intgr;
+  }
+  intgrSigBck[2] = intgrSigBck[0] / (intgrSigBck[0] + intgrSigBck[1]);
+
+
+  for(int nPdfType=0; nPdfType<2; nPdfType++) {
+    TString sigBckName = (TString)( (nPdfType == 0) ? "sig_1" : "bck_1" );
+    TString pdfPrbName = (TString)glob->GetOptC("pdfMcName")+"_"+sigBckName;
+    TString pdfPrbOpt  = (TString)glob->GetOptC("pdfMcStr");  pdfPrbOpt.ReplaceAll(glob->GetOptC("pdfMcName"),pdfPrbName);
+
+    pdfV[nPdfType] = new TMVA::PDF(pdfPrbName, pdfPrbOpt, pdfPrbName);
+    pdfV[nPdfType]->DeclareOptions();  pdfV[nPdfType]->ParseOptions();  pdfV[nPdfType]->ProcessOptions();
+    pdfV[nPdfType]->BuildPDF(hisM[sigBckName]);
+  }
+
+  // -----------------------------------------------------------------------------------------------------------
+  // create and fill the histogram with the probability, derived from the ration of sig/bck
+  // -----------------------------------------------------------------------------------------------------------
+  hisM[hisPrbName] = new TH1F(hisPrbName,hisPrbName,nBinsHis,min_prb,max_prb); hisM[hisPrbName]->SetDirectory(0);
+
+  for(int nBinNow=1; nBinNow<nBinsHis+1; nBinNow++) {
+    double pos = hisM[hisPrbName]->GetBinCenter(nBinNow);
+    double sig = pdfV[0]->GetVal(pos);
+    double bck = pdfV[1]->GetVal(pos);
+    double prb = 1;
+
+    // -----------------------------------------------------------------------------------------------------------
+    // the usual calculation of the probability, scaled by the sizes of the signal and the background samples
+    // -----------------------------------------------------------------------------------------------------------
+    if(!isBinCls)           { sig *= intgrSigBck[2]; bck *= (1 - intgrSigBck[2]); }
+    // -----------------------------------------------------------------------------------------------------------
+    // impose a "prior" on the complete probability distribution, based on the distribution of the
+    // target-variable in the training sample -> scalle the probability by the number of signal objects in
+    // each classification bin, relative to the entire sample
+    // -----------------------------------------------------------------------------------------------------------
+    else if(useBinClsPrior) { prb  = intgrSigBck[2];                              }
+    // -----------------------------------------------------------------------------------------------------------
+
+    prb *= (sig < EPS) ? 0 : sig / (sig + bck);
+
+    hisM[hisPrbName]->SetBinContent(nBinNow,prb);
+  }
+
+  // save a local copy for later use
+  hisClsPrbV[nMLMnow] = (TH1*)hisM[hisPrbName]->Clone((TString)hisPrbName+"_cln"); hisClsPrbV[nMLMnow]->SetDirectory(0);
+
+  // store the probability histogram to file
+  TString hisClsPrbFileName = getKeyWord(MLMname,"postTrain","hisClsPrbFile");
+  TFile   * hisClsPrbFile   = new TFile(hisClsPrbFileName,"RECREATE");
+  
+  hisM["sig_1"]   ->Write(MLMname+"_sig");
+  hisM["bck_1"]   ->Write(MLMname+"_bck");
+  hisM[hisPrbName]->Write(hisPrbName); 
+  
+  hisClsPrbFile->Close(); DELNULL(hisClsPrbFile);
+  
+  aLOG(Log::DEBUG) <<coutYellow<<" - created file with his(cls->prb): "<<coutBlue<<hisClsPrbFileName<<coutDef<<endl;
+
+  // cleanup
+  DELNULL(hisM["sig_0"]); DELNULL(hisM["bck_0"]); DELNULL(pdfV[0]); DELNULL(pdfV[1]);
+  hisM.clear(); pdfV.clear();
+
+  aLOG(Log::DEBUG) <<coutGreen<<" - finished ANNZ::deriveHisClsPrb()"<<coutDef<<endl;
+
+  return;
+}
+
 
 // ===========================================================================================================
 /**

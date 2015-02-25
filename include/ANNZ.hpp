@@ -109,7 +109,7 @@ private:
   void              prepFactory(int nMLMnow = -1, TMVA::Factory * factory = NULL);
   void              doFactoryTrain(TMVA::Factory * factory);
   void              clearReaders(Log::LOGtypes logLevel = Log::DEBUG_1);
-  void              loadReaders(map <TString,bool> & mlmSkipNow);
+  void              loadReaders(map <TString,bool> & mlmSkipNow, bool needMcPRB = true);
   double            getReader(VarMaps * var = NULL, ANNZ_readType readType = ANNZ_readType::NUN, bool forceUpdate = false, int nMLMnow = -1);
   void              setupTypesTMVA();
   TMVA::Types::EMVA getTypeMLMbyName(TString typeName);
@@ -133,6 +133,7 @@ private:
   void     makeTreeRegClsAllMLM();
   void     makeTreeRegClsOneMLM(int nMLMnow = -1);
   double   getSeparation(TH1 * hisSig, TH1 * hisBck);
+  void     deriveHisClsPrb(int nMLMnow = -1);
   TChain   * mergeTreeFriends(TChain * aChain = NULL, TChain * aChainFriend = NULL, vector<TString> * chainFriendFileNameV = NULL,
                               vector <TString> * acceptV = NULL, vector <TString> * rejectV = NULL, TCut aCut = "");
   void     verifyIndicesMLM(TChain * aChain = NULL);
@@ -173,9 +174,11 @@ private:
   vector < pair<TString,Float_t> >      readerInptV;
   vector < vector<int> >                readerInptIndexV;
   vector < TMVA::Reader* >              regReaders;
+  vector < TMVA::Types::EAnalysisType > anlysTypes;
   vector < TMVA::Types::EMVA >          typeMLM, allANNZtypes;
   map    < TMVA::Types::EMVA,TString >  typeToNameMLM;
   map    < TString,TMVA::Types::EMVA >  nameToTypeMLM;
+  vector < TH1* >                       hisClsPrbV;
 
 };
 #endif  // #define ANNZ_h

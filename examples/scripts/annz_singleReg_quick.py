@@ -32,12 +32,12 @@ glob.annz["nMLMs"]      = 1
 # zTrg            - the name of the target variable of the regression
 # minValZ,maxValZ - the minimal and maximal values of the target variable (zTrg)
 glob.annz["zTrg"]       = "Z"
-glob.annz["minValZ"]    = 0.05
+glob.annz["minValZ"]    = 0.0
 glob.annz["maxValZ"]    = 0.8
 
 # set the number of near-neighbours used to compute the KNN error estimator
 # (should be around 100 - set here to a very low number just to speed the example up... !)
-glob.annz["nErrKNN"]    = 20
+glob.annz["nErrKNN"]    = 50
 
 # --------------------------------------------------------------------------------------------------
 # pre-processing of the input dataset

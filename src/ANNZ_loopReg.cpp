@@ -2191,13 +2191,13 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
               TString MLMname   = getTagName(nMLMnow);  if(mlmSkipDivded[MLMname]) continue;
               TString MLMname_e = getTagError(nMLMnow); TString MLMname_w = getTagWeight(nMLMnow);
 
-              double clsVal     = getReader(var_0,ANNZ_readType::PRB,true,nMLMnow);
+              double clsPrb     = getReader(var_0,ANNZ_readType::PRB,true,nMLMnow);
               double clsWgt     = var_0->GetForm(MLMname_w);
 
               // sanity check that weights are properly defined
               if(clsWgt < 0) { var_0->printVars(); VERIFY(LOCATION,(TString)"Weights can only be >= 0 ... Something is horribly wrong ?!?",false); }
 
-              var_1->SetVarF(MLMname,clsVal); var_1->SetVarF(MLMname_w,clsWgt);
+              var_1->SetVarF(MLMname,clsPrb); var_1->SetVarF(MLMname_w,clsWgt);
 
               if(hasErrs) {
                 double  clsErr  = -1; 

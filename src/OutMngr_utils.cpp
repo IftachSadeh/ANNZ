@@ -87,11 +87,13 @@ void OutMngr::WriteOutObjects(bool writePdfScripts, bool dontWriteHis) {
 
   if(writePdfScripts) {
     TString outDirNamePlot = (TString)outDirName+"plots/";
+    if(outDirNamePlot.BeginsWith("./")) outDirNamePlot = outDirNamePlot(2,outDirNamePlot.Length());
+
     utils->exeShellCmndOutput((TString)"mkdir -p "+outDirNamePlot,false,true);
     aLOG(Log::INFO) << coutCyan<<" - Writing to plotting directory "<<coutPurple<<outDirNamePlot<<coutDef<<endl;
 
-    outputRootFileName = (TString)outDirNamePlot+outFileName+"_TMP.root";
-    OutputRootFile     = new TFile(outputRootFileName,"RECREATE");
+    // outputRootFileName = (TString)outDirNamePlot+outFileName+"_plots.root";
+    // OutputRootFile     = new TFile(outputRootFileName,"RECREATE");
 
     TString printPlotExtension(glob->GetOptC("printPlotExtension"));
     vector <TString> eraseKeys;
@@ -101,12 +103,20 @@ void OutMngr::WriteOutObjects(bool writePdfScripts, bool dontWriteHis) {
     for(int hisNow = 0; hisNow < numHis; hisNow++ , ++CanvasMapItr) {
       TString hisName = (TString)(*CanvasMapItr).first;
 
-      // the order matters for some reason...  cnvs->Write() , cnvs->Print(name,"pdf") , cnvs->SaveAs(name+".C")
       if(dynamic_cast<TCanvas*>(CanvasMap[hisName])) {
-        CanvasMap[hisName]->Write();
-        CanvasMap[hisName]->Print((TString)outDirNamePlot+hisName+".C");
-        if(printPlotExtension != "")
-          CanvasMap[hisName]->SaveAs((TString)outDirNamePlot+hisName+"."+printPlotExtension);
+        // CanvasMap[hisName]->Write();
+
+        TString printName = outDirNamePlot+hisName;
+        TString printFile = (TString)printName+".C";
+        CanvasMap[hisName]->Print(printFile);
+
+        // fix a bug in root, where the given function name in the macro includes the full path
+        TString tmpFile   = (TString)printFile+"_tmp";
+        TString fixCmnd   = printName; fixCmnd.ReplaceAll("/","\\/");
+        fixCmnd = (TString)"sed -e 's/"+fixCmnd+"/"+hisName+"/g' < "+printFile+" > "+tmpFile+" ; mv "+tmpFile+" "+printFile;
+        utils->exeShellCmndOutput(fixCmnd);
+        
+        if(printPlotExtension != "") CanvasMap[hisName]->SaveAs((TString)outDirNamePlot+hisName+"."+printPlotExtension);
     
         eraseKeys.push_back(hisName);
       }
@@ -115,8 +125,7 @@ void OutMngr::WriteOutObjects(bool writePdfScripts, bool dontWriteHis) {
     for(int eraseKeyNow=0; eraseKeyNow<int(eraseKeys.size()); eraseKeyNow++) CanvasMap.erase(eraseKeys[eraseKeyNow]);
     eraseKeys.clear();
 
-    OutputRootFile->Close();  DELNULL(OutputRootFile);
-    utils->exeShellCmndOutput((TString)"rm -rf "+outputRootFileName);
+    // OutputRootFile->Close();  DELNULL(OutputRootFile); // utils->exeShellCmndOutput((TString)"rm -rf "+outputRootFileName);
   }
 
   if(dontWriteHis) return;

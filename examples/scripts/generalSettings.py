@@ -120,7 +120,7 @@ def genRndOpts(aSeed):
 
     nTreeFact = 3 if(rndAr[1] < 0.2) else 1
     nTreesAdd = int(floor(rndAr[2]*300/10.) * 10) * nTreeFact
-    nTrees    = ":NTrees="+str(int(50+max(0,min(nTreesAdd,800))))
+    nTrees    = ":NTrees="+str(int(250+max(0,min(nTreesAdd,800))))
 
     boostType = ":BoostType="
     if  (rndAr[3] < 0.4): boostType += "Bagging";

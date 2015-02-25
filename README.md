@@ -1,4 +1,4 @@
-# ANNZ 2.0.2
+# ANNZ 2.0.3
 
 ## Introduction
 ANNZ uses both regression and classification techniques for estimation of single-value photo-z (or any regression problem) solutions and PDFs. In addition it is suitable for classification problems, such as star/galaxy classification.
@@ -265,6 +265,23 @@ The `scripts/generalSettings.py` script includes the following two functions:
 
 The syntax for defining MLM options is explained in the [TMVA wiki](http://tmva.sourceforge.net/optionRef.html) and in the [TMVA manuall](http://tmva.sourceforge.net/docu/TMVAUsersGuide.pdf) (in the chapter, *The TMVA Methods*). It may be specified by the user with the `glob.annz["userMLMopts"]` variable. The only requirement not defined nominally in TMVA is `ANNZ_MLM`. This is an internal variable in ANNZ which specifies the type of MLM requested by the user. 
 
+The following is the list of all available MLM algorithms:
+
+  - **`CUTS`:** Rectangular cut optimization.
+  - **`Likelihood`:** Projective likelihood estimator (PDE approach).
+  - **`PDERS`:** Multidimensional likelihood estimator (PDE range-search approach).
+  - **`PDEFoam`:** Likelihood estimator using self-adapting phase-space binning.
+  - **`KNN`:** k-Nearest Neighbors.
+  - **`HMatrix`:** H-Matrix discriminant.
+  - **`Fisher`:** Fisher discriminants (linear discriminant analysis).
+  - **`LD`:** Linear discriminant analysis.
+  - **`FDA`:** Function discriminant analysis.
+  - **`ANN`:** Artificial neural networks (nonlinear discriminant analysis) using an MLP neural network (recommended type of neural network). Also available are the Clermont-Ferrand neural network (**`CFMlpANN`**) and the original ROOT implementation  of a neural network (**`TMlpANN`**).
+  - **`SVM`:** Support vector machine.
+  - **`BDT`:** Boosted decision and regression trees.
+  - **`RuleFit`:** Predictive learning via rule ensembles.
+
+
 Here are a couple of examples:
 
   - For instance we can define a BDT with 110 decision trees, using the AdaBoost (adaptive boost) algorithm:
@@ -311,7 +328,7 @@ We define the following name-tags:
   
   5. **ANNZ PDF 0 (`PDF_0_*`)**: The full PDF solution.
   
-  6. **`ANNZ_MLM_avg_1`, `ANNZ_PDF_max_1` and `PDF_1_*`**: The corresponding estimators for the second PDF.
+  6. **`ANNZ_MLM_avg_1`, `ANNZ_PDF_avg_1`, `ANNZ_PDF_max_1` and `PDF_1_*`**: The corresponding estimators for the second PDF.
 
 #### Optimization
 
@@ -450,6 +467,7 @@ A few notes:
       ```
     will insure that any MLM which has scatter higher than `0.04` will not be included in the PDF.
 
+  - **`doMultiCls`:** Using the *MultiClass* option of binned classification, multiple background samples can be trained simultaneously against the signal. This means that each classification bin acts as an independent sample during the training. The MultiClass option is only compatible with four MLM algorithms: `BDT`, `ANN`, `FDA` and `PDEFoam`. For `BDT`, only the gradient boosted decision trees are available. That is, one may set `:BoostType=Grad`, but not `:BoostType=Bagging` or `:BoostType=AdaBoost`, as part of the `userMLMopts` option.
 
   - By default, a progress bar is drawn during training. If one is writing the output to a log file, the progress bar is important to avoid, as it will cause the size of the log file to become very large. One can either add `--isBatch` while running the example scripts, or set in `generalSettings.py` (or elsewhere),
   ```python

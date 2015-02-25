@@ -524,35 +524,60 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
       if(nVarNow < nVars) { baseName = "varWeightKNN_"; varNameNow = varNames[nVarNow];          }
       else                { baseName = "varFullChain_"; varNameNow = branchNameV[nVarNow-nVars]; }
 
+      // draw each variable twice for each chain - the first time is for deriving the common limits for the
+      // histogram across all chains, the second one is for using these common limits
+      // -----------------------------------------------------------------------------------------------------------
+      int           nDrawBins(50);
+      double        drawLim0(1), drawLim1(-1);
       vector <TH1*> his1V;
-      for(int nChainNow=0; nChainNow<3; nChainNow++) {
-        TString nChainKNNname = TString::Format("_nChain%d",nChainNow);
+      for(int nDrawNow=0; nDrawNow<2; nDrawNow++) {
+        for(int nChainNow=0; nChainNow<3; nChainNow++) {
+          TString nChainKNNname = TString::Format("_nChain%d",nChainNow);
 
-        TString weightNow(""), hisTitle("");
-        TChain  * aChain(NULL);
-        if     (nChainNow == 0) { aChain = aChainRef; hisTitle = "Reference"; weightNow = "1";        }
-        else if(nChainNow == 1) { aChain = aChainInp; hisTitle = "Original";  weightNow = "1";        }
-        else if(nChainNow == 2) { aChain = aChainOut; hisTitle = "Weighted";  weightNow = weightName; }
+          TString weightNow(""), hisTitle("");
+          TChain  * aChain(NULL);
+          if     (nChainNow == 0) { aChain = aChainRef; hisTitle = "Reference"; weightNow = "1";        }
+          else if(nChainNow == 1) { aChain = aChainInp; hisTitle = "Original";  weightNow = "1";        }
+          else if(nChainNow == 2) { aChain = aChainOut; hisTitle = "Weighted";  weightNow = weightName; }
 
-        if(nChainNow == 0) {
-          if(chainWgtV[1] != "") weightNow = (TString)"("+weightNow+")*("+chainWgtV[1]+")";
-          if(chainCutV[1] != "") weightNow = (TString)"("+weightNow+")*("+chainCutV[1]+")";
+          if(nChainNow == 0) {
+            if(chainWgtV[1] != "") weightNow = (TString)"("+weightNow+")*("+chainWgtV[1]+")";
+            if(chainCutV[1] != "") weightNow = (TString)"("+weightNow+")*("+chainCutV[1]+")";
+          }
+
+          if(varNameNow == weightName) {
+            if(nChainNow != 2) continue;
+            else               weightNow = "1";
+          }
+
+          TString hisName   = (TString)baseName+aChainInp->GetName()+nVarName+nChainKNNname;
+          TString drawExprs = (TString)varNameNow+">>"+hisName;
+          if(nDrawNow == 1) drawExprs += TString::Format("(%d,%f,%f)",nDrawBins,drawLim0,drawLim1);
+
+          cout <<drawExprs<<endl;
+
+          TCanvas * tmpCnvs = new TCanvas("tmpCnvs","tmpCnvs");
+          aChain->Draw(drawExprs,weightNow); DELNULL(tmpCnvs);
+
+          TH1 * his1 = (TH1F*)gDirectory->Get(hisName); his1->SetDirectory(0); his1->SetTitle(hisTitle);
+          VERIFY(LOCATION,(TString)"Could not derive histogram ("+hisName+") from chain ... Something is horribly wrong ?!?!",(dynamic_cast<TH1F*>(his1)));
+          
+          // derive the common histogram limits for all chains
+          if(nDrawNow == 0) {
+            bool   needUpdate  = (drawLim0 > drawLim1);
+            double drawLimNow0 = his1->GetXaxis()->GetBinLowEdge(his1->GetXaxis()->GetFirst());
+            double drawLimNow1 = his1->GetXaxis()->GetBinUpEdge (his1->GetXaxis()->GetLast() );
+
+            if(needUpdate || drawLim0 > drawLimNow0) drawLim0 = drawLimNow0;
+            if(needUpdate || drawLim1 < drawLimNow1) drawLim1 = drawLimNow1;
+
+            DELNULL(his1);
+          }
+          // store the histogram
+          else {
+            his1V.push_back(his1);
+          }
         }
-
-        if(varNameNow == weightName) {
-          if(nChainNow != 2) continue;
-          else               weightNow = "1";
-        }
-
-        TString hisName   = (TString)baseName+aChainInp->GetName()+nVarName+nChainKNNname;
-        TString drawExprs = (TString)varNameNow+">>"+hisName;
-
-        TCanvas * tmpCnvs = new TCanvas("tmpCnvs","tmpCnvs");
-        aChain->Draw(drawExprs,weightNow); DELNULL(tmpCnvs);
-
-        TH1 * his1 = (TH1F*)gDirectory->Get(hisName); his1->SetDirectory(0); his1->SetTitle(hisTitle);
-        VERIFY(LOCATION,(TString)"Could not derive histogram ("+hisName+") from chain ... Something is horribly wrong ?!?!",(dynamic_cast<TH1F*>(his1)));
-        his1V.push_back(his1);
       }
 
       outputs->optClear();

@@ -45,7 +45,11 @@ ANNZ::~ANNZ() {
   inNamesVar.clear();   inNamesErr.clear();      userWgtsM.clear();      mlmTagErrKNN.clear();
   zClos_binE.clear();   zClos_binC.clear();      zBinCls_binE.clear();   zBinCls_binC.clear();
   typeMLM.clear();      allANNZtypes.clear();    typeToNameMLM.clear();  nameToTypeMLM.clear();
-  bestMLMname.clear();
+  bestMLMname.clear();  anlysTypes.clear();      readerInptV.clear();
+
+  for(int nHisNow=0; nHisNow<(int)regReaders.size(); nHisNow++) DELNULL(regReaders[nHisNow]);
+  for(int nHisNow=0; nHisNow<(int)hisClsPrbV.size(); nHisNow++) DELNULL(hisClsPrbV[nHisNow]);
+  regReaders.clear();  hisClsPrbV.clear();
 
   return;
 }

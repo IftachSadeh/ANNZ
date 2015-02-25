@@ -139,7 +139,7 @@ if glob.annz["doTrain"] or glob.annz["doVerif"] or glob.annz["doEval"]:
       # evalDirPostfix - if not empty, this string will be added to the name of the evaluation directory
       #                  (can be used to prevent multiple evaluation of different input files from overwriting each other)
       glob.annz["evalDirPostfix"] = ""
-      
+
       # run ANNZ with the current settings
       runANNZ()
 

@@ -174,7 +174,7 @@ if glob.annz["doTrain"] or glob.annz["doVerif"] or glob.annz["doEval"]:
   # --------------------------------------------------------------------------------------------------
   clsBinType = 2
   if   clsBinType == 0:
-    # derive the binning scheme on the fly, such that 60 bins, each no wider than 0.05, are chosen
+    # derive the binning scheme on the fly, such that 60 bins, each no wider than 0.02, are chosen
     glob.annz["binCls_nBins"]   = 60
     glob.annz["binCls_maxBinW"] = 0.02
   elif clsBinType == 1:
@@ -203,6 +203,26 @@ if glob.annz["doTrain"] or glob.annz["doVerif"] or glob.annz["doEval"]:
     #               where [userMLMopts = ""] (currently "ANN", "BDT" or "ANN_BDT" are supported)
     # --------------------------------------------------------------------------------------------------
     glob.annz["rndOptTypes"]   = "BDT"
+
+    # --------------------------------------------------------------------------------------------------
+    # doMultiCls:
+    # --------------------------------------------------------------------------------------------------
+    #   - Using the MultiClass option of binned classification, multiple background samples can be trained
+    #     simultaneously against the signal. This means that each classification bin acts as an independent sample during
+    #     the training. The MultiClass option is only compatible with four MLM algorithms: BDT, ANN, FDA and PDEFoam.
+    #     For BDT, only the gradient boosted decision trees are available. That is, one may set ":BoostType=Grad",
+    #     but not ":BoostType=Bagging" or ":BoostType=AdaBoost", as part of the userMLMopts option.
+    #     - examples:
+    #       - glob.annz["userMLMopts_0"] = "ANNZ_MLM=FDA:Formula=(0)+(1)*x0+(2)*x1+(3)*x2+(4)*x3:" \
+    #                                     +"ParRanges=(-1,1);(-10,10);(-10,10);(-10,10);(-10,10):" \
+    #                                     +"FitMethod=GA:PopSize=300:Cycles=3:Steps=20:Trim=True:SaveBestGen=1"
+    #       - glob.annz["userMLMopts_1"] = "ANNZ_MLM=PDEFoam:nActiveCells=500:nSampl=2000:nBin=5:Nmin=100:Kernel=None:Compress=T"
+    #   - Using the MultiClass option, the binCls_bckShiftMin,binCls_bckShiftMax,binCls_bckSubsetRange
+    #     options are ignored.
+    #   - Using the MultiClass option, training is much slower, it is therefore recommended to set a low
+    #     value (<3) of binCls_nTries.
+    # --------------------------------------------------------------------------------------------------
+    glob.annz["doMultiCls"] = False
 
     # --------------------------------------------------------------------------------------------------
     # - binCls_bckShiftMin,binCls_bckShiftMax (Optional training setting):
@@ -472,7 +492,7 @@ if glob.annz["doTrain"] or glob.annz["doVerif"] or glob.annz["doEval"]:
       # evalDirPostfix - if not empty, this string will be added to the name of the evaluation directory
       #                  (can be used to prevent multiple evaluation of different input files from overwriting each other)
       glob.annz["evalDirPostfix"] = ""
-      
+
       # run ANNZ with the current settings
       runANNZ()
 

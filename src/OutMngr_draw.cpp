@@ -914,7 +914,7 @@ void OutMngr::SetMyStyle() {
   gROOT->SetBatch(true);  
 
   // set verbosity level
-  gErrorIgnoreLevel = inLOG(Log::DEBUG_2) ? kInfo : kWarning; //kPrint, kInfo, kWarning, kError, kBreak, kSysError, kFatal;
+  gErrorIgnoreLevel = (inLOG(Log::DEBUG_2) || glob->GetOptB("set_kInfoROOT")) ? kInfo : kWarning; //kPrint, kInfo, kWarning, kError, kBreak, kSysError, kFatal;
 
   return;
 }

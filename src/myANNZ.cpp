@@ -201,7 +201,16 @@ myANNZ::myANNZ() {
   // -----------------------------------------------------------------------------------------------------------
   // general options (binned-classification)
   // -----------------------------------------------------------------------------------------------------------
+
+  // useBinClsPrior -
+  //   impose a "prior" on the complete probability distribution, based on the distribution of the
+  //   target-variable in the training sample -> scalle the probability by the number of signal objects in
+  //   each classification bin, relative to the entire sample
+  // -----------------------------------------------------------------------------------------------------------
+  glob->NewOptB("useBinClsPrior",true);
+
   // binCls_nBins,binCls_maxBinW,binCls_clsBins -
+  // -----------------------------------------------------------------------------------------------------------
   // - Two options to define the classification bins:
   //   1. If [binCls_maxBinW==0], then set e.g.,:
   //        glob.annz["binCls_nBins"]   = 7
@@ -251,6 +260,26 @@ myANNZ::myANNZ() {
 
   glob->NewOptB("optimMLMprb",true); // optimize by probability rather than by clssification-responce (the direct MLM output)
   glob->NewOptC("MLMsToStore","");   // ("BEST", "ALL", "3" or "0;1;4") which optimized MLMs to store to file during doEval
+
+  // doMultiCls -
+  //   use the multiClass classification option, where multiple distinct background samples may be used. This
+  //   may currently only be used for binned classification. 
+  // -----------------------------------------------------------------------------------------------------------
+  // - Using the MultiClass option of binned classification, multiple background samples can be trained
+  //   simultaneously against the signal. This means that each classification bin acts as an independent sample during
+  //   the training. The MultiClass option is only compatible with four MLM algorithms: BDT, ANN, FDA and PDEFoam.
+  //   For BDT, only the gradient boosted decision trees are available. That is, one may set ":BoostType=Grad",
+  //   but not ":BoostType=Bagging" or ":BoostType=AdaBoost", as part of the userMLMopts option.
+  //   - examples:
+  //     - glob.annz["userMLMopts_0"] = "ANNZ_MLM=FDA:Formula=(0)+(1)*x0+(2)*x1+(3)*x2+(4)*x3:" \
+  //                                   +"ParRanges=(-1,1);(-10,10);(-10,10);(-10,10);(-10,10):" \
+  //                                   +"FitMethod=GA:PopSize=300:Cycles=3:Steps=20:Trim=True:SaveBestGen=1"
+  //     - glob.annz["userMLMopts_1"] = "ANNZ_MLM=PDEFoam:nActiveCells=500:nSampl=2000:nBin=5:Nmin=100:Kernel=None:Compress=T"
+  // - Using the MultiClass option, the binCls_bckShiftMin,binCls_bckShiftMax,binCls_bckSubsetRange
+  //   options are ignored.
+  // - Using the MultiClass option, training is much slower, it is therefore recommended to set a low
+  //   value (<3) of binCls_nTries.
+  glob->NewOptB("doMultiCls",false);
 
   // -----------------------------------------------------------------------------------------------------------
   // general options (classification)
@@ -408,6 +437,9 @@ myANNZ::myANNZ() {
   // copy these folders/files as backup from the current directory to the working directory
   glob->NewOptC("copyCodeCmnd","rsync -Rrtaz --include '*/' --include '*.py' --include '*.hpp' --include '*.cpp' --exclude '*' *");
 
+  // set info-level for ROOT operations (messages like plot printing etc. will be written out)
+  glob->NewOptB("set_kInfoROOT",false);
+
   // default types for tree-connected variables
   // -----------------------------------------------------------------------------------------------------------
   glob->NewOptC("defVarSIL"           ,"I");  // short (S), int (I) or long (L)
@@ -463,7 +495,8 @@ void myANNZ::Init() {
   glob->NewOptC("baseName_inVarErr"   ,"ANNZ_inVarErr_"); // base tag for all PDF names
   glob->NewOptC("baseName_nPDF"       ,"ANNZ_PDF_");      // base tag for all PDF names
   glob->NewOptC("baseName_weightKNN"  ,"ANNZ_KNN_w");     // KNN weight variable
-  glob->NewOptC("treeName"            ,"ANNZ_tree");      // internal name for input trees
+  glob->NewOptC("treeName"            ,"ANNZ_tree");      // internal name prefix for input trees
+  glob->NewOptC("hisName"             ,"ANNZ_his");       // internal name prefix for histograms
   glob->NewOptC("indexName"           ,"ANNZ_index");     // original index from input file
   glob->NewOptC("splitName"           ,"ANNZ_split");     // continous index for a given sub-sample (training,testing,validting)
   glob->NewOptC("origFileName"        ,"ANNZ_inFile");    // within the _valid file, this is 0 for testing and 1 for validation

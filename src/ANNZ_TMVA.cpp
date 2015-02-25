@@ -90,7 +90,10 @@ void ANNZ::clearReaders(Log::LOGtypes logLevel) {
 
     DELNULL_(LOCATION,regReaders[nMLMnow],(TString)"regReaders["+utils->intToStr(nMLMnow)+"]",verb);
   }
-  regReaders.clear(); readerInptV.clear(); readerInptIndexV.clear();
+
+  for(int nMLMnow=0; nMLMnow<(int)hisClsPrbV.size(); nMLMnow++) DELNULL(hisClsPrbV[nMLMnow]);
+
+  regReaders.clear(); readerInptV.clear(); readerInptIndexV.clear(); anlysTypes.clear(); hisClsPrbV.clear();
 
   return;
 }
@@ -105,18 +108,21 @@ void ANNZ::clearReaders(Log::LOGtypes logLevel) {
  *                    so that the readers may be evaluated.
  *                    
  * @param mlmSkipNow  - Map for determining which MLM is accepted.
+ * @param needMcPRB   - wether or not to load the multiclass probability pdf
  */
 // ===========================================================================================================
-void ANNZ::loadReaders(map <TString,bool> & mlmSkipNow) {
-// ======================================================
+void ANNZ::loadReaders(map <TString,bool> & mlmSkipNow, bool needMcPRB) {
+// ======================================================================
   aLOG(Log::DEBUG_1) <<coutWhiteOnBlack<<coutYellow<<" - starting ANNZ::loadReaders() ... "<<coutDef<<endl;
   
-  int nMLMs = glob->GetOptI("nMLMs");
+  int  nMLMs    = glob->GetOptI("nMLMs");
+  bool isBinCls = glob->GetOptB("doBinnedCls");
 
   // cleanup containers before initializing new readers
   clearReaders(Log::DEBUG_2);
 
   readerInptV.clear(); regReaders.resize(nMLMs,NULL); readerInptIndexV.resize(nMLMs);
+  anlysTypes.resize(nMLMs,TMVA::Types::kNoAnalysisType);  hisClsPrbV.resize(glob->GetOptI("nMLMs"),NULL);
 
   // -----------------------------------------------------------------------------------------------------------
   // initialize readerInptV and add all required variables by input variables (formulae) - using
@@ -180,12 +186,30 @@ void ANNZ::loadReaders(map <TString,bool> & mlmSkipNow) {
     bool foundReader = (dynamic_cast<TMVA::MethodBase*>(regReaders[nMLMnow]->FindMVA(MLMname)));
 
     if(foundReader) {
-      TString           methodName = (dynamic_cast<TMVA::MethodBase*>(regReaders[nMLMnow] ->FindMVA(MLMname)))->GetMethodTypeName();
-      TMVA::Types::EMVA methodType = (dynamic_cast<TMVA::MethodBase*>(regReaders[nMLMnow] ->FindMVA(MLMname)))->GetMethodType();
+      TString           methodName = (dynamic_cast<TMVA::MethodBase*>(regReaders[nMLMnow]->FindMVA(MLMname)))->GetMethodTypeName();
+      TMVA::Types::EMVA methodType = (dynamic_cast<TMVA::MethodBase*>(regReaders[nMLMnow]->FindMVA(MLMname)))->GetMethodType();
+      anlysTypes[nMLMnow]          = (dynamic_cast<TMVA::MethodBase*>(regReaders[nMLMnow]->FindMVA(MLMname)))->GetAnalysisType();
 
       VERIFY(LOCATION,(TString)"Found inconsistent settings (configSave_type = \""+typeToNameMLM[typeMLM[nMLMnow]]
                               +"\" from the settings file, but "+MLMname+" is of type \""+typeToNameMLM[methodType]+"\""
                               ,(typeMLM[nMLMnow] == methodType));
+
+      // load the classification response histogram for Multiclass readers
+      if(needMcPRB && (isBinCls || anlysTypes[nMLMnow] == TMVA::Types::kMulticlass)) {
+        TString hisClsPrbFileName = getKeyWord(MLMname,"postTrain","hisClsPrbFile");
+        TString hisName           = getKeyWord(MLMname,"postTrain","hisClsPrbHis");
+
+        TFile * hisClsPrbFile = new TFile(hisClsPrbFileName,"READ");
+
+        hisClsPrbV[nMLMnow] = dynamic_cast<TH1*>(hisClsPrbFile->Get(hisName));
+        VERIFY(LOCATION,(TString)"Could not find hisClsPrbV[nMLMnow = "+utils->intToStr(nMLMnow)+"] in "
+                                 +hisClsPrbFileName+" ?!",(dynamic_cast<TH1*>(hisClsPrbV[nMLMnow])));
+
+        hisClsPrbV[nMLMnow] = (TH1*)hisClsPrbV[nMLMnow]->Clone((TString)hisName+"_cln");
+        hisClsPrbV[nMLMnow]->SetDirectory(0);
+
+        hisClsPrbFile->Close(); DELNULL(hisClsPrbFile);
+      }
 
       if(nReadIn  < 5) aLOG(Log::DEBUG) <<coutYellow<<" - Found   "<<methodName<<" Reader("<<coutRed<<nMLMnow<<coutYellow<<") ... "<<coutDef<<endl;
       if(nReadIn == 5) aLOG(Log::DEBUG) <<coutYellow<<" - Suppressing further messages ... "<<coutDef<<endl;
@@ -219,14 +243,31 @@ double ANNZ::getReader(VarMaps * var, ANNZ_readType readType, bool forceUpdate, 
   VERIFY(LOCATION,(TString)"Memory leak for regReaders[nMLMnow = "+utils->intToStr(nMLMnow)+"] ?! ",(dynamic_cast<TMVA::Reader*>(regReaders[nMLMnow])));
   VERIFY(LOCATION,(TString)"unknown readType (\""+utils->intToStr((int)readType)+"\") ...",(nMLMnow < glob->GetOptI("nMLMs")));
 
-  TString MLMname = getTagName(nMLMnow);
-  
   var->updateReaderFormulae(readerInptV,forceUpdate);
-  
-  if     (readType == ANNZ_readType::REG) return (regReaders[nMLMnow]->EvaluateRegression(MLMname))[0];
-  else if(readType == ANNZ_readType::PRB) return max(min(regReaders[nMLMnow]->GetProba(MLMname),1.),0.);
-  else if(readType == ANNZ_readType::CLS) return regReaders[nMLMnow]->EvaluateMVA(MLMname);
-  else VERIFY(LOCATION,(TString)"un-supported readType (\""+utils->intToStr((int)readType)+"\") ...",false);
+
+  TString MLMname  = getTagName(nMLMnow);
+  bool    isBinCls = glob->GetOptB("doBinnedCls");
+  bool    isMC     = (anlysTypes[nMLMnow] == TMVA::Types::kMulticlass);
+  double  readVal  = 0;
+
+  if(isMC || isBinCls) {
+    double clsVal = isMC ? (regReaders[nMLMnow]->EvaluateMulticlass(MLMname))[0] : regReaders[nMLMnow]->EvaluateMVA(MLMname);
+
+    if     (readType == ANNZ_readType::PRB) {
+      VERIFY(LOCATION,(TString)"Memory leak for hisClsPrbV[nMLMnow = "+utils->intToStr(nMLMnow)+"] ?! ",(dynamic_cast<TH1*>(hisClsPrbV[nMLMnow])));
+      readVal = max(min( hisClsPrbV[nMLMnow]->GetBinContent( hisClsPrbV[nMLMnow]->GetXaxis()->FindBin(clsVal) ) ,1.),0.);
+    }
+    else if(readType == ANNZ_readType::CLS) readVal = clsVal;
+    else VERIFY(LOCATION,(TString)"un-supported readType (\""+utils->intToStr((int)readType)+"\") ...",false);
+  }
+  else {  
+    if     (readType == ANNZ_readType::REG) readVal = (regReaders[nMLMnow]->EvaluateRegression(MLMname))[0];
+    else if(readType == ANNZ_readType::PRB) readVal = max(min(regReaders[nMLMnow]->GetProba(MLMname),1.),0.);
+    else if(readType == ANNZ_readType::CLS) readVal = regReaders[nMLMnow]->EvaluateMVA(MLMname);
+    else VERIFY(LOCATION,(TString)"un-supported readType (\""+utils->intToStr((int)readType)+"\") ...",false);
+  }
+
+  return readVal;
 }
 
 // ===========================================================================================================
@@ -320,7 +361,7 @@ bool ANNZ::verifyXML(TString outXmlFileName) {
 
     DELNULL(testFile);
   }
-  
+
   return isGoodXML;
 }
 

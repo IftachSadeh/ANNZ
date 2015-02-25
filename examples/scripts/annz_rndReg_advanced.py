@@ -32,12 +32,12 @@ glob.annz["nMLMs"]      = 10
 # zTrg            - the name of the target variable of the regression
 # minValZ,maxValZ - the minimal and maximal values of the target variable (zTrg)
 glob.annz["zTrg"]       = "Z"
-glob.annz["minValZ"]    = 0.05
+glob.annz["minValZ"]    = 0.0
 glob.annz["maxValZ"]    = 0.8
 
 # set the number of near-neighbours used to compute the KNN error estimator
 # (should be around 100 - set here to a very low number just to speed the example up... !)
-glob.annz["nErrKNN"]    = 20
+glob.annz["nErrKNN"]    = 50
 
 # --------------------------------------------------------------------------------------------------
 # pre-processing of the input dataset
@@ -304,7 +304,7 @@ if glob.annz["doOptim"] or glob.annz["doEval"]:
   hasUserPdfBins = False
   if hasUserPdfBins:
     # use a pre-defined set of PDF bins
-    glob.annz["userPdfBins"] = "0.05;0.1;0.2;0.24;0.3;0.52;0.6;0.7;0.8"
+    glob.annz["userPdfBins"] = "0.0;0.1;0.2;0.24;0.3;0.52;0.6;0.7;0.8"
   else:
     # nPDFbins - number of PDF bins (equal width bins between minValZ and maxValZ)
     glob.annz["nPDFbins"]    = 90
