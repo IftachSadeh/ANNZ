@@ -7,9 +7,9 @@
 - **Added *MultiClass* support to binned classification:** The new option is controlled by setting the `doMultiCls` flag. In this mode, multiple background samples can be trained simultaneously against the signal. In the context of binned classification, this means that each classification bin acts as an independent sample during the training.
 
 - **Added the function, `ANNZ::deriveHisClsPrb()`:** Modified binned classification, such that all classification probabilities are calculated by hand, instead of using the `CreateMVAPdfs` option of `TMVA::Factory`. By default, the new calculation takes into account the relative size of the signal in each classification bin, compared to the number of objects in the entire training sample. The latter feature may be turned off, by setting:
-```python
-glob.annz["useBinClsPrior"] = False
-```
+  ```python
+  glob.annz["useBinClsPrior"] = False
+  ```
 
 - Added `ANNZ_PDF_max`, the most likely value of a PDF (the peak of the PDF), to the outputs of regression.
 
