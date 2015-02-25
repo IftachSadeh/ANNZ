@@ -2,7 +2,7 @@
 
 <!-- ## Master version -->
 
-## ANNZ 2.0.3 (20/2/2015)
+## ANNZ 2.0.3 (25/2/2015)
 
 - **Added *MultiClass* support to binned classification:** The new option is controlled by setting the `doMultiCls` flag. In this mode, multiple background samples can be trained simultaneously against the signal. In the context of binned classification, this means that each classification bin acts as an independent sample during the training.
 
