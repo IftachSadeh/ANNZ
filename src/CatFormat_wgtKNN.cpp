@@ -175,6 +175,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
                  ,(sampleFracInp > 0 && sampleFracInp <= 1));
   VERIFY(LOCATION,(TString)"sampleFracRef_wgtKNN must be a positive number, smaller or equal to 1. Currently is set to "+utils->floatToStr(sampleFracRef)
                  ,(sampleFracRef > 0 && sampleFracRef <= 1));
+  
   // -----------------------------------------------------------------------------------------------------------
   // setup the kd-trees for the two chains
   // -----------------------------------------------------------------------------------------------------------

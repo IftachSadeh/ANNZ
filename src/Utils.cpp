@@ -709,7 +709,8 @@ vector <TTree*> Utils::getTreeFriends(TTree * tree) {
 // ===========================================================================================================
 void Utils::getSetActiveTreeBranches(TTree * tree, vector < pair<TString,bool> > & branchNameStatusV, bool isGetStatus, bool verbose) {
 // ====================================================================================================================================
-  assert(dynamic_cast<TTree*>(tree));
+  VERIFY(LOCATION,(TString)"Trying to use getSetActiveTreeBranches() with invalid tree" ,dynamic_cast<TTree*>(tree));
+
   if(verbose) aCleanLOG()<<coutWhiteOnYellow<<"Starting getSetActiveTreeBranches("<<coutRed<<tree->GetName()<<coutWhiteOnYellow<<")..."<<coutDef<<endl;
 
   if(isGetStatus) {
@@ -768,7 +769,7 @@ void Utils::getSetActiveTreeBranches(TTree * tree, vector < pair<TString,bool> >
 // ===========================================================================================================
 void Utils::getTreeBranchNames(TTree * tree, vector <TString> & branchNameV) {
 // ===========================================================================
-  assert(dynamic_cast<TTree*>(tree));
+  VERIFY(LOCATION,(TString)"Trying to use getTreeBranchNames() with invalid tree" , dynamic_cast<TTree*>(tree));
 
   branchNameV.clear();
 
@@ -787,7 +788,8 @@ void Utils::getTreeBranchNames(TTree * tree, vector <TString> & branchNameV) {
       treeNow = (TTree*)tree->GetFriend(friendName);
     }
 
-    TObjArray * brnchList = treeNow->GetListOfBranches();
+    TObjArray * brnchList = treeNow->GetListOfBranches(); if(!dynamic_cast<TObjArray*>(brnchList)) continue;
+
     for(int nBrnchNow=0; nBrnchNow<=brnchList->GetLast(); nBrnchNow++) {
       TBranch * aBranch  = (TBranch*)(brnchList->At(nBrnchNow));
       TString brnchName  = aBranch->GetName();
@@ -805,14 +807,15 @@ void Utils::getTreeBranchNames(TTree * tree, vector <TString> & branchNameV) {
 // ===========================================================================================================
 void Utils::copyTreeUserInfo(TTree * inTree, TTree * outTree, bool debug) {
 // ========================================================================
-  assert(dynamic_cast<TTree*>(inTree) && dynamic_cast<TTree*>(outTree));
+  VERIFY(LOCATION,(TString)"Trying to use copyTreeUserInfo() with invalid trees" ,(dynamic_cast<TTree*>(inTree) && dynamic_cast<TTree*>(outTree)));
 
   TTree * aTreeIn     = dynamic_cast<TChain*>(inTree)  ? inTree ->GetTree() : inTree;
   TTree * aTreeOut    = dynamic_cast<TChain*>(outTree) ? outTree->GetTree() : outTree;
   TList * userInfoIn  = aTreeIn ->GetUserInfo();
   TList * userInfoOut = aTreeOut->GetUserInfo();
   
-  assert(dynamic_cast<TList*>(userInfoIn) && dynamic_cast<TList*>(userInfoOut));
+  VERIFY(LOCATION,(TString)"Could not do GetUserInfo() from trees... something is horribly wrong ?!?!"
+         ,(dynamic_cast<TList*>(userInfoIn) && dynamic_cast<TList*>(userInfoOut)));
 
   int nUserInfoEntries = userInfoIn->GetEntries();
   for(int nUserEntryNow=0; nUserEntryNow<nUserInfoEntries; nUserEntryNow++) {
@@ -833,7 +836,9 @@ void Utils::addToTreeUserInfoStr(TTree * tree, TString newInfo, bool debug) {
   VERIFY(LOCATION,(TString)"Trying to use addToTreeUserInfoStr() with invalid tree" ,dynamic_cast<TTree*>(tree));
 
   TTree * aTreeIn   = dynamic_cast<TChain*>(tree) ? tree ->GetTree() : tree;
-  TList * userInfo  = aTreeIn ->GetUserInfo(); assert(dynamic_cast<TList*>(userInfo));
+  TList * userInfo  = aTreeIn ->GetUserInfo();
+
+  VERIFY(LOCATION,(TString)"Could not do GetUserInfo() from tree... something is horribly wrong ?!?!" ,(dynamic_cast<TList*>(userInfo)));
 
   bool hasSetStr        = false;
   int  nUserInfoEntries = userInfo->GetEntries();
@@ -867,7 +872,9 @@ TString Utils::getTreeUserInfoStr(TTree * tree, bool debug) {
   int     nFoundStr = 0;
   TString outStr    = "";
   TTree * aTreeIn   = dynamic_cast<TChain*>(tree) ? tree ->GetTree() : tree;
-  TList * userInfo  = aTreeIn ->GetUserInfo(); assert(dynamic_cast<TList*>(userInfo));
+  TList * userInfo  = aTreeIn ->GetUserInfo();
+
+  VERIFY(LOCATION,(TString)"Could not do GetUserInfo() from tree... something is horribly wrong ?!?!" ,(dynamic_cast<TList*>(userInfo)));
 
   int nUserInfoEntries = userInfo->GetEntries();
   for(int nUserEntryNow=0; nUserEntryNow<nUserInfoEntries; nUserEntryNow++) {
@@ -892,9 +899,9 @@ TString Utils::getTreeUserInfoStr(TTree * tree, bool debug) {
 // ===========================================================================================================
 void Utils::flushHisBufferBinsZ(TH1 * his, int nBinsZ) {
 // =====================================================
-  assert((dynamic_cast<TH1*>(his)));
-  assert(nBinsZ > 0);
-  
+  VERIFY(LOCATION,(TString)"Trying to use flushHisBufferBinsZ() with invalid histogram" , dynamic_cast<TH1*>(his));
+  VERIFY(LOCATION,(TString)"Trying to use flushHisBufferBinsZ() with invalid number of bins" ,(nBinsZ > 0));
+
   if(glob->OptOrNullB((TString)"hasFlushed_"+his->GetName())) { his->BufferEmpty(); return; }
   else  glob->NewOptB((TString)"hasFlushed_"+his->GetName(),true);
 

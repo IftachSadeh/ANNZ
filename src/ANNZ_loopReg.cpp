@@ -1641,7 +1641,6 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
   bool    needBinClsErr     = glob->GetOptB("needBinClsErr");
   bool    writePosNegErrs   = glob->GetOptB("writePosNegErrs");
 
-
   TRandom * rnd             = new TRandom(seed);
   TString regBestNameVal    = getTagBestMLMname(baseTag_v);
   TString regBestNameErr    = getTagBestMLMname(baseTag_e);

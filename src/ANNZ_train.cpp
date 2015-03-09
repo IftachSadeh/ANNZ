@@ -276,6 +276,9 @@ void ANNZ::Train_singleReg() {
     TString inFileName = (TString)glob->GetOptC("inputTreeDirName")+inTreeName+"*.root";
     chainM[trainValidName] = new TChain(inTreeName,inTreeName); chainM[trainValidName]->SetDirectory(0);  chainM[trainValidName]->Add(inFileName);
     aLOG(Log::DEBUG) <<coutRed<<" - added chain  "<<coutGreen<<inTreeName<<" from "<<coutBlue<<inFileName<<coutDef<<endl;
+
+    VERIFY(LOCATION,(TString)"Found only "+utils->intToStr(chainM[trainValidName]->GetEntries())+" objects in tree ["
+                             +inTreeName+"] ... Something is horribly wrong ?!?!" ,(chainM[trainValidName]->GetEntries() >= minObjTrainTest));
   }
   verifTarget(chainM["_train"]); verifTarget(chainM["_valid"]);
 
