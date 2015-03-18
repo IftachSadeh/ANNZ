@@ -1756,7 +1756,7 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
   // -----------------------------------------------------------------------------------------------------------
   // create the chain for the loop, or assign the input chain
   // -----------------------------------------------------------------------------------------------------------
-  TString inTreeName = (TString)treeName+"_eval";
+  TString inTreeName = (TString)treeName+glob->GetOptC("evalTreePostfix");
   TString inFileName = (TString)outDirNameFull+inTreeName+"*.root";
 
   // prepare the chain and input variables. Set cuts to match the TMVAs

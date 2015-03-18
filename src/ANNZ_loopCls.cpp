@@ -296,7 +296,7 @@ void ANNZ::optimCls() {
         TGraphErrors * grph = new TGraphErrors(int(graph_X.size()),&graph_X[0], &graph_Y[0],&graph_Xerr[0], &graph_Yerr[0]);
         
         grph->SetName(TString::Format((TString)"compPure_%d"+"_clasOptimize"+typeName+"_%d",nCompPureMgNow,nPlotSbSepNow));
-        grph->SetTitle(TString::Format((TString)"#%d, S_{s/b} ("+getTagName(nMLMnow)+","+typeToNameMLM[typeMLM[nMLMnow]]+") = %1.2e",nSbSepIndexNow,sbSepFrac));
+        grph->SetTitle(TString::Format((TString)"ranked as #%d, S_{s/b} ("+getTagName(nMLMnow)+","+typeToNameMLM[typeMLM[nMLMnow]]+") = %1.2e",nSbSepIndexNow+1,sbSepFrac));
         grph->GetXaxis()->SetTitle("Completeness");  grph->GetYaxis()->SetTitle("Purity");
         compPureMgV[typeName][nCompPureMgNow]->Add(grph);
       }
@@ -325,9 +325,9 @@ void ANNZ::optimCls() {
 
         normFactor = his1M[sigBckName][nMLMnow]->Integral(); if(normFactor>0) his1M[sigBckName][nMLMnow]->Scale(1/normFactor,"width");
 
-        his1M[sigBckName][nMLMnow]->SetTitle( TString::Format( (TString)"#%d, "+sigBckTitle+" ("+MLMname+","
+        his1M[sigBckName][nMLMnow]->SetTitle( TString::Format( (TString)"ranked as #%d, "+sigBckTitle+" ("+MLMname+","
                                                                         +typeToNameMLM[typeMLM[nMLMnow]]+") - S_{s/b} = %1.2e"
-                                                               ,nSbSepIndexNow,nSbSepValNow ) );
+                                                               ,nSbSepIndexNow+1,nSbSepValNow ) );
       }
     }
 
@@ -632,7 +632,7 @@ void  ANNZ::doEvalCls() {
 
   // create the chain for the loop
   // -----------------------------------------------------------------------------------------------------------
-  TString inTreeName = (TString)glob->GetOptC("treeName")+"_eval";
+  TString inTreeName = (TString)glob->GetOptC("treeName")+glob->GetOptC("evalTreePostfix");
   TString inFileName = (TString)glob->GetOptC("outDirNameFull")+inTreeName+"*.root";
 
   // prepare the chain and input variables. Set cuts to match the TMVAs

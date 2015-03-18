@@ -20,7 +20,6 @@
 /**
  * @brief                       - create root trees from the input ascii files and add a weight branch, calculated with the KNN method
  * 
- * 
  * @param inAsciiFiles          - semicolon-separated list of input ascii files (main dataset)
  * @param inAsciiVars           - semicolon-separated list of input parameter names, corresponding to columns in the input files (main dataset)
  * @param inAsciiFiles_wgtKNN   - semicolon-separated list of input ascii files (reference dataset)
@@ -45,7 +44,6 @@ void CatFormat::asciiToSplitTree_wgtKNN(TString inAsciiFiles, TString inAsciiVar
   // the main ascii input files
   // -----------------------------------------------------------------------------------------------------------
   asciiToSplitTree(inAsciiFiles,inAsciiVars);
-
 
   // -----------------------------------------------------------------------------------------------------------
   // replace the trees created in asciiToSplitTree() with new trees which also have KNN weights according to
@@ -106,27 +104,91 @@ void CatFormat::asciiToSplitTree_wgtKNN(TString inAsciiFiles, TString inAsciiVar
 
 // ===========================================================================================================
 /**
- * @brief               - Generate weights based on the KNN method
- *                      (see: Cunha et al. (2008), http://arxiv.org/abs/0810.2991v4)
+ * @brief                       - create root trees from the input ascii files and add a weight branch, which estimates
+ *                              if each objects is "near enough" to enough objects in the training dataset.
  * 
- * @details             - Weights are calculated as the ratio  r_ref/R_same = (N_ref/V_nn) / (N_same/V_nn) = N_ref/N_same.
- *                      Given the "reference-position" of a given object from the 
- *                      main dataset (aChainInp), N_ref,N_same are the number of near neighbours from the reference-position
- *                      within a given volume in the parameter space, V_nn. The difference between the two parameters, is that
- *                      N_ref is extracted from the reference dataset (aChainRef) and N_same is extracted from the main dataset (aChainInp).
- *                      - The kd-tree is used to search for a fixed number of near neighbours, it is not constrained by
- *                      the distance parameter. We therefore first search for minNobjInVol_wgtKNN near neighbours from
- *                      each chain. The chain for which the distance to the minNobjInVol_wgtKNN neighbour is shortest
- *                      is then selected for another search, with a higher number of near neighbours.
- *                      - It is possible for the new search to still be constrained to be within a distance which
- *                      is shorter than that of the minNobjInVol_wgtKNN neighbour from the other chain. In such a case,
- *                      this step is repeated again and again. In each iteration we look for a larger number
- *                      of near neighbours around the original reference-position. We end the search when we recover some number of near neighbours
- *                      for which the distance from the reference-position for both aChainInp and aChainRef is the same.
- *                      - The main and reference samples are each normalized, such that the sum of weighted entries in both is the same.
- *                      - For each object the weight calculation therefore uses a different volume in the parameter-space. However,
- *                      the volume element for a given object (V_nn) cancels out, since the weights are defined as a ratio. The condition
- *                      on a minimal number of neighbors, minNobjInVol_wgtKNN, prevents shoot noise from dominating the result.
+ * @param inAsciiFiles          - semicolon-separated list of input ascii files (main dataset)
+ * @param inAsciiVars           - semicolon-separated list of input parameter names, corresponding to columns in the input files (main dataset)
+ * @param treeNamePostfix       - postfix for the final output trees
+ */
+// ===========================================================================================================
+void CatFormat::asciiToFullTree_wgtKNN(TString inAsciiFiles, TString inAsciiVars, TString treeNamePostfix) {
+// =========================================================================================================
+  aLOG(Log::INFO) <<coutWhiteOnBlack<<coutBlue<<" - starting ANNZ::asciiToFullTree_wgtKNN() ... "<<coutDef<<endl;
+
+  TString treeName       = glob->GetOptC("treeName");
+  TString outDirNameFull = glob->GetOptC("outDirNameFull");
+  TString wgtTreeName    = "_wgtTree";
+
+  // the input tree for which the weights will be calculated
+  asciiToFullTree(inAsciiFiles,inAsciiVars,wgtTreeName);
+
+  // setup the chain for the input which has just been produced by asciiToFullTree
+  // -----------------------------------------------------------------------------------------------------------
+  TString treeNameInp = (TString)treeName+wgtTreeName;
+  TString fileNameInp = (TString)outDirNameFull+treeNameInp+"*.root";
+
+  TChain  * aChainInp = new TChain(treeNameInp,treeNameInp); aChainInp->SetDirectory(0); aChainInp->Add(fileNameInp);
+  aLOG(Log::INFO) <<coutRed<<" - Created input    chain  "<<coutGreen<<treeNameInp<<"("<<aChainInp->GetEntries()<<")"
+                  <<" from "<<coutBlue<<fileNameInp<<coutDef<<endl;
+
+  // setup reference chain from the training directory
+  // -----------------------------------------------------------------------------------------------------------
+  TString treeNameRef = (TString)treeName+"_train";
+  TString fileNameRef = (TString)glob->GetOptC("inputTreeDirName")+treeNameRef+"*.root";
+
+  TChain  * aChainRef = new TChain(treeNameRef,treeNameRef); aChainRef->SetDirectory(0); aChainRef->Add(fileNameRef);
+  aLOG(Log::INFO) <<coutRed<<" - Created refrence chain  "<<coutGreen<<treeNameRef<<"("<<aChainRef->GetEntries()<<")"
+                  <<" from "<<coutBlue<<fileNameRef<<coutDef<<endl;
+
+  // the name of the final tree
+  TString treeFinalName = (TString)treeName+treeNamePostfix;
+
+  addWgtKNNtoTree(aChainInp,aChainRef,treeFinalName);
+
+  // remove the intermidiate trees created by asciiToFullTree
+  utils->safeRM(fileNameInp,inLOG(Log::DEBUG));
+
+  return;
+}
+
+// ===========================================================================================================
+/**
+ * @brief               - Generate weights based on the KNN method, or determine if an object is "close" to enough
+ *                      objects in the reference sample (see: Cunha et al. (2008), http://arxiv.org/abs/0810.2991v4)
+ * 
+ * @details             - **doRelWgts == true:**
+ *                        - Weights are calculated as the ratio  r_ref/R_same = (N_ref/V_nn) / (N_same/V_nn) = N_ref/N_same.
+ *                        Given the "reference-position" of a given object from the 
+ *                        main dataset (aChainInp), N_ref,N_same are the number of near neighbours from the reference-position
+ *                        within a given volume in the parameter space, V_nn. The difference between the two parameters, is that
+ *                        N_ref is extracted from the reference dataset (aChainRef) and N_same is extracted from the main dataset (aChainInp).
+ *                        - The kd-tree is used to search for a fixed number of near neighbours, it is not constrained by
+ *                        the distance parameter. We therefore first search for minNobjInVol_wgtKNN near neighbours from
+ *                        each chain. The chain for which the distance to the minNobjInVol_wgtKNN neighbour is shortest
+ *                        is then selected for another search, with a higher number of near neighbours.
+ *                        - It is possible for the new search to still be constrained to be within a distance which
+ *                        is shorter than that of the minNobjInVol_wgtKNN neighbour from the other chain. In such a case,
+ *                        this step is repeated again and again. In each iteration we look for a larger number
+ *                        of near neighbours around the original reference-position. We end the search when we recover some number of near neighbours
+ *                        for which the distance from the reference-position for both aChainInp and aChainRef is the same.
+ *                        - The main and reference samples are each normalized, such that the sum of weighted entries in both is the same.
+ *                        - For each object the weight calculation therefore uses a different volume in the parameter-space. However,
+ *                        the volume element for a given object (V_nn) cancels out, since the weights are defined as a ratio. The condition
+ *                        on a minimal number of neighbors, minNobjInVol_wgtKNN, prevents shoot noise from dominating the result.
+ * @details             - **doRelWgts == false:**
+ *                        - Weights are computed for each object from the input sample using 
+ *                          wgtTest = max( (dist_Ref0_RefNear - dist_Ref_Inp) / dist_Ref0_RefNear , 0)
+ *                        where dist_Ref_Inp is the distance between the input object and its nearest neighbour from the
+ *                        reference sample, objInpRef; dist_Ref0_RefNear is the disance between objInpRef and its Nth near neighbour,
+ *                        where N is given by minNobjInVol_inTrain.
+ *                        - The final weight is currently just a binary estimator:
+ *                          wgt = (wgtTest > minWgtTest) ? 1 : 0
+ *                         where minWgtTest is a number in the range [0,1], given by the variable, maxRelRatioInRef
+ *                        - This way, we derive a measure of the density in the reference sample, in the neighbourhood of the
+ *                        input object. This metric is zero (or very small) in cases where the input object is "very far" from
+ *                        other objects in the reference sample, where the scale which defines what "very" means, is derived
+ *                        in-situ from the reference sample.
  * 
  * @param aChainInp     - a chain corresponding to the main dataset
  * @param aChainRef     - a chain corresponding to the reference dataset
@@ -135,40 +197,47 @@ void CatFormat::asciiToSplitTree_wgtKNN(TString inAsciiFiles, TString inAsciiVar
 // ===========================================================================================================
 void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString outTreeName) {
 // ===========================================================================================
-  VERIFY(LOCATION,(TString)"Memory leak ?! ",(dynamic_cast<TChain*>(aChainInp)));
-  VERIFY(LOCATION,(TString)"Memory leak ?! ",(dynamic_cast<TChain*>(aChainRef)));
+  VERIFY(LOCATION,(TString)"Memory leak ?!?",(dynamic_cast<TChain*>(aChainInp) && dynamic_cast<TChain*>(aChainRef)));
 
   if(outTreeName == "") outTreeName = aChainInp->GetName();
-
   aLOG(Log::INFO) <<coutWhiteOnBlack<<coutBlue<<" - starting ANNZ::addWgtKNNtoTree("<<coutYellow<<outTreeName<<coutBlue<<") ... "<<coutDef<<endl;
 
-  TString outDirNameFull  = glob->GetOptC("outDirNameFull");
-  TString weightName      = glob->GetOptC("baseName_weightKNN");
+  TString outDirNameFull   = glob->GetOptC("outDirNameFull");
+  TString indexName        = glob->GetOptC("indexName");
+  TString plotExt          = glob->GetOptC("printPlotExtension");
+  bool    doRelWgts        = glob->GetOptB("doRelWgts");
+  bool    doStoreToAscii   = glob->GetOptB("doStoreToAscii");
+  bool    doPlots          = glob->GetOptB("doPlots");
+  int     nObjectsToWrite  = glob->GetOptI("nObjectsToWrite");
+  int     minObjTrainTest  = glob->GetOptI("minObjTrainTest");
+  double  maxRelRatioInRef = glob->GetOptF("maxRelRatioInRef_inTrain");
+
+  TString typePostfix      = (TString)(doRelWgts ? "_wgtKNN" : "_inTrain");
+  TString weightName       = glob->GetOptC((TString)"baseName"      +typePostfix); // e.g., "baseName_wgtKNN"
+  TString outAsciiVars     = glob->GetOptC((TString)"outAsciiVars"  +typePostfix); // e.g., "outAsciiVars_wgtKNN"
+  TString weightVarNames   = glob->GetOptC((TString)"weightVarNames"+typePostfix); // e.g., "weightVarNames_wgtKNN"
+  int     minNobjInVol     = glob->GetOptI((TString)"minNobjInVol"  +typePostfix); // e.g., "minNobjInVol_wgtKNN"
+  double  sampleFracInp    = glob->GetOptF((TString)"sampleFracInp" +typePostfix); // e.g., "sampleFracInp_wgtKNN"
+  double  sampleFracRef    = glob->GetOptF((TString)"sampleFracRef" +typePostfix); // e.g., "sampleFracRef_wgtKNN"
+
+  vector <TString> chainWgtV(2), chainCutV(2);
+
+  chainWgtV[0] = glob->GetOptC((TString)"weightInp"+typePostfix); chainWgtV[1] = glob->GetOptC((TString)"weightRef"+typePostfix);
+  chainCutV[0] = glob->GetOptC((TString)"cutInp"   +typePostfix); chainCutV[1] = glob->GetOptC((TString)"cutRef"   +typePostfix);
+
+  // force reasonable min/max values
+  minNobjInVol     = max(minNobjInVol,20);
+  maxRelRatioInRef = max(min(maxRelRatioInRef,0.999),0.001);
+
+  int     maxNobj         = 0;  // maxNobj = glob->GetOptI("maxNobj"); // only allow maxNobj limits for debugging !! 
   TString outBaseName     = (TString)outDirNameFull+glob->GetOptC("treeName")+weightName;
-  TString outAsciiVars    = glob->GetOptC("outAsciiVars_wgtKNN");
-  TString weightVarNames  = glob->GetOptC("weightVarNames_wgtKNN");
-  TString indexName       = glob->GetOptC("indexName");
-  TString plotExt         = glob->GetOptC("printPlotExtension");
-  double  sampleFracInp   = glob->GetOptF("sampleFracInp_wgtKNN");
-  double  sampleFracRef   = glob->GetOptF("sampleFracRef_wgtKNN");
-  bool    doStoreToAscii  = glob->GetOptB("doStoreToAscii");
-  bool    doPlots         = glob->GetOptB("doPlots");
-  int     nObjectsToWrite = glob->GetOptI("nObjectsToWrite");
-  int     minNobjInVol    = glob->GetOptI("minNobjInVol_wgtKNN");
-  int     minObjTrainTest = glob->GetOptI("minObjTrainTest");
-  int     maxNobj         = 0;   maxNobj = glob->GetOptI("maxNobj"); // only allow limits in case of debugging !! 
+  TString wgtNormTreeName = (TString)"_normWgt";
 
-  TString wgtNormTreeName = "_normWgt";
-
-  vector <double>  chainWgtNormV(2,0), chainEntV(2,0);
-
-  vector <TString> chainWgtV(2); chainWgtV[0] = glob->GetOptC("weightInp_wgtKNN"); chainWgtV[1] = glob->GetOptC("weightRef_wgtKNN");
-  vector <TString> chainCutV(2); chainCutV[0] = glob->GetOptC("cutInp_wgtKNN");    chainCutV[1] = glob->GetOptC("cutRef_wgtKNN");
-
+  // decompose the variable names for the KNN distance calculation
   vector <TString> varNames = utils->splitStringByChar(weightVarNames,';');
 
   int nVars = (int)varNames.size();
-  VERIFY(LOCATION,(TString)"Did not find input variables for KNN weight computation [\"weightVarNames_wgtKNN\" ="
+  VERIFY(LOCATION,(TString)"Did not find input variables for KNN weight computation [\"weightVarNames_wgtKNN\"/\"weightVarNames_inTrain\" = "
                           +weightVarNames+"] ... Something is horribly wrong !?!?",(nVars > 0));
 
   VERIFY(LOCATION,(TString)"sampleFracInp_wgtKNN must be a positive number, smaller or equal to 1. Currently is set to "+utils->floatToStr(sampleFracInp)
@@ -176,6 +245,10 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
   VERIFY(LOCATION,(TString)"sampleFracRef_wgtKNN must be a positive number, smaller or equal to 1. Currently is set to "+utils->floatToStr(sampleFracRef)
                  ,(sampleFracRef > 0 && sampleFracRef <= 1));
   
+  aLOG(Log::INFO) <<coutPurple<<" - will use the following variables for the KNN search: "<<coutYellow<<weightVarNames<<coutDef<<endl;
+
+  vector < vector <double> > minMaxVarVals(2,vector<double>(nVars));
+
   // -----------------------------------------------------------------------------------------------------------
   // setup the kd-trees for the two chains
   // -----------------------------------------------------------------------------------------------------------
@@ -184,6 +257,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
   vector <TMVA::MethodKNN *> knnErrMethod(2);  vector <TMVA::kNN::ModulekNN *> knnErrModule(2);
 
   vector <TString> outFileDirKnnErrV(2), outFileNameKnnErr(2);
+  vector <double>  chainWgtNormV(2,0), chainEntV(2,0);
 
   for(int nChainNow=0; nChainNow<2; nChainNow++) {
     TString nChainKNNname = TString::Format("_nChainKNN%d",nChainNow);
@@ -194,6 +268,19 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
     // -----------------------------------------------------------------------------------------------------------
     TChain * aChain = (nChainNow == 0) ? aChainInp : aChainRef;
     aChainV[nChainNow]   = (TChain*)aChain->Clone((TString)aChain->GetName()+nChainKNNname);  aChainV[nChainNow]->SetDirectory(0);
+
+    // make sure the input variables all exist in the chain
+    vector <TString> branchNameV;
+    utils->getTreeBranchNames(aChain,branchNameV);
+
+    for(int nVarNow=0; nVarNow<nVars; nVarNow++) {
+      bool hasBranch = (find(branchNameV.begin(),branchNameV.end(),varNames[nVarNow]) != branchNameV.end());
+
+      VERIFY(LOCATION,(TString)"got KNN-variable = \""+varNames[nVarNow]+"\" ... variables included in \"weightVarNames"+typePostfix
+                              +"\" must exist in the input file (complex expressions of input variables are not supported)",hasBranch);
+    }
+    
+    branchNameV.clear();
 
     double  objFracNow   = (nChainNow == 0) ? sampleFracInp : sampleFracRef;
     int     nTrainObj    = static_cast<int>(floor(aChainV[nChainNow]->GetEntries() * objFracNow));
@@ -217,7 +304,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
     TString verbLvlM        = (TString)(debug ? ":V:H"                   : ":!V:!H");
     TString drawProgBarStr  = (TString)(debug ? ":Color:DrawProgressBar" : ":Color:!DrawProgressBar");
     TString optKNN          = (TString)":nkNN=0:ScaleFrac=0.0";
-    TString transStr        = (TString)":Transformations=I";
+    TString transStr        = (TString)":Transformations=I,N";
     TString analysType      = (TString)":AnalysisType=Regression";
     TString trainValidStr   = (TString)"nTrain_Regression=0:nTest_Regression=0:SplitMode=Random:NormMode=NumEvents:!V";
 
@@ -243,17 +330,41 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
 
     // calculate the sum of weights in the chain for the normalization
     // -----------------------------------------------------------------------------------------------------------
-    TString hisName   = (TString)nChainKNNname+"_hisTMP";
-    TString drawExprs = (TString)varNames[0]+">>"+hisName;
-    TString wegtCut   = (TString)"("+chainCutV[nChainNow]+")*("+chainWgtV[nChainNow]+")";
-    wegtCut.ReplaceAll("()*()","").ReplaceAll("*()","").ReplaceAll("()*","").ReplaceAll("()","1");
+    double sumWgt(0), sumEnt(0);
+    for(int nVarNow=0; nVarNow<nVars; nVarNow++) {
+      if(nChainNow == 0 && nVarNow > 0) break;
 
-    TCanvas * tmpCnvs = new TCanvas("tmpCnvs","tmpCnvs");
-    aChain->Draw(drawExprs,wegtCut); DELNULL(tmpCnvs);
+      TString hisName   = (TString)nChainKNNname+"_hisTMP_"+varNames[nVarNow];
+      TString drawExprs = (TString)varNames[nVarNow]+">>"+hisName;
+      TString wgtCut    = (TString)"("+chainCutV[nChainNow]+")*("+chainWgtV[nChainNow]+")";
+      wgtCut.ReplaceAll("()*()","").ReplaceAll("*()","").ReplaceAll("()*","").ReplaceAll("()","1");
 
-    TH1 * his1 = (TH1F*)gDirectory->Get(hisName); his1->SetDirectory(0);
-    VERIFY(LOCATION,(TString)"Could not derive histogram ("+hisName+") from chain ... Something is horribly wrong ?!?!",(dynamic_cast<TH1F*>(his1)));
-    double sumWgt(his1->Integral()), sumEnt(his1->GetEntries());  DELNULL(his1);
+      TCanvas * tmpCnvs = new TCanvas("tmpCnvs","tmpCnvs");
+      aChain->Draw(drawExprs,wgtCut); DELNULL(tmpCnvs);
+
+      TH1 * his1 = (TH1F*)gDirectory->Get(hisName); his1->SetDirectory(0); his1->BufferEmpty();
+      VERIFY(LOCATION,(TString)"Could not derive histogram ("+hisName+") from chain ... Something is horribly wrong ?!?!",(dynamic_cast<TH1F*>(his1)));
+      
+      if(nVarNow == 0) { sumWgt = his1->Integral(); sumEnt = his1->GetEntries(); }
+      
+      if(nChainNow == 1) {
+        vector <double> fracV, quantV(2,-1);
+        fracV.push_back(0.0); fracV.push_back(1.0);
+
+        int hasQuant = utils->getQuantileV(fracV,quantV,his1);
+        VERIFY(LOCATION,(TString)"Got not compute quantiles for histogram("+hisName+") ... Something is horribly wrong ?!?! ",hasQuant);
+
+        // pad the derived range by the maximal of the two: half the bin width of the historgam; 1% of the range of values
+        double rangeAdd = max(his1->GetBinWidth(1)/2. , 0.01 * (quantV[1] - quantV[0]));
+
+        minMaxVarVals[0][nVarNow] = quantV[0] - rangeAdd;
+        minMaxVarVals[1][nVarNow] = quantV[1] + rangeAdd;
+
+        fracV.clear(); quantV.clear();
+      }
+      
+      DELNULL(his1);
+    }
 
     aLOG(Log::INFO)  <<coutGreen<<" - "<<coutBlue<<aChainV[nChainNow]->GetName()<<coutGreen<<" - kd-tree (effective entries = "
                      <<knnErrMethod[nChainNow]->fEvent.size()<<")"<<coutYellow<<" , opts = "<<coutRed<<optKNN<<coutYellow<<" , "<<coutRed
@@ -298,6 +409,10 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
 
   var_1->copyVarStruct(var_0);
 
+  // the weightName variable for "baseName_wgtKNN" was created by CatFormat if all went
+  // well, but not for "baseName_inTrain"; we therefore add it here if not already defined
+  if(!var_1->HasVarF(weightName)) var_1->NewVarF(weightName);
+
   TTree * outTree = new TTree(outTreeName,outTreeName); outTree->SetDirectory(0); outputs->TreeMap[outTreeName] = outTree;
   var_1->createTreeBranches(outTree); 
 
@@ -327,62 +442,149 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
 
     var_1->copyVarData(var_0);
 
-    // fill the current object vector and use it to create a TMVA::kNN::Event object
+    // fill the current object vector and use it later in order to create a TMVA::kNN::Event object
+    // if any of the variables is beyond the limits derived from the reference sample, the weight is
+    // automatically set to zero, and not other computation is needed
+    // -----------------------------------------------------------------------------------------------------------
+    bool isInsideRef(true);
     for(int nVarNow=0; nVarNow<nVars; nVarNow++) {
       objNowV[nVarNow] = var_0->GetForm(varFormNames[nVarNow]);
+
+      if(objNowV[nVarNow] < minMaxVarVals[0][nVarNow] || objNowV[nVarNow] > minMaxVarVals[1][nVarNow]) { isInsideRef = false; break; }
     }
-    const TMVA::kNN::Event evtNow(objNowV,1,0);
 
-    // find the same number of near neighbours for each chain, and derive the distance this requires
-    int    nObjKNN(minNobjInVol);
-    double wgtNorm(0);
-    for(int nChainNow=0; nChainNow<2; nChainNow++) {
-      wgtNorm = chainWgtNormV[nChainNow];
+    double weightKNN(0);
+    if(isInsideRef) {
+      // -----------------------------------------------------------------------------------------------------------
+      // derive the weights as the ratio between input and reference samples, if needed
+      // -----------------------------------------------------------------------------------------------------------
+      if(doRelWgts) {
+        const TMVA::kNN::Event evtNow(objNowV,1,0);
 
-      knnErrModule[nChainNow]->Find(evtNow,nObjKNN);
-      const TMVA::kNN::List & knnList = knnErrModule[nChainNow]->GetkNNList();
+        // find the same number of near neighbours for each chain, and derive the distance this requires
+        int    nObjKNN(minNobjInVol);
+        for(int nChainNow=0; nChainNow<2; nChainNow++) {
+          double wgtNorm = chainWgtNormV[nChainNow];
 
-      weightSumV[nChainNow] = 0;
-      for(TMVA::kNN::List::const_iterator lit=knnList.begin(); lit!=knnList.end(); ++lit) {
-        weightSumV[nChainNow] += max((lit->first->GetEvent()).GetWeight() * wgtNorm , 0.); // just in case, prevent negative weights
+          knnErrModule[nChainNow]->Find(evtNow,nObjKNN);
+          const TMVA::kNN::List & knnList = knnErrModule[nChainNow]->GetkNNList();
+
+          weightSumV[nChainNow] = 0;
+          for(TMVA::kNN::List::const_iterator lit=knnList.begin(); lit!=knnList.end(); ++lit) {
+            double wgtNow = (lit->first->GetEvent()).GetWeight() * wgtNorm;
+
+            VERIFY(LOCATION,(TString)"Found negative weight in reference sample ... Something is horribly wrong ?!?",(wgtNow > 0));
+
+            weightSumV[nChainNow] += wgtNow;
+          }
+          distV[nChainNow] = evtNow.GetDist(knnList.back().first->GetEvent());
+        }
+        // the index of the chain with the shorter distance
+        if(distV[0] < distV[1]) { distIndexV[0] = 0; distIndexV[1] = 1; }
+        else                    { distIndexV[0] = 1; distIndexV[1] = 0; }
+
+        bool   foundDist(false);
+        double weightSumNow(0), wgtNorm(chainWgtNormV[distIndexV[0]]);
+        int    preNobj(0);
+        for(int nSearchNow=0; nSearchNow<10; nSearchNow++) {
+          preNobj = nObjKNN; nObjKNN *= 5;
+
+          knnErrModule[distIndexV[0]]->Find(evtNow,nObjKNN);
+          const TMVA::kNN::List & knnList = knnErrModule[distIndexV[0]]->GetkNNList();
+
+          for(TMVA::kNN::List::const_iterator lit=std::next(knnList.begin(),preNobj); lit!=knnList.end(); ++lit) {
+            const TMVA::kNN::Event & eventNow = lit->first->GetEvent();
+
+            double knnDistNow = evtNow.GetDist(eventNow);
+            double weightObj  = eventNow.GetWeight() * wgtNorm;
+
+            VERIFY(LOCATION,(TString)"Found negative weight in reference sample ... Something is horribly wrong ?!?",(weightObj > 0));
+
+            if(knnDistNow < distV[distIndexV[1]]) { weightSumNow += weightObj;        }
+            else                                  { foundDist     = true;      break; }
+          }
+          if(foundDist) {
+            weightSumV[distIndexV[0]] += weightSumNow;
+            if(weightSumV[1] * weightSumV[0] > EPS) weightKNN = weightSumV[1]/weightSumV[0];
+            break;
+          }
+        }
+        if(foundDist) { weightSum += weightKNN;
+                        var_0->IncCntr("Found good weight");         }
+        else          { var_0->IncCntr("Did not fined good weight"); }
       }
-      distV[nChainNow] = evtNow.GetDist(knnList.back().first->GetEvent());
+      // -----------------------------------------------------------------------------------------------------------
+      // derive the weight from the approximated density estimation of near objects from the reference sample, if needed
+      // -----------------------------------------------------------------------------------------------------------
+      else {
+        const TMVA::kNN::Event evtInp(objNowV,1,0);
+
+        // find the closest object in the reference chain
+        knnErrModule[1]->Find(evtInp,1);
+        const TMVA::kNN::List & knnListInp = knnErrModule[1]->GetkNNList();
+
+        // must make a sanith check before using the pointer to GetEvent()
+        VERIFY(LOCATION,(TString)"could not find any near neighbours for objects ... Something is horribly wrong ?!?",(knnListInp.size() > 0));
+
+        const TMVA::kNN::Event evtRef(knnListInp.back().first->GetEvent());
+        
+        // find the diatnace to the reference object we just found
+        double dist_Ref_Inp = evtInp.GetDist(evtRef);
+        double wgt_Ref_Inp  = evtRef.GetWeight();
+
+        VERIFY(LOCATION,(TString)"Found negative weight in reference sample ... Something is horribly wrong ?!?",(wgt_Ref_Inp > 0));
+
+        // find the minNobjInVol near objects in the reference chain, compared to the initial reference object. The number
+        // of objects is estimated as the sum of their weights, scaled by the weight of the original refrence object. If weighs
+        // are not defined, then the sum of weights will be exactly minNobjInVol. Otherwise, several searches with increasing
+        // NN numbers may be needed...
+        // -----------------------------------------------------------------------------------------------------------
+        int    minNobjInVolNow(minNobjInVol), minNobjInVolPrev(0);
+        bool   foundDist(false);
+        double wgtSum_Ref0_RefNear(0), dist_Ref0_RefNear(0);
+
+        for(int nSearchNow=0; nSearchNow<10; nSearchNow++) {
+          knnErrModule[1]->Find(evtRef,minNobjInVolNow+1);
+          const TMVA::kNN::List & knnListRef = knnErrModule[1]->GetkNNList();
+
+          for(TMVA::kNN::List::const_iterator lit=std::next(knnListRef.begin(),minNobjInVolPrev); lit!=knnListRef.end(); ++lit) {
+            const TMVA::kNN::Event & eventRefNow = lit->first->GetEvent();
+
+            double distNow = evtRef.GetDist(eventRefNow); if(distNow < EPS) continue; // the first element is the initial object (-> zero distance)
+            double wgtNow  = eventRefNow.GetWeight();
+
+            VERIFY(LOCATION,(TString)"Found negative weight in reference sample ... Something is horribly wrong ?!?",(wgtNow > 0));
+
+            dist_Ref0_RefNear    = distNow;
+            wgtSum_Ref0_RefNear += wgtNow;
+
+            if(wgtSum_Ref0_RefNear >= minNobjInVol * wgt_Ref_Inp) { foundDist = true; break; }
+          }
+          if(foundDist) break;
+
+          minNobjInVolPrev = minNobjInVolNow; minNobjInVolNow *= 5;
+        }
+
+        if(foundDist) {
+          // -----------------------------------------------------------------------------------------------------------
+          // finally, compute the weight as the relative difference beween the distance between the diatance
+          // measures then compute a binary decision, based on the minimal threshold set by maxRelRatioInRef
+          // -----------------------------------------------------------------------------------------------------------
+          weightKNN = max( ((dist_Ref0_RefNear - dist_Ref_Inp) / dist_Ref0_RefNear) , 0.);
+          weightKNN = (weightKNN > maxRelRatioInRef) ? 1 : 0;
+
+          var_0->IncCntr("Found good weight");
+        }
+        else {
+          // assign zero weight if could not complete the calculation
+          weightKNN = 0;
+
+          var_0->IncCntr("Did not fined good weight");
+        }
+      }
     }
-    // the index of the chain with the shorter distance
-    if(distV[0] < distV[1]) { distIndexV[0] = 0; distIndexV[1] = 1; }
-    else                    { distIndexV[0] = 1; distIndexV[1] = 0; }
 
-    wgtNorm = chainWgtNormV[distIndexV[0]];
-
-    bool   foundDist(false);
-    double weightKNN(0), weightSumNow(0);
-    int    nObjsIn(0), preNobj(0);
-    for(int nSearchNow=0; nSearchNow<100; nSearchNow++) {
-      preNobj = nObjsIn = nObjKNN; nObjKNN *= 5;
-
-      knnErrModule[distIndexV[0]]->Find(evtNow,nObjKNN);
-      const TMVA::kNN::List & knnList = knnErrModule[distIndexV[0]]->GetkNNList();
-
-      for(TMVA::kNN::List::const_iterator lit=std::next(knnList.begin(),preNobj); lit!=knnList.end(); ++lit) {
-        const TMVA::kNN::Event & event_ = lit->first->GetEvent();
-
-        double knnDistNow = evtNow.GetDist(event_);
-        double weightObj  = max(event_.GetWeight() * wgtNorm , 0.); // just in case, prevent negative weights
-
-        if(knnDistNow < distV[distIndexV[1]]) { weightSumNow += weightObj; nObjsIn++; }
-        else                                  { foundDist     = true;      break;     }
-      }
-      if(foundDist) {
-        weightSumV[distIndexV[0]] += weightSumNow;
-        if(weightSumV[1] * weightSumV[0] > EPS) weightKNN = weightSumV[1]/weightSumV[0];
-        break;
-      }
-    }
-    if(foundDist) { weightSum += weightKNN;
-                    var_0->IncCntr("Found good weight");        }
-    else          { var_0->IncCntr("Did not fine good weight"); }
-
-    var_1->SetVarF(weightName,weightKNN); // the weightName variable was created by CatFormat if all went well
+    var_1->SetVarF(weightName,weightKNN);
 
     outTree->Fill();
 
@@ -392,73 +594,90 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
   
   DELNULL(var_0); DELNULL(var_1); DELNULL(outTree); outputs->TreeMap.erase(outTreeName);
 
+  TChain * aChainInpWgt(NULL);
+
   // -----------------------------------------------------------------------------------------------------------
   // normalize the derived weights - the normalization factor is such that the entire input sample will have
   // a sum of weights which is equal to the original number of entries in the sample
   // -----------------------------------------------------------------------------------------------------------
-  VERIFY(LOCATION,(TString)"Got sum of weights from the entire main sample = "+utils->floatToStr(weightSum)
-                          +" ... Something is horribly wrong ?!?! ",(weightSum > 0));
+  if(doRelWgts) {
+    VERIFY(LOCATION,(TString)"Got sum of weights from the entire main sample = "+utils->floatToStr(weightSum)
+                            +" ... Something is horribly wrong ?!?! ",(weightSum > 0));
 
-  double weightNorm = chainEntV[0] / weightSum;
+    double weightNorm = chainEntV[0] / weightSum;
 
-  // create a temporary sub-dir for the output trees of the above
-  // -----------------------------------------------------------------------------------------------------------
-  TString outDirNameTMP = (TString)outDirNameFull+"tmpDir"+wgtNormTreeName+"/";
-  TString mkdirCmnd     = (TString)"mkdir -p "+outDirNameTMP;
-  utils->exeShellCmndOutput(mkdirCmnd,inLOG(Log::DEBUG),true);
+    // create a temporary sub-dir for the output trees of the above
+    // -----------------------------------------------------------------------------------------------------------
+    TString outDirNameTMP = (TString)outDirNameFull+"tmpDir"+wgtNormTreeName+"/";
+    TString mkdirCmnd     = (TString)"mkdir -p "+outDirNameTMP;
+    utils->exeShellCmndOutput(mkdirCmnd,inLOG(Log::DEBUG),true);
 
-  TString fileNameNow = (TString)outDirNameFull+outTreeName+"*.root";
-  TString mvCmnd      = (TString)"mv "+fileNameNow+" "+outDirNameTMP;
+    TString fileNameNow = (TString)outDirNameFull+outTreeName+"*.root";
+    TString mvCmnd      = (TString)"mv "+fileNameNow+" "+outDirNameTMP;
 
-  utils->exeShellCmndOutput(mvCmnd,inLOG(Log::DEBUG),true);
-  fileNameNow.ReplaceAll(outDirNameFull,outDirNameTMP);
+    utils->exeShellCmndOutput(mvCmnd,inLOG(Log::DEBUG),true);
+    fileNameNow.ReplaceAll(outDirNameFull,outDirNameTMP);
 
-  TChain * aChainNormWgt = new TChain(outTreeName,outTreeName); aChainNormWgt->SetDirectory(0); aChainNormWgt->Add(fileNameNow);
+    aChainInpWgt = new TChain(outTreeName,outTreeName); aChainInpWgt->SetDirectory(0); aChainInpWgt->Add(fileNameNow);
 
-  aLOG(Log::INFO) <<coutBlue<<" - Will move previous results into "<<coutPurple<<outDirNameTMP<<coutBlue
-                  <<", and write normalized weights to "<<coutYellow<<fileNameNow<<coutBlue<<" ... "<<coutDef<<endl;
+    aLOG(Log::INFO) <<coutBlue<<" - Will move previous results into "<<coutPurple<<outDirNameTMP<<coutBlue
+                    <<", and write normalized weights to "<<coutYellow<<fileNameNow<<coutBlue<<" ... "<<coutDef<<endl;
 
-  // create the vars to read/write trees
-  // -----------------------------------------------------------------------------------------------------------
-  var_0 = new VarMaps(glob,utils,"treeWeightsKNNvar_0");
-  var_1 = new VarMaps(glob,utils,"treeWeightsKNNvar_1");
+    // create the vars to read/write trees
+    // -----------------------------------------------------------------------------------------------------------
+    var_0 = new VarMaps(glob,utils,"treeWeightsKNNvar_0");
+    var_1 = new VarMaps(glob,utils,"treeWeightsKNNvar_1");
 
-  var_0->connectTreeBranches(aChainNormWgt);
-  var_1->copyVarStruct(var_0);
+    var_0->connectTreeBranches(aChainInpWgt);
+    var_1->copyVarStruct(var_0);
 
-  outTree = new TTree(outTreeName,outTreeName); outTree->SetDirectory(0); outputs->TreeMap[outTreeName] = outTree;
-  var_1->createTreeBranches(outTree); 
+    outTree = new TTree(outTreeName,outTreeName); outTree->SetDirectory(0); outputs->TreeMap[outTreeName] = outTree;
+    var_1->createTreeBranches(outTree); 
 
-  // -----------------------------------------------------------------------------------------------------------
-  // loop on the tree
-  // -----------------------------------------------------------------------------------------------------------
-  breakLoop = false; mayWriteObjects = false;
-  var_0->clearCntr();
-  for(Long64_t loopEntry=0; true; loopEntry++) {
-    if(!var_0->getTreeEntry(loopEntry)) breakLoop = true;
+    // -----------------------------------------------------------------------------------------------------------
+    // loop on the tree
+    // -----------------------------------------------------------------------------------------------------------
+    breakLoop = false; mayWriteObjects = false;
+    var_0->clearCntr();
+    for(Long64_t loopEntry=0; true; loopEntry++) {
+      if(!var_0->getTreeEntry(loopEntry)) breakLoop = true;
 
-    if((mayWriteObjects && var_0->GetCntr("nObj") % nObjectsToWrite == 0) || breakLoop) {
-      var_0->printCntr(outTreeName); outputs->WriteOutObjects(false,true); outputs->ResetObjects();
-      mayWriteObjects = false;
+      if((mayWriteObjects && var_0->GetCntr("nObj") % nObjectsToWrite == 0) || breakLoop) {
+        var_0->printCntr(outTreeName); outputs->WriteOutObjects(false,true); outputs->ResetObjects();
+        mayWriteObjects = false;
+      }
+      if(breakLoop) break;
+
+      var_1->copyVarData(var_0);
+
+      double weightKNN = var_0->GetVarF(weightName) * weightNorm;
+      var_1->SetVarF(weightName,weightKNN);
+
+      outTree->Fill();
+
+      mayWriteObjects = true; var_0->IncCntr("nObj"); if(var_0->GetCntr("nObj") == maxNobj) breakLoop = true;
     }
-    if(breakLoop) break;
+    if(!breakLoop) { var_0->printCntr(outTreeName); outputs->WriteOutObjects(false,true); outputs->ResetObjects(); }
 
-    var_1->copyVarData(var_0);
+    DELNULL(var_1); DELNULL(outTree); outputs->TreeMap.erase(outTreeName);
 
-    double weightKNN = var_0->GetVarF(weightName) * weightNorm;
-    var_1->SetVarF(weightName,weightKNN);
-
-    outTree->Fill();
-
-    mayWriteObjects = true; var_0->IncCntr("nObj"); if(var_0->GetCntr("nObj") == maxNobj) breakLoop = true;
+    // remove the temporary sub-dir and the intermediary trees inside
+    utils->safeRM(outDirNameTMP,inLOG(Log::DEBUG));
   }
-  if(!breakLoop) { var_0->printCntr(outTreeName); outputs->WriteOutObjects(false,true); outputs->ResetObjects(); }
+  // -----------------------------------------------------------------------------------------------------------
+  // if there is no need to normalize the weights, just create a new chain and connect var_0 to it
+  // -----------------------------------------------------------------------------------------------------------
+  else {
+    TString fileNameNow = (TString)outDirNameFull+outTreeName+"*.root";
 
-  DELNULL(var_1); DELNULL(outTree); outputs->TreeMap.erase(outTreeName);
+    aChainInpWgt = new TChain(outTreeName,outTreeName); aChainInpWgt->SetDirectory(0); aChainInpWgt->Add(fileNameNow);
 
-  // remove the temporary sub-dir and the intermediary trees inside
-  utils->safeRM(outDirNameTMP,inLOG(Log::DEBUG));
+    aLOG(Log::INFO) <<coutRed<<" - Created refrence chain  "<<coutGreen<<outTreeName<<"("<<aChainInpWgt->GetEntries()<<")"
+                    <<" from "<<coutBlue<<fileNameNow<<coutDef<<endl;
 
+    // create the vars to read/write trees
+    var_0 = new VarMaps(glob,utils,"treeWeightsKNNvar_0");
+  }
 
   // -----------------------------------------------------------------------------------------------------------
   // setup chains for the output which has just been derived (needed for storeTreeToAscii() and for plotting)
@@ -470,7 +689,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
   // -----------------------------------------------------------------------------------------------------------
   // write out the weights to an ascii file
   // -----------------------------------------------------------------------------------------------------------
-  if(doStoreToAscii) {
+  if(doStoreToAscii && doRelWgts) {
     // extract the names of the variables which will be written out to the ascii output
     // including the derived KNN weights. Add the actuall weight variable if not already included
     vector <TString> outVarNames = utils->splitStringByChar(outAsciiVars,';');
@@ -555,12 +774,10 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
           TString drawExprs = (TString)varNameNow+">>"+hisName;
           if(nDrawNow == 1) drawExprs += TString::Format("(%d,%f,%f)",nDrawBins,drawLim0,drawLim1);
 
-          cout <<drawExprs<<endl;
-
           TCanvas * tmpCnvs = new TCanvas("tmpCnvs","tmpCnvs");
           aChain->Draw(drawExprs,weightNow); DELNULL(tmpCnvs);
 
-          TH1 * his1 = (TH1F*)gDirectory->Get(hisName); his1->SetDirectory(0); his1->SetTitle(hisTitle);
+          TH1 * his1 = (TH1F*)gDirectory->Get(hisName); his1->SetDirectory(0); his1->BufferEmpty(); his1->SetTitle(hisTitle);
           VERIFY(LOCATION,(TString)"Could not derive histogram ("+hisName+") from chain ... Something is horribly wrong ?!?!",(dynamic_cast<TH1F*>(his1)));
           
           // derive the common histogram limits for all chains
@@ -598,7 +815,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
   }
 
   // cleanup
-  DELNULL(var_0);
+  DELNULL(var_0); DELNULL(aChainInpWgt);
 
   for(int nChainNow=0; nChainNow<2; nChainNow++) {
     DELNULL(knnErrFactory[nChainNow]); DELNULL(knnErrOutFile[nChainNow]);
@@ -610,7 +827,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
   }
 
   knnErrOutFile.clear(); knnErrFactory.clear(); knnErrMethod.clear(); knnErrModule.clear(); aChainV.clear();
-  outFileDirKnnErrV.clear(); outFileNameKnnErr.clear(); varNames.clear(); chainWgtV.clear(); chainCutV.clear();
+  outFileDirKnnErrV.clear(); minMaxVarVals.clear(); outFileNameKnnErr.clear(); varNames.clear(); chainWgtV.clear(); chainCutV.clear();
   varFormNames.clear(); objNowV.clear(); distV.clear(); weightSumV.clear(); distIndexV.clear();
   chainWgtNormV.clear(); chainEntV.clear();
 

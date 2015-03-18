@@ -690,7 +690,7 @@ void  ANNZ::loadOptsMLM() {
   aLOG(Log::DEBUG_1) <<coutWhiteOnBlack<<coutYellow<<" - starting ANNZ::loadOptsMLM() ... "<<coutDef<<endl;
 
   int     nMLMs     = glob->GetOptI("nMLMs");
-  TString weightKNN = glob->GetOptC("baseName_weightKNN");
+  TString weightKNN = glob->GetOptC("baseName_wgtKNN");
 
   inNamesVar.resize(nMLMs); inNamesErr.resize(nMLMs);
 

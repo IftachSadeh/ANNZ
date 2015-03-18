@@ -2,6 +2,12 @@
 
 <!-- ## Master version -->
 
+## ANNZ 2.0.4 (19/3/2015)
+
+- **Modified the function, `CatFormat::addWgtKNNtoTree()`, and added `CatFormat::asciiToFullTree_wgtKNN()`:** The purpose of the new features is to add an output variable, denoted as `inTrainFlag` to the output of evaluation. The new output indicates if the corresponding object is "compatible" with other objects from the training dataset. The compatibility is estimated by comparing the density of objects in the training dataset in the vicinity of the evaluated object. If the evaluated object belongs to an area of parameter-space which is not represented in the training dataset, we will get `inTrainFlag = 0`. In this case, the output of the training is probably unreliable.
+
+- Other minor modifications.
+
 ## ANNZ 2.0.3 (25/2/2015)
 
 - **Added *MultiClass* support to binned classification:** The new option is controlled by setting the `doMultiCls` flag. In this mode, multiple background samples can be trained simultaneously against the signal. In the context of binned classification, this means that each classification bin acts as an independent sample during the training.

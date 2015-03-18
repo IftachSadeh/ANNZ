@@ -186,6 +186,30 @@ myANNZ::myANNZ() {
   glob->NewOptF("sampleFracInp_wgtKNN" ,1);     // fraction of the input sample to use for the kd-tree (positive number, smaller or equal to 1)
   glob->NewOptF("sampleFracRef_wgtKNN" ,1);     // fraction of the input sample to use for the kd-tree (positive number, smaller or equal to 1)
 
+  // addInTrainFlag, minNobjInVol_inTrain, maxRelRatioInRef_inTrain -
+  // -----------------------------------------------------------------------------------------------------------
+  //   addInTrainFlag           - calculate for each object which is evaluated, if it is "close" in the input-parameter space to the training dataset.
+  //                              The result is written as part of the evaluation output, as an additional parameter (name defined by baseName_inTrain),
+  //                              which is zero if the object is not "close" to the training objects (therefore has unreliable result).
+  //                              The calculation is performed using a KNN approach, similar to the algorithm used for the "useWgtKNN" calculation.
+  //   minNobjInVol_inTrain     - The number of reference objects in the reference dataset which are used in the calculation.
+  //   maxRelRatioInRef_inTrain - A number in the range, [0,1] - The minimal threshold of the relative difference between distances 
+  //                            in the inTrainFlag calculation for accepting an object.
+  //   ...._inTrain             - The rest of the parameters ending with "_inTrain" have a similar role as their "_wgtKNN" counterparts
+  // -----------------------------------------------------------------------------------------------------------
+  glob->NewOptB("addInTrainFlag"          ,false);
+  glob->NewOptI("minNobjInVol_inTrain"    ,100);
+  glob->NewOptF("maxRelRatioInRef_inTrain",0.1);
+  glob->NewOptC("weightVarNames_inTrain"  ,"");    // list of input variables for KNN in/out computation
+  glob->NewOptC("outAsciiVars_inTrain"    ,"");    // list of output variables to be written to the ascii output of the KNN in/out computation
+  glob->NewOptC("weightInp_inTrain"       ,"");    // weight expression for input     kd-tree (function of the variables used in weightVarNames_inTrain)
+  glob->NewOptC("weightRef_inTrain"       ,"");    // weight expression for reference kd-tree (function of the variables used in weightVarNames_inTrain)
+  glob->NewOptC("cutInp_inTrain"          ,"");    // cut expression for input     kd-tree (function of the variables used in weightVarNames_inTrain)
+  glob->NewOptC("cutRef_inTrain"          ,"");    // cut expression for reference kd-tree (function of the variables used in weightVarNames_inTrain)
+  glob->NewOptF("sampleFracInp_inTrain"   ,1);     // fraction of the input sample to use for the kd-tree (positive number, smaller or equal to 1)
+  glob->NewOptF("sampleFracRef_inTrain"   ,1);     // fraction of the input sample to use for the kd-tree (positive number, smaller or equal to 1)
+
+
   // -----------------------------------------------------------------------------------------------------------
   // general options (regression, binned-classification and classification)
   // -----------------------------------------------------------------------------------------------------------
@@ -494,7 +518,7 @@ void myANNZ::Init() {
   glob->NewOptC("baseName_ANNZ"       ,"ANNZ_");          // base tag for all MLM names
   glob->NewOptC("baseName_inVarErr"   ,"ANNZ_inVarErr_"); // base tag for all PDF names
   glob->NewOptC("baseName_nPDF"       ,"ANNZ_PDF_");      // base tag for all PDF names
-  glob->NewOptC("baseName_weightKNN"  ,"ANNZ_KNN_w");     // KNN weight variable
+  glob->NewOptC("baseName_wgtKNN"     ,"ANNZ_KNN_w");     // KNN weight variable
   glob->NewOptC("treeName"            ,"ANNZ_tree");      // internal name prefix for input trees
   glob->NewOptC("hisName"             ,"ANNZ_his");       // internal name prefix for histograms
   glob->NewOptC("indexName"           ,"ANNZ_index");     // original index from input file
@@ -506,16 +530,19 @@ void myANNZ::Init() {
   glob->NewOptC("baseName_regPDF_max" ,"ANNZ_PDF_max_");  // base-name for the peak of the pdf solution (and its error) in randomized regression
   glob->NewOptC("baseName_regPDF_avg" ,"ANNZ_PDF_avg_");  // base-name for the average pdf solution (and its error) in randomized regression
   glob->NewOptC("baseName_knnErr"     ,"_knnErr");        // name-postfix of error variable derived with the KNN estimator 
+  // name of an optional output parameter in evaluation (is it "safe" to use the result for an evaluated object)
+  glob->NewOptC("baseName_inTrain"    ,"inTrainFlag");
 
   // -----------------------------------------------------------------------------------------------------------
   // working directory names
   // -----------------------------------------------------------------------------------------------------------
-  glob->NewOptC("trainDirName"    ,"train");     // name of sub-dir for training
-  glob->NewOptC("optimDirName"    ,"optim");     // name of sub-dir for optimization
-  glob->NewOptC("verifDirName"    ,"verif");     // name of sub-dir for verification
-  glob->NewOptC("evalDirName"     ,"eval");      // name of sub-dir for optimization
-  glob->NewOptC("postTrainName"   ,"postTrain"); // name of sub-dir for MLM input trees
-  
+  glob->NewOptC("trainDirName"    ,"train");                                   // name of sub-dir for training
+  glob->NewOptC("optimDirName"    ,"optim");                                   // name of sub-dir for optimization
+  glob->NewOptC("verifDirName"    ,"verif");                                   // name of sub-dir for verification
+  glob->NewOptC("evalDirName"     ,"eval");                                    // name of sub-dir for optimization
+  glob->NewOptC("evalTreePostfix" ,(TString)"_"+glob->GetOptC("evalDirName")); // postfix for evaluation trees
+  glob->NewOptC("postTrainName"   ,"postTrain");                               // name of sub-dir for MLM input trees
+
   // -----------------------------------------------------------------------------------------------------------
   // update/finalize glob-> paramters after user inputs and initialize utils and outputs
   // -----------------------------------------------------------------------------------------------------------
@@ -585,6 +612,21 @@ void myANNZ::Init() {
 
   glob->NewOptC("userOptsFile_genInputTrees",  (TString)glob->GetOptC("inputTreeDirName")+"userOpts.txt");
 
+  // add the inTrainFlag to the output (of evaluation), if needed
+  if(glob->GetOptB("addInTrainFlag") && glob->GetOptB("doEval")) {
+    TString addOutputVars = glob->GetOptC("addOutputVars");
+    
+    if(addOutputVars != "") addOutputVars += ";";
+    addOutputVars += glob->GetOptC("baseName_inTrain");
+    
+    glob->SetOptC("addOutputVars",addOutputVars);
+  }
+
+  // internal variable which chooses oprational modes for CatFormat::addWgtKNNtoTree() - either we compute relative
+  // weights (doRelWgts==true), or do we determine if an objects is in/out of the reference sample phasespace (doRelWgts==false)
+  // -----------------------------------------------------------------------------------------------------------
+  glob->NewOptB("doRelWgts",glob->GetOptB("doGenInputTrees"));
+
   // init Utils
   // -----------------------------------------------------------------------------------------------------------
   utils = new Utils(glob);
@@ -634,40 +676,6 @@ void myANNZ::Init() {
 // ===========================================================================================================
 void myANNZ::GenerateInputTrees() {
 // ================================
-
-  // // ===========================================================================================================
-  // // hack to create an input file for regression... delete this from final version of sw
-  // // hack to create an input file for regression... delete this from final version of sw
-  // // hack to create an input file for regression... delete this from final version of sw
-  // // ===========================================================================================================
-  // if(true) {
-  //   for(int nChain=0; nChain<2; nChain++) {
-  //     TString treeNamePostfix = (TString)( (nChain == 0) ? "_train" : "_test" );
-  //     TString inFileName      = (TString)"rootIn/trainTest/dr10/boss/specObj-BOSS"+treeNamePostfix+"_0000.root";
-  //     TString inTreeName      = (TString)"specObj-BOSS"+treeNamePostfix;
-  //     TChain  * aChain = new TChain(inTreeName,inTreeName); aChain->SetDirectory(0); aChain->Add(inFileName); 
-
-  //     VarMaps * var___ = new VarMaps(glob,utils,"treeRegClsVar___");
-  //     var___->connectTreeBranches(aChain);
-
-  //     vector <TString> varV;
-  //     varV.push_back("MAG_U"); varV.push_back("MAGERR_U");
-  //     varV.push_back("MAG_G"); varV.push_back("MAGERR_G");
-  //     varV.push_back("MAG_R"); varV.push_back("MAGERR_R");
-  //     varV.push_back("MAG_I"); varV.push_back("MAGERR_I");
-  //     varV.push_back("MAG_Z"); varV.push_back("MAGERR_Z");
-  //     varV.push_back("Z");
-
-  //     TString aCut("");
-  //     // aCut = "((MAG_I-MAG_R)>-0.9) && ((MAG_U-MAG_G)>.9)";
-  //     if(aCut != "") var___->setTreeCuts(aCut,(TCut)aCut);
-
-  //     var___->storeTreeToAscii((TString)"ANNZ"+treeNamePostfix,"",0,0,aCut,&varV,NULL);
-  //   }
-  //   exit(0);
-  // }
-  // // ===========================================================================================================
-
   // initialize the outputs with the rootIn directory and reset it
   outputs->InitializeDir(glob->GetOptC("outDirNameFull"),glob->GetOptC("baseName"));
 
@@ -707,10 +715,21 @@ void myANNZ::DoANNZ() {
   else if(glob->GetOptB("doOptim")) aANNZ->Optim(); // optimization and performance plots for doRegression
   else if(glob->GetOptB("doVerif")) aANNZ->Optim(); // verification and performance plots for doBinnedCls
   else if(glob->GetOptB("doEval")) {                // evaluation of an input dataset
-
-    // create trees from the input dataset
     CatFormat * aCatFormat = new CatFormat("aCatFormat",utils,glob,outputs);
-    aCatFormat->asciiToFullTree(glob->GetOptC("inAsciiFiles"),glob->GetOptC("inAsciiVars"),"_eval");
+
+    if(glob->GetOptB("addInTrainFlag")) {
+      // -----------------------------------------------------------------------------------------------------------
+      // create root trees from the input ascii files and add a weight branch, calculated with the KNN method
+      // -----------------------------------------------------------------------------------------------------------
+      aCatFormat->asciiToFullTree_wgtKNN(glob->GetOptC("inAsciiFiles"),glob->GetOptC("inAsciiVars"),glob->GetOptC("evalTreePostfix"));
+    }
+    else {
+      // -----------------------------------------------------------------------------------------------------------
+      // create root trees from the input dataset
+      // -----------------------------------------------------------------------------------------------------------
+      aCatFormat->asciiToFullTree(glob->GetOptC("inAsciiFiles"),glob->GetOptC("inAsciiVars"),glob->GetOptC("evalTreePostfix"));
+    }
+
     DELNULL(aCatFormat);
 
     // produce the solution

@@ -1,4 +1,4 @@
-# ANNZ 2.0.3
+# ANNZ 2.0.4
 
 ## Introduction
 ANNZ uses both regression and classification techniques for estimation of single-value photo-z (or any regression problem) solutions and PDFs. In addition it is suitable for classification problems, such as star/galaxy classification.
@@ -366,6 +366,12 @@ which in this example, adds the U-band magnitude and the error on the I-band mag
 #### Evaluation
 
 The directory, `output/test_randReg_quick/regres/eval/` (for the `scripts/annz_rndReg_quick.py` example), contains the output ascii and ROOT tree files, respectively, `ANNZ_randomReg_0000.csv` and `ANNZ_tree_randomReg_00002.root`. These have a similar format to that which is described above.
+
+In addition to the above-mentioned variables, the parameter `inTrainFlag` is included in the output, provided the user sets:
+```python
+glob.annz["addInTrainFlag"] = True
+```
+(See `scripts/annz_rndReg_advanced.py`.) This output indicates if the an evaluated object is "compatible" with corresponding objects from the training dataset. The compatibility is estimated by comparing the density of objects in the training dataset in the vicinity of the evaluated object. If the evaluated object belongs to an area of parameter-space which is not represented in the training dataset, we will get `inTrainFlag = 0`. In this case, the output of the training is probably unreliable. The calculation is performed using a KNN approach, similar to the algorithm used for the `glob.annz["useWgtKNN"] = True` calculation.
 
 ### Single regression
 

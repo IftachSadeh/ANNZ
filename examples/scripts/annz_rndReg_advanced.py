@@ -385,6 +385,31 @@ if glob.annz["doOptim"] or glob.annz["doEval"]:
     #                  (can be used to prevent multiple evaluation of different input files from overwriting each other)
     glob.annz["evalDirPostfix"] = "nFile0"
 
+    # -----------------------------------------------------------------------------------------------------------
+    # addInTrainFlag, minNobjInVol_inTrain, maxRelRatioInRef_inTrain -
+    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    #   - addInTrainFlag           - calculate for each object which is evaluated, if it is "close" in the
+    #                                input-parameter space to the training dataset. The result is written as part of the evaluation
+    #                                output, as an additional parameter named "inTrainFlag". The value of "inTrainFlag"
+    #                                is zero if the object is not "close" to the training objects (therefore probably has unreliable result).
+    #                                The calculation is performed using a KNN approach, similar to the algorithm used for
+    #                                the [glob.annz["useWgtKNN"] = True] calculation.
+    #   - minNobjInVol_inTrain     - The number of reference objects in the reference dataset which are used in the calculation.
+    #   - maxRelRatioInRef_inTrain - A number in the range, [0,1] - The minimal threshold of the relative difference between
+    #                              distances in the inTrainFlag calculation for accepting an object - Should be a (<0.5) positive number.
+    #   - ...._inTrain             - The rest of the parameters ending with "_inTrain" have a similar role as
+    #                              their "_wgtKNN" counterparts, which are used with [glob.annz["useWgtKNN"] = True]. These are:
+    #                                - "outAsciiVars_inTrain", "weightInp_inTrain", "cutInp_inTrain",
+    #                                  "cutRef_inTrain", "sampleFracInp_inTrain" and "sampleFracRef_inTrain"
+    # -----------------------------------------------------------------------------------------------------------
+    addInTrainFlag = False
+    if addInTrainFlag:
+      glob.annz["addInTrainFlag"]           = True
+      glob.annz["minNobjInVol_inTrain"]     = 100
+      glob.annz["maxRelRatioInRef_inTrain"] = 0.1
+      glob.annz["weightVarNames_inTrain"]   = "MAG_U;MAG_G;MAG_R;MAG_I;MAG_Z"
+      # glob.annz["weightRef_inTrain"]        = "(MAG_Z<20.5 && MAG_R<22 && MAG_U<24)" # cut the reference sample, just to have some difference...
+
     # run ANNZ with the current settings
     runANNZ()
 

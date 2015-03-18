@@ -61,7 +61,7 @@ void CatFormat::asciiToFullTree(TString inAsciiFiles, TString inAsciiVars, TStri
   TString treeName        = glob->GetOptC("treeName")+treeNamePostfix;
   TString origFileName    = glob->GetOptC("origFileName");
   TString indexName       = glob->GetOptC("indexName");
-  TString weightName      = glob->GetOptC("baseName_weightKNN");
+  TString weightName      = glob->GetOptC("baseName_wgtKNN");
 
   map <TString,int> intMap;
   vector <TString>  inFileNameV, inVarNames, inVarTypes;
@@ -200,7 +200,7 @@ void CatFormat::asciiToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
   TString indexName       = glob->GetOptC("indexName");
   TString splitName       = glob->GetOptC("splitName");
   TString testValidType   = glob->GetOptC("testValidType");
-  TString weightName      = glob->GetOptC("baseName_weightKNN");
+  TString weightName      = glob->GetOptC("baseName_wgtKNN");
   bool    doPlots         = glob->GetOptB("doPlots");
   TString plotExt         = glob->GetOptC("printPlotExtension");
   TString outDirNameFull  = glob->GetOptC("outDirNameFull");
@@ -427,7 +427,8 @@ void CatFormat::asciiToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
         TCanvas * tmpCnvs = new TCanvas("tmpCnvs","tmpCnvs");
         aChain->Draw(drawExprs,""); DELNULL(tmpCnvs);
 
-        TH1 * his1 = (TH1F*)gDirectory->Get(hisName); his1->SetDirectory(0); his1->SetTitle(branchNameV[nBranchNow]); assert(dynamic_cast<TH1F*>(his1));
+        TH1 * his1 = (TH1F*)gDirectory->Get(hisName); assert(dynamic_cast<TH1F*>(his1));
+        his1->SetDirectory(0); his1->BufferEmpty(); his1->SetTitle(branchNameV[nBranchNow]);
 
         outputs->optClear();
         outputs->draw->NewOptC("drawOpt"    , "HIST");

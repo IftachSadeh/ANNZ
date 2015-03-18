@@ -700,7 +700,7 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
           if(trainCut != "") cutExprs += (TString)" && ("+trainCut+")";
           
           int     nEvtPass   = aChainOut->Draw(drawExprs,cutExprs);
-          if(nEvtPass > 0) his_all = (TH1F*)gDirectory->Get(hisName);
+          if(nEvtPass > 0) his_all = (TH1F*)gDirectory->Get(hisName); his_all->BufferEmpty();
         }
         if(!his_all) continue;
 
@@ -719,7 +719,7 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
         int     nEvtPass   = aChainOut->Draw(drawExprs,cutExprs);
 
         if(nEvtPass > 0) {
-          his1_sb->SetDirectory(0); // allowed only after the chain fills the histogram
+          his1_sb->SetDirectory(0); his1_sb->BufferEmpty(); // allowed only after the chain fills the histogram
           if(nSigBckNow == 0) his1_sig = his1_sb;
           else                his1_bck = his1_sb;
         }
