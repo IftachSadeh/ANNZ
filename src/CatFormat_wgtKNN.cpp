@@ -211,9 +211,10 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
   int     nObjectsToWrite  = glob->GetOptI("nObjectsToWrite");
   int     minObjTrainTest  = glob->GetOptI("minObjTrainTest");
   double  maxRelRatioInRef = glob->GetOptF("maxRelRatioInRef_inTrain");
+  TString weightName       = glob->GetOptC("baseName_wgtKNN");
 
   TString typePostfix      = (TString)(doRelWgts ? "_wgtKNN" : "_inTrain");
-  TString weightName       = glob->GetOptC((TString)"baseName"      +typePostfix); // e.g., "baseName_wgtKNN"
+  TString wgtKNNname       = glob->GetOptC((TString)"baseName"      +typePostfix); // e.g., "baseName_wgtKNN"
   TString outAsciiVars     = glob->GetOptC((TString)"outAsciiVars"  +typePostfix); // e.g., "outAsciiVars_wgtKNN"
   TString weightVarNames   = glob->GetOptC((TString)"weightVarNames"+typePostfix); // e.g., "weightVarNames_wgtKNN"
   int     minNobjInVol     = glob->GetOptI((TString)"minNobjInVol"  +typePostfix); // e.g., "minNobjInVol_wgtKNN"
@@ -230,7 +231,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
   maxRelRatioInRef = max(min(maxRelRatioInRef,0.999),0.001);
 
   int     maxNobj         = 0;  // maxNobj = glob->GetOptI("maxNobj"); // only allow maxNobj limits for debugging !! 
-  TString outBaseName     = (TString)outDirNameFull+glob->GetOptC("treeName")+weightName;
+  TString outBaseName     = (TString)outDirNameFull+glob->GetOptC("treeName")+wgtKNNname;
   TString wgtNormTreeName = (TString)"_normWgt";
 
   // decompose the variable names for the KNN distance calculation
@@ -294,6 +295,10 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
     TString fracCut  = (TString)indexName+" % "+TString::Format("%d < %d",split1,split0);
     TCut    finalCut = ((TCut)fracCut) + ((TCut)chainCutV[nChainNow]);
 
+    // add the "baseName_wgtKNN" variable to the weight expression - this is just unity if generating the
+    // initial trees, but may hold non-trivial values for the [doRelWgts==false] mode
+    chainWgtV[nChainNow] = utils->cleanWeightExpr((TString)"("+chainWgtV[nChainNow]+")*"+weightName);
+
     outFileDirKnnErrV[nChainNow] = outBaseName+"_weights"+nChainKNNname+"/";
     outFileNameKnnErr[nChainNow] = outBaseName+nChainKNNname+".root";
 
@@ -311,7 +316,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
     // setup the factory
     // -----------------------------------------------------------------------------------------------------------
     knnErrOutFile[nChainNow] = new TFile(outFileNameKnnErr[nChainNow],"RECREATE");
-    knnErrFactory[nChainNow] = new TMVA::Factory(weightName, knnErrOutFile[nChainNow], (TString)verbLvlF+drawProgBarStr+transStr+analysType);    
+    knnErrFactory[nChainNow] = new TMVA::Factory(wgtKNNname, knnErrOutFile[nChainNow], (TString)verbLvlF+drawProgBarStr+transStr+analysType);    
 
     // define all input variables as floats in the factory
     for(int nVarNow=0; nVarNow<nVars; nVarNow++) knnErrFactory[nChainNow]->AddVariable(varNames[nVarNow],"","",'F');
@@ -321,7 +326,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
 
     knnErrFactory[nChainNow]->PrepareTrainingAndTestTree(finalCut,trainValidStr);
 
-    knnErrMethod[nChainNow] = dynamic_cast<TMVA::MethodKNN*>(knnErrFactory[nChainNow]->BookMethod(TMVA::Types::kKNN, weightName,(TString)optKNN+verbLvlM));
+    knnErrMethod[nChainNow] = dynamic_cast<TMVA::MethodKNN*>(knnErrFactory[nChainNow]->BookMethod(TMVA::Types::kKNN, wgtKNNname,(TString)optKNN+verbLvlM));
     knnErrModule[nChainNow] = knnErrMethod[nChainNow]->fModule;
 
     // fill the module with events made from the tree entries and create the binary tree
@@ -400,7 +405,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
   // add unique formula names (to avoid conflict with existing variable names)
   vector <TString> varFormNames(nVars);
   for(int nVarNow=0; nVarNow<nVars; nVarNow++) {
-    varFormNames[nVarNow] = (TString)weightName+"_"+varNames[nVarNow];
+    varFormNames[nVarNow] = (TString)wgtKNNname+"_"+varNames[nVarNow];
 
     var_0->NewForm(varFormNames[nVarNow],varNames[nVarNow]);
   }
@@ -409,9 +414,9 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
 
   var_1->copyVarStruct(var_0);
 
-  // the weightName variable for "baseName_wgtKNN" was created by CatFormat if all went
+  // the wgtKNNname variable for "baseName_wgtKNN" was created by CatFormat if all went
   // well, but not for "baseName_inTrain"; we therefore add it here if not already defined
-  if(!var_1->HasVarF(weightName)) var_1->NewVarF(weightName);
+  if(!var_1->HasVarF(wgtKNNname)) var_1->NewVarF(wgtKNNname);
 
   TTree * outTree = new TTree(outTreeName,outTreeName); outTree->SetDirectory(0); outputs->TreeMap[outTreeName] = outTree;
   var_1->createTreeBranches(outTree); 
@@ -584,7 +589,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
       }
     }
 
-    var_1->SetVarF(weightName,weightKNN);
+    var_1->SetVarF(wgtKNNname,weightKNN);
 
     outTree->Fill();
 
@@ -650,8 +655,8 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
 
       var_1->copyVarData(var_0);
 
-      double weightKNN = var_0->GetVarF(weightName) * weightNorm;
-      var_1->SetVarF(weightName,weightKNN);
+      double weightKNN = var_0->GetVarF(wgtKNNname) * weightNorm;
+      var_1->SetVarF(wgtKNNname,weightKNN);
 
       outTree->Fill();
 
@@ -693,12 +698,12 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
     // extract the names of the variables which will be written out to the ascii output
     // including the derived KNN weights. Add the actuall weight variable if not already included
     vector <TString> outVarNames = utils->splitStringByChar(outAsciiVars,';');
-    if(find(outVarNames.begin(),outVarNames.end(), weightName) == outVarNames.end()) outVarNames.push_back(weightName);
+    if(find(outVarNames.begin(),outVarNames.end(), wgtKNNname) == outVarNames.end()) outVarNames.push_back(wgtKNNname);
 
     // create a VarMaps, connect it to the tree, and write out the requested variables
     VarMaps * var_2 = new VarMaps(glob,utils,"treeRegClsVar_2");
     var_2->connectTreeBranches(aChainOut);
-    var_2->storeTreeToAscii((TString)weightName+aChainInp->GetName(),"",0,nObjectsToWrite,"",&outVarNames,NULL);
+    var_2->storeTreeToAscii((TString)wgtKNNname+aChainInp->GetName(),"",0,nObjectsToWrite,"",&outVarNames,NULL);
 
     DELNULL(var_2); outVarNames.clear();
   }
@@ -712,7 +717,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
     var_0->GetAllVarNames(branchNameV_0);
     int nBranches = (int)branchNameV_0.size();
 
-    branchNameV.push_back(weightName);
+    branchNameV.push_back(wgtKNNname);
     for(int nBranchNow=0; nBranchNow<nBranches; nBranchNow++) {
       TString branchName = branchNameV_0[nBranchNow];
       TString branchType = var_0->GetVarType(branchName);
@@ -758,14 +763,14 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
           TChain  * aChain(NULL);
           if     (nChainNow == 0) { aChain = aChainRef; hisTitle = "Reference"; weightNow = "1";        }
           else if(nChainNow == 1) { aChain = aChainInp; hisTitle = "Original";  weightNow = "1";        }
-          else if(nChainNow == 2) { aChain = aChainOut; hisTitle = "Weighted";  weightNow = weightName; }
+          else if(nChainNow == 2) { aChain = aChainOut; hisTitle = "Weighted";  weightNow = wgtKNNname; }
 
           if(nChainNow == 0) {
             if(chainWgtV[1] != "") weightNow = (TString)"("+weightNow+")*("+chainWgtV[1]+")";
             if(chainCutV[1] != "") weightNow = (TString)"("+weightNow+")*("+chainCutV[1]+")";
           }
 
-          if(varNameNow == weightName) {
+          if(varNameNow == wgtKNNname) {
             if(nChainNow != 2) continue;
             else               weightNow = "1";
           }

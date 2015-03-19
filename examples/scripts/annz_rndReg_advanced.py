@@ -335,29 +335,29 @@ if glob.annz["doOptim"] or glob.annz["doEval"]:
     glob.annz["modify_userCuts_valid"]    = "IGNORE"
     glob.annz["userCuts_valid"]           = "(MAGERR_R < 1)"
 
-  # ===========================================================================================================
+  # ==================================================================================================
   # MLMsToStore - 
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   #   - which MLMs to write to output (in addition to the "best MLM" and the PDFs).
   #     - ""              - non
   #     - "ALL"           - write all trained MLMs
   #     - "LIST;0;1;3;55" - specific list of MLM indices (sepaated by ';') to write out
-  # -----------------------------------------------------------------------------------------------------------
+  # --------------------------------------------------------------------------------------------------
   glob.annz["MLMsToStore"] = "" 
   
-  # -----------------------------------------------------------------------------------------------------------
+  # --------------------------------------------------------------------------------------------------
   # addOutputVars
   #   - add the following variables (extracted from the input file) to the output
   #     in addition to the regression target (zTrg) (usefull e.g., for matched object-IDs)
-  # -----------------------------------------------------------------------------------------------------------
+  # --------------------------------------------------------------------------------------------------
   glob.annz["addOutputVars"] = "MAG_U;MAGERR_I"
 
-  # -----------------------------------------------------------------------------------------------------------
+  # --------------------------------------------------------------------------------------------------
   # max_sigma68_PDF, max_bias_PDF, max_frac68_PDF
   #   - if max_sigma68_PDF,max_bias_PDF are positive, they put thresholds on the maximal value of
   #     the scatter (max_sigma68_PDF), bias (max_bias_PDF) or outlier-fraction (max_frac68_PDF) of an
   #     MLM which may be included in the PDF created in randomized regression
-  # -----------------------------------------------------------------------------------------------------------
+  # --------------------------------------------------------------------------------------------------
   glob.annz["max_sigma68_PDF"] = 0.044
   glob.annz["max_bias_PDF"]    = 0.01
   glob.annz["max_frac68_PDF"]  = 0.08
@@ -385,7 +385,7 @@ if glob.annz["doOptim"] or glob.annz["doEval"]:
     #                  (can be used to prevent multiple evaluation of different input files from overwriting each other)
     glob.annz["evalDirPostfix"] = "nFile0"
 
-    # -----------------------------------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------------------------------
     # addInTrainFlag, minNobjInVol_inTrain, maxRelRatioInRef_inTrain -
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #   - addInTrainFlag           - calculate for each object which is evaluated, if it is "close" in the
@@ -401,7 +401,7 @@ if glob.annz["doOptim"] or glob.annz["doEval"]:
     #                              their "_wgtKNN" counterparts, which are used with [glob.annz["useWgtKNN"] = True]. These are:
     #                                - "outAsciiVars_inTrain", "weightInp_inTrain", "cutInp_inTrain",
     #                                  "cutRef_inTrain", "sampleFracInp_inTrain" and "sampleFracRef_inTrain"
-    # -----------------------------------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------------------------------
     addInTrainFlag = False
     if addInTrainFlag:
       glob.annz["addInTrainFlag"]           = True

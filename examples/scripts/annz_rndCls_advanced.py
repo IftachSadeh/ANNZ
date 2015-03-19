@@ -286,7 +286,7 @@ if glob.annz["doOptim"] or glob.annz["doEval"]:
     #                  (can be used to prevent multiple evaluation of different input files from overwriting each other)
     glob.annz["evalDirPostfix"] = ""
 
-    # ===========================================================================================================
+    # ==================================================================================================
     # MLMsToStore - 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #   - which MLMs to write to output.
@@ -294,14 +294,14 @@ if glob.annz["doOptim"] or glob.annz["doEval"]:
     #     - "BEST"          - write only the best performing MLM
     #     - "BEST;x"        - write only the x best performing MLMs (x = integer number)
     #     - "LIST;0;1;3;55" - specific list of MLM indices (sepaated by ';';) to write out
-    # -----------------------------------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------------------------------
     glob.annz["MLMsToStore"] = "BEST;2" 
     
-    # -----------------------------------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------------------------------
     # addOutputVars
     #   - add the following variables (extracted from the input file) to the output
     #     in addition to the regression target (zTrg) (usefull e.g., for matched object-IDs)
-    # -----------------------------------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------------------------------
     glob.annz["addOutputVars"] = "lnLStar_r;lnLExp_r;mE2_r"
 
     # --------------------------------------------------------------------------------------------------

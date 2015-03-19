@@ -194,7 +194,7 @@ myANNZ::myANNZ() {
   //                              The calculation is performed using a KNN approach, similar to the algorithm used for the "useWgtKNN" calculation.
   //   minNobjInVol_inTrain     - The number of reference objects in the reference dataset which are used in the calculation.
   //   maxRelRatioInRef_inTrain - A number in the range, [0,1] - The minimal threshold of the relative difference between distances 
-  //                            in the inTrainFlag calculation for accepting an object.
+  //                              in the inTrainFlag calculation for accepting an object.
   //   ...._inTrain             - The rest of the parameters ending with "_inTrain" have a similar role as their "_wgtKNN" counterparts
   // -----------------------------------------------------------------------------------------------------------
   glob->NewOptB("addInTrainFlag"          ,false);

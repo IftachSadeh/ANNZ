@@ -464,11 +464,11 @@ if glob.annz["doTrain"] or glob.annz["doVerif"] or glob.annz["doEval"]:
       glob.annz["modify_userCuts_valid"]    = "IGNORE"
       glob.annz["userCuts_valid"]           = "(MAGERR_R < 1)"
 
-    # -----------------------------------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------------------------------
     # addOutputVars
     #   - add the following variables (extracted from the input file) to the output
     #     in addition to the regression target (zTrg) (usefull e.g., for matched object-IDs)
-    # -----------------------------------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------------------------------
     glob.annz["addOutputVars"] = "MAG_U;MAGERR_R"
 
     # --------------------------------------------------------------------------------------------------
