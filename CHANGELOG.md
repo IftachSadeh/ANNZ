@@ -1,6 +1,8 @@
 # Changelog
 
-<!-- ## Master version -->
+## Master version
+
+- Fixed bug in `CatFormat::addWgtKNNtoTree()`, where the weight expression for the KNN trees did not include the `ANNZ_KNN_w` weight in cases of `glob.annz["addInTrainFlag"] = True`.
 
 ## ANNZ 2.0.4 (19/3/2015)
 
