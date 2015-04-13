@@ -455,7 +455,11 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
     for(int nVarNow=0; nVarNow<nVars; nVarNow++) {
       objNowV[nVarNow] = var_0->GetForm(varFormNames[nVarNow]);
 
-      if(objNowV[nVarNow] < minMaxVarVals[0][nVarNow] || objNowV[nVarNow] > minMaxVarVals[1][nVarNow]) { isInsideRef = false; break; }
+      if(objNowV[nVarNow] < minMaxVarVals[0][nVarNow] || objNowV[nVarNow] > minMaxVarVals[1][nVarNow]) {
+        isInsideRef = false;
+        var_0->IncCntr("Found good weight"); var_0->IncCntr(wgtKNNname+" = 0 (outside input parameter range)");
+        break;
+      }
     }
 
     double weightKNN(0);
@@ -579,12 +583,13 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
           weightKNN = (weightKNN > maxRelRatioInRef) ? 1 : 0;
 
           var_0->IncCntr("Found good weight");
+          if(weightKNN > maxRelRatioInRef) var_0->IncCntr(wgtKNNname+" = 1"); else var_0->IncCntr(wgtKNNname+" = 0");
         }
         else {
           // assign zero weight if could not complete the calculation
           weightKNN = 0;
 
-          var_0->IncCntr("Did not fined good weight");
+          var_0->IncCntr("Did not find good weight");
         }
       }
     }

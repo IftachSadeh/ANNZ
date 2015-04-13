@@ -295,8 +295,8 @@ myANNZ::myANNZ() {
   //   For BDT, only the gradient boosted decision trees are available. That is, one may set ":BoostType=Grad",
   //   but not ":BoostType=Bagging" or ":BoostType=AdaBoost", as part of the userMLMopts option.
   //   - examples:
-  //     - glob.annz["userMLMopts_0"] = "ANNZ_MLM=FDA:Formula=(0)+(1)*x0+(2)*x1+(3)*x2+(4)*x3:" \
-  //                                   +"ParRanges=(-1,1);(-10,10);(-10,10);(-10,10);(-10,10):" \
+  //     - glob.annz["userMLMopts_0"] = "ANNZ_MLM=FDA:Formula=(0)+(1)*x0+(2)*x1+(3)*x2+(4)*x3:"
+  //                                   +"ParRanges=(-1,1);(-10,10);(-10,10);(-10,10);(-10,10):"
   //                                   +"FitMethod=GA:PopSize=300:Cycles=3:Steps=20:Trim=True:SaveBestGen=1"
   //     - glob.annz["userMLMopts_1"] = "ANNZ_MLM=PDEFoam:nActiveCells=500:nSampl=2000:nBin=5:Nmin=100:Kernel=None:Compress=T"
   // - Using the MultiClass option, the binCls_bckShiftMin,binCls_bckShiftMax,binCls_bckSubsetRange
@@ -459,7 +459,7 @@ myANNZ::myANNZ() {
   glob->NewOptB("keepOptimTrees_randReg"     ,true);
   
   // copy these folders/files as backup from the current directory to the working directory
-  glob->NewOptC("copyCodeCmnd","rsync -Rrtaz --include '*/' --include '*.py' --include '*.hpp' --include '*.cpp' --exclude '*' *");
+  glob->NewOptC("copyCodeCmnd","rsync -Rrtaz --include 'examples/' --include 'scripts/' --include 'include/' --include 'src/' --include '*.py' --include '*.hpp' --include '*.cpp' --exclude '*' *");
 
   // set info-level for ROOT operations (messages like plot printing etc. will be written out)
   glob->NewOptB("set_kInfoROOT",false);
