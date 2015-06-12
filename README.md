@@ -428,6 +428,12 @@ A few notes:
   - If ANNZ does not compile, check the definition of `$ROOTSYS` and `$LD_LIBRARY_PATH`. The values used by ANNZ are printed out before compilation starts.
 
   - During the `--genInputTrees` phase, a list of input parameters is specified, corresponding to the makeup of the input ascii files; here each column in the input file is registered. Note that the training of MLM does not necessarily need to correspond to the same set of parameters. In fact, any combination of input parameters, including mathematical expressions of the latter, may be used for training. The only constraint is that (for regression problems) the regression target should correspond to exactly one of the input parameters. See the various example scripts for details.
+  An example for a set of input parameters is
+  ```python
+ glob.annz["inputVariables"] = "MAG_U*(MAG_U < 99)+28*(MAG_U >= 99) ; MAG_G*(MAG_G < 99)+25*(MAG_G >= 99) ; MAG_R*(MAG_R < 99)+23*(MAG_R >= 99) ; MAG_I*(MAG_I < 99)+22*(MAG_I >= 99) ; MAG_Z*(MAG_Z < 99)+22*(MAG_Z >= 99)"
+  ```
+  where non-detection of magnitudes (usually indicated by setting a magnitude to `100`) are mapped to the magnitude limits in the different bands. This avoids training/evaluating with nonsensical numerical values; it also does not require any special pre-processing of the input dataset, as the conditions are set on the fly during the training and evaluation stages.
+
 
   - The training phase may be run multiple times, in order to make sure that all MLMs have completed training successfully. By default, if a trained MLM is detected in the output directory, then ANNZ does not overwrite it. In order to force re-training, one may delete the training directory for a particular MLM (for instance, using `scripts/annz_rndReg_quick.py`, this might be `output/test_randReg_quick/regres/train/ANNZ_3`). Alternatively, it's possible to force retraining by setting in the relevant python script the flag, 
   ```python

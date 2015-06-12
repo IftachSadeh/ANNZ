@@ -858,7 +858,7 @@ double ANNZ::getSeparation(TH1 * hisSig, TH1 * hisBck) {
 
 // ===========================================================================================================
 /**
- * @brief          - Create a histogram with the classification responce to classification probability relation.
+ * @brief          - Create a histogram with the classification response to classification probability relation.
  *
  * @details        - This is needed for Multiclass analyses, where the corresponding PDF for the classification
  *                 response is not internally computed. (The option, ":CreateMVAPdfs", is not valid for Multiclass.)

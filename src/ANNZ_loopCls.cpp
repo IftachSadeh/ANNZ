@@ -58,7 +58,7 @@ void ANNZ::optimCls() {
   VarMaps * var = new VarMaps(glob,utils,"loopRegClsVar");
   var->connectTreeBranches(aChain);
 
-  if(separateTestValid) var->setTreeCuts("_train",getTrainTestCuts("_train",0));
+  if(separateTestValid) var->setTreeCuts("_train",getTrainTestCuts("_valid",0));
 
   // number of initial bins and rebin factor for classification response histograms
   hisBinsN  = glob->GetOptI("clsResponseHisN");  rebinFactor = glob->GetOptI("clsResponseHisR");
@@ -87,7 +87,7 @@ void ANNZ::optimCls() {
     int    numBins0;
     double hisRange0, hisRange1; 
 
-    // MLM responce histograms
+    // MLM response histograms
     hisRange0 = 1; hisRange1 = -1; numBins0 = 10000;
     hisName  = (TString)MLMname+"_clasOptimize"+"_SIG";            his1M["SIG"][nMLMnow] = new TH1F(hisName,hisName,numBins0,hisRange0,hisRange1);
     his1M["SIG"][nMLMnow]->SetDirectory(0);                        his1M["SIG"][nMLMnow]->SetDefaultBufferSize(bufSize);
