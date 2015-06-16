@@ -2761,6 +2761,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
 
   vector < TString >                      typeTitleV;
   map < TString,vector <TH1*> >           his_regTrgZ;
+  map < TString,TH2* >                    his_corRegTrgZ;
   map < TString,vector < vector<TH1*> > > his_clos, his_relErr;
 
   for(int nTypeMLMnow=0; nTypeMLMnow<2; nTypeMLMnow++) {
@@ -2800,6 +2801,12 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
           his_regTrgZ[typeName][nTypeBinNow]->SetTitle(hisTitle);
         }
       }
+
+      hisName = (TString)"corRegTrgZ_"+typeName;
+      his_corRegTrgZ[typeName] = new TH2F(hisName,hisName,nDrawBins_zTrg,minValZ,maxValZ,nDrawBins_zTrg,minValZ,maxValZ);
+      his_corRegTrgZ[typeName]->SetTitle(hisTitle);
+      his_corRegTrgZ[typeName]->GetXaxis()->SetTitle(zTrgTitle);
+      his_corRegTrgZ[typeName]->GetYaxis()->SetTitle(zRegTitle);
     }
   }
 
@@ -2837,8 +2844,9 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
       // if(zRegV < minValZ || zRegV > maxValZ) continue;
       zRegV = min(max(zRegV,minValZ),maxValZ);
 
-      his_regTrgZ[typeName][0]->Fill(zTrg, zRegW);
-      his_regTrgZ[typeName][1]->Fill(zRegV,zRegW);
+      his_regTrgZ   [typeName][0]->Fill(zTrg,      zRegW);
+      his_regTrgZ   [typeName][1]->Fill(zRegV,     zRegW);
+      his_corRegTrgZ[typeName]   ->Fill(zTrg,zRegV,zRegW);
 
       for(int nTypeBinNow=0; nTypeBinNow<nTypeBins; nTypeBinNow++) {
         // (nTypeBinNow == 1): bins of the regression value, (nTypeBinNow == 0): bins of the target value
@@ -2872,7 +2880,8 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
         double pdfBinValW = var->GetVarF(nameV_PDF_b[nPDFinNow][nPdfBinNow]) * pdfWgt;
 
         pdfSum += pdfBinValW;
-        his_regTrgZ[typeName][1]->Fill(pdfBinCtr,pdfBinValW);
+        his_regTrgZ   [typeName][1]->Fill(pdfBinCtr,     pdfBinValW);
+        his_corRegTrgZ[typeName]   ->Fill(zTrg,pdfBinCtr,pdfBinValW);
 
         for(int nTypeBinNow=0; nTypeBinNow<nTypeBins; nTypeBinNow++) {
           // (nTypeBinNow == 0): bins of the regression value, (nTypeBinNow == 1): bins of the target value
@@ -3271,25 +3280,21 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
           else { if(typeName != (TString)baseName_nPDF+nDrawNowStr) continue; }
         }
 
-        TH1     * his1(NULL);
-        // int     rebinX     = static_cast<int>(floor(0.1+closHisN/double(nDrawBins_zTrg)));
+        TH1 * his1(NULL);
         double  binW       = (maxValZ-minValZ)/double(nDrawBins_zTrg);
         TString yAxisTitle = TString::Format("Entries/%1.2g",binW);
-        // TString yAxisTitle = (TString)"1/N dN/d("+zRegTitle+")";
 
         if((int)hisRegTrgV.size() == 0) {
           his1 = (TH1F*)his_regTrgZ[typeName][0]->Clone((TString)his_regTrgZ[typeName][0]->GetName()+"_cln_"+nDrawNowStr);
           his1->SetTitle(zTrgTitle);
           his1->GetXaxis()->SetTitle((TString)zTrgTitle+" , "+zRegTitle);
           his1->GetYaxis()->SetTitle(yAxisTitle);
-          // his1->Rebin(rebinX);
           hisRegTrgV.push_back(his1);
         }
 
         his1 = (TH1F*)his_regTrgZ[typeName][1]->Clone((TString)his_regTrgZ[typeName][1]->GetName()+"_cln_"+nDrawNowStr);
         his1->GetXaxis()->SetTitle(zRegTitle);
         his1->GetYaxis()->SetTitle(yAxisTitle);
-        // his1->Rebin(rebinX);
         hisRegTrgV.push_back(his1);
       }
     }
@@ -3308,6 +3313,35 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
     }
     hisRegTrgV.clear();
   }
+
+  // -----------------------------------------------------------------------------------------------------------
+  // correlation plots for the regression target with the various solutions
+  // -----------------------------------------------------------------------------------------------------------
+  outputs->optClear(); // clear before the loop on histograms
+
+  vector <TH1*> hisCorRegTrgV;
+  for(int nTypeMLMnow=0; nTypeMLMnow<2; nTypeMLMnow++) {
+    int nTypeIn = (nTypeMLMnow == 0) ? nMLMsIn : nPDFsIn;
+
+    for(int nTypeInNow=0; nTypeInNow<nTypeIn; nTypeInNow++) {
+      TString typeName = (nTypeMLMnow == 0) ? nameV_MLM_v[nTypeInNow] : nameV_PDF[nTypeInNow];
+
+      // histogram title
+      outputs->draw->NewOptC(TString::Format("generalHeader_%d",(int)hisCorRegTrgV.size()),his_corRegTrgZ[typeName]->GetTitle());
+
+      // the actual histogram
+      hisCorRegTrgV.push_back(his_corRegTrgZ[typeName]);
+    }
+  }
+
+  if((int)hisCorRegTrgV.size() > 0) {
+    outputs->draw->NewOptB("multiCnvs" , true);
+    outputs->draw->NewOptC("drawOpt"   , "box");
+    outputs->draw->NewOptC("axisTitleX", hisCorRegTrgV[0]->GetXaxis()->GetTitle());
+    outputs->draw->NewOptC("axisTitleY", hisCorRegTrgV[0]->GetYaxis()->GetTitle());
+    outputs->drawHis1dMultiV(hisCorRegTrgV);
+  }
+  hisCorRegTrgV.clear();
 
 
   // -----------------------------------------------------------------------------------------------------------
@@ -3333,7 +3367,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
   plotVars.clear(); varPlot_binE.clear(); varPlot_binC.clear();
   typeTitleV.clear(); metricNameV.clear(); metricTitleV.clear();
   graphAvg_Xv.clear(); graphAvg_Xe.clear(); graphAvg_Yv.clear(); graphAvg_Ye.clear();
-  mltGrphAvgV.clear();
+  mltGrphAvgV.clear(); his_regTrgZ.clear(); his_corRegTrgZ.clear(); his_clos.clear(); his_relErr.clear();
 
   return;
 }
