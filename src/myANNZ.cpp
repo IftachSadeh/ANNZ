@@ -719,7 +719,7 @@ void myANNZ::GenerateInputTrees() {
 // ===========================================================================================================
 void myANNZ::doInTrainFlag() {
 // ===========================
-  // initialize the outputs with the rootIn directory and reset it
+  // initialize the inTrainFlag directory
   outputs->InitializeDir(glob->GetOptC("outDirNameFull"),glob->GetOptC("baseName"));
 
   CatFormat * aCatFormat = new CatFormat("aCatFormat",utils,glob,outputs);
