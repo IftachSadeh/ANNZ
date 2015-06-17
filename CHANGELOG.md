@@ -2,7 +2,11 @@
 
 ## Master version
 
+## ANNZ 2.0.5 (17/6/2015)
+
 - Fixed bug in `CatFormat::addWgtKNNtoTree()`, where the weight expression for the KNN trees did not include the `ANNZ_KNN_w` weight in cases of `glob.annz["addInTrainFlag"] = True`.
+
+- Modified the condition on the MLM error estimator which is propagated to PDFs in randomized regression. Previously if an error was undefined, indicating a problem, the code would stop. Now the MLM is ignored and the code continues. The change is needed as sometimes there is a valid reason for the error to be undefined.
 
 - Other minor modifications.
 
