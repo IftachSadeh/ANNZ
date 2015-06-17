@@ -35,6 +35,7 @@ def initParse():
   parser.add_argument("--binnedClassification",action='store_true')
   parser.add_argument("--singleClassification",action='store_true')
   parser.add_argument("--randomClassification",action='store_true')
+  parser.add_argument("--inTrainFlag"         ,action='store_true')
 
   parser.add_argument("--truncateLog",         action='store_true')
   parser.add_argument("--isBatch",             action='store_true')
@@ -57,11 +58,13 @@ def initParse():
   hasMake = (glob.pars["make"] or glob.pars["clean"])
   nModes = 0 ; nSetups = 0
 
+  if glob.pars["genInputTrees"]:        nSetups += 1
   if glob.pars["singleClassification"]: nSetups += 1
   if glob.pars["randomClassification"]: nSetups += 1
   if glob.pars["singleRegression"]:     nSetups += 1
   if glob.pars["randomRegression"]:     nSetups += 1
   if glob.pars["binnedClassification"]: nSetups += 1
+  if glob.pars["inTrainFlag"]:          nSetups += 1
   if glob.pars["fitsToAscii"]:          nSetups += 1
   if glob.pars["asciiToFits"]:          nSetups += 1
 
@@ -75,11 +78,12 @@ def initParse():
     if glob.pars["optimize"]:      nModes += 1
     if glob.pars["verify"]:        nModes += 1
     if glob.pars["evaluate"]:      nModes += 1
+    if glob.pars["inTrainFlag"]:   nModes += 1
     if glob.pars["fitsToAscii"]:   nModes += 1
     if glob.pars["asciiToFits"]:   nModes += 1
 
     if not (nModes == 1 or hasMake):
-      log.warning("Should define exactly one of --genInputTrees --train , --optimize --verify, --evaluate, --fitsToAscii, --asciiToFits !")
+      log.warning("Should define exactly one of --genInputTrees --train , --optimize --verify, --evaluate, --inTrainFlag, --fitsToAscii, --asciiToFits !")
 
   glob.pars["onlyMake"] = (((nSetups == 0) or (nModes == 0)) and hasMake)
 
@@ -98,6 +102,7 @@ def initParse():
   glob.annz["doOptim"]          = glob.pars["optimize"]
   glob.annz["doVerif"]          = glob.pars["verify"]
   glob.annz["doEval"]           = glob.pars["evaluate"]
+  glob.annz["doInTrainFlag"]    = glob.pars["inTrainFlag"]
 
   glob.annz["doRegression"]     = glob.annz["doSingleReg"] or glob.annz["doRandomReg"] or glob.annz["doBinnedCls"]
   glob.annz["doClassification"] = glob.annz["doSingleCls"] or glob.annz["doRandomCls"]

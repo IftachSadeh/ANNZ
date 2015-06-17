@@ -150,6 +150,8 @@ myANNZ::myANNZ() {
   glob->NewOptB("doOptim"        ,false); // run ANNZ in validation mode
   glob->NewOptB("doVerif"        ,false); // run ANNZ in binned classification mode and check that training is complete
   glob->NewOptB("doEval"         ,false); // run ANNZ in evaluation mode
+  glob->NewOptB("doInTrainFlag"  ,false); // run only the KNN weight flag
+
 
   // -----------------------------------------------------------------------------------------------------------
   // variables used by CatFormat
@@ -536,12 +538,13 @@ void myANNZ::Init() {
   // -----------------------------------------------------------------------------------------------------------
   // working directory names
   // -----------------------------------------------------------------------------------------------------------
-  glob->NewOptC("trainDirName"    ,"train");                                   // name of sub-dir for training
-  glob->NewOptC("optimDirName"    ,"optim");                                   // name of sub-dir for optimization
-  glob->NewOptC("verifDirName"    ,"verif");                                   // name of sub-dir for verification
-  glob->NewOptC("evalDirName"     ,"eval");                                    // name of sub-dir for optimization
-  glob->NewOptC("evalTreePostfix" ,(TString)"_"+glob->GetOptC("evalDirName")); // postfix for evaluation trees
-  glob->NewOptC("postTrainName"   ,"postTrain");                               // name of sub-dir for MLM input trees
+  glob->NewOptC("trainDirName"      ,"train");                                   // name of sub-dir for training
+  glob->NewOptC("optimDirName"      ,"optim");                                   // name of sub-dir for optimization
+  glob->NewOptC("verifDirName"      ,"verif");                                   // name of sub-dir for verification
+  glob->NewOptC("evalDirName"       ,"eval");                                    // name of sub-dir for optimization
+  glob->NewOptC("evalTreePostfix"   ,(TString)"_"+glob->GetOptC("evalDirName")); // postfix for evaluation trees
+  glob->NewOptC("inTrainFlagDirName","inTrainFlag");                             // name of sub-dir for the inTrainFlag
+  glob->NewOptC("postTrainName"     ,"postTrain");                               // name of sub-dir for MLM input trees
 
   // -----------------------------------------------------------------------------------------------------------
   // update/finalize glob-> paramters after user inputs and initialize utils and outputs
@@ -573,38 +576,43 @@ void myANNZ::Init() {
   }
 
   // add trailing slash if needed
-  if(!glob->GetOptC("inDirName")    .EndsWith("/")) glob->SetOptC("inDirName",    (TString)glob->GetOptC("inDirName")    +"/");
-  if(!glob->GetOptC("outDirName")   .EndsWith("/")) glob->SetOptC("outDirName",   (TString)glob->GetOptC("outDirName")   +"/");
-  if(!glob->GetOptC("trainDirName") .EndsWith("/")) glob->SetOptC("trainDirName", (TString)glob->GetOptC("trainDirName") +"/");
-  if(!glob->GetOptC("optimDirName") .EndsWith("/")) glob->SetOptC("optimDirName", (TString)glob->GetOptC("optimDirName") +"/");
-  if(!glob->GetOptC("verifDirName") .EndsWith("/")) glob->SetOptC("verifDirName", (TString)glob->GetOptC("verifDirName") +"/");
-  if(!glob->GetOptC("evalDirName")  .EndsWith("/")) glob->SetOptC("evalDirName",  (TString)glob->GetOptC("evalDirName")  +"/");
-  if(!glob->GetOptC("postTrainName").EndsWith("/")) glob->SetOptC("postTrainName",(TString)glob->GetOptC("postTrainName")+"/");
+  if(!glob->GetOptC("inDirName")         .EndsWith("/")) glob->SetOptC("inDirName",         (TString)glob->GetOptC("inDirName")         +"/");
+  if(!glob->GetOptC("outDirName")        .EndsWith("/")) glob->SetOptC("outDirName",        (TString)glob->GetOptC("outDirName")        +"/");
+  if(!glob->GetOptC("trainDirName")      .EndsWith("/")) glob->SetOptC("trainDirName",      (TString)glob->GetOptC("trainDirName")      +"/");
+  if(!glob->GetOptC("optimDirName")      .EndsWith("/")) glob->SetOptC("optimDirName",      (TString)glob->GetOptC("optimDirName")      +"/");
+  if(!glob->GetOptC("verifDirName")      .EndsWith("/")) glob->SetOptC("verifDirName",      (TString)glob->GetOptC("verifDirName")      +"/");
+  if(!glob->GetOptC("evalDirName")       .EndsWith("/")) glob->SetOptC("evalDirName",       (TString)glob->GetOptC("evalDirName")       +"/");
+  if(!glob->GetOptC("inTrainFlagDirName").EndsWith("/")) glob->SetOptC("inTrainFlagDirName",(TString)glob->GetOptC("inTrainFlagDirName")+"/");
+  if(!glob->GetOptC("postTrainName")     .EndsWith("/")) glob->SetOptC("postTrainName",     (TString)glob->GetOptC("postTrainName")     +"/");
 
-  glob->SetOptC("trainDirName",    (TString)analysisPrefix+"/"           +glob->GetOptC("trainDirName"));
-  glob->NewOptC("postTrainDirName",(TString)glob->GetOptC("trainDirName")+glob->GetOptC("postTrainName"));
-  glob->SetOptC("optimDirName",    (TString)analysisPrefix+"/"           +glob->GetOptC("optimDirName"));
-  glob->SetOptC("verifDirName",    (TString)analysisPrefix+"/"           +glob->GetOptC("verifDirName"));
-  glob->SetOptC("evalDirName",     (TString)analysisPrefix+"/"           +glob->GetOptC("evalDirName"));
+  glob->SetOptC("trainDirName",      (TString)analysisPrefix+"/"           +glob->GetOptC("trainDirName"));
+  glob->NewOptC("postTrainDirName",  (TString)glob->GetOptC("trainDirName")+glob->GetOptC("postTrainName"));
+  glob->SetOptC("optimDirName",      (TString)analysisPrefix+"/"           +glob->GetOptC("optimDirName"));
+  glob->SetOptC("verifDirName",      (TString)analysisPrefix+"/"           +glob->GetOptC("verifDirName"));
+  glob->SetOptC("evalDirName",       (TString)analysisPrefix+"/"           +glob->GetOptC("evalDirName"));
 
   if(glob->GetOptB("doTrain")) {
     int nMLMnow = glob->GetOptB("doBinnedCls") ? glob->GetOptI("nBinNow") : glob->GetOptI("nMLMnow");
     glob->SetOptC("trainDirName",(TString)glob->GetOptC("trainDirName")+glob->GetOptC("baseName_ANNZ")+TString::Format("%d",nMLMnow)+"/");
   }
 
-  glob->NewOptC("outDirNamePath",      (TString)glob->baseOutDirName()         +glob->GetOptC("outDirName"));
-  glob->NewOptC("inputTreeDirName",    (TString)glob->GetOptC("outDirNamePath")+glob->baseInDirName());
-  glob->NewOptC("trainDirNameFull",    (TString)glob->GetOptC("outDirNamePath")+glob->GetOptC("trainDirName"));
-  glob->NewOptC("postTrainDirNameFull",(TString)glob->GetOptC("outDirNamePath")+glob->GetOptC("postTrainDirName"));
-  glob->NewOptC("optimDirNameFull",    (TString)glob->GetOptC("outDirNamePath")+glob->GetOptC("optimDirName"));
-  glob->NewOptC("verifDirNameFull",    (TString)glob->GetOptC("outDirNamePath")+glob->GetOptC("verifDirName"));
-  glob->NewOptC("evalDirNameFull",     (TString)glob->GetOptC("outDirNamePath")+glob->GetOptC("evalDirName"));
+  glob->NewOptC("outDirNamePath",        (TString)glob->baseOutDirName()         +glob->GetOptC("outDirName"));
+  glob->NewOptC("inputTreeDirName",      (TString)glob->GetOptC("outDirNamePath")+glob->baseInDirName());
+  glob->NewOptC("trainDirNameFull",      (TString)glob->GetOptC("outDirNamePath")+glob->GetOptC("trainDirName"));
+  glob->NewOptC("postTrainDirNameFull",  (TString)glob->GetOptC("outDirNamePath")+glob->GetOptC("postTrainDirName"));
+  glob->NewOptC("optimDirNameFull",      (TString)glob->GetOptC("outDirNamePath")+glob->GetOptC("optimDirName"));
+  glob->NewOptC("verifDirNameFull",      (TString)glob->GetOptC("outDirNamePath")+glob->GetOptC("verifDirName"));
+  glob->NewOptC("evalDirNameFull",       (TString)glob->GetOptC("outDirNamePath")+glob->GetOptC("evalDirName"));
+  glob->NewOptC("inTrainFlagDirNameFull",(TString)glob->GetOptC("outDirNamePath")+glob->GetOptC("inTrainFlagDirName"));
+
 
   if     (glob->GetOptB("doGenInputTrees")) glob->NewOptC("outDirNameFull", glob->GetOptC("inputTreeDirName"));
   else if(glob->GetOptB("doTrain"))         glob->NewOptC("outDirNameFull", glob->GetOptC("trainDirNameFull"));
   else if(glob->GetOptB("doOptim"))         glob->NewOptC("outDirNameFull", glob->GetOptC("optimDirNameFull"));
   else if(glob->GetOptB("doVerif"))         glob->NewOptC("outDirNameFull", glob->GetOptC("verifDirNameFull"));
   else if(glob->GetOptB("doEval"))          glob->NewOptC("outDirNameFull", glob->GetOptC("evalDirNameFull"));
+  else if(glob->GetOptB("doInTrainFlag"))   glob->NewOptC("outDirNameFull", glob->GetOptC("inTrainFlagDirNameFull"));
+
   else VERIFY(LOCATION,(TString)"Unknown operational mode",false);
 
   if(!glob->GetOptC("inputTreeDirName").EndsWith("/")) glob->SetOptC("inputTreeDirName",(TString)glob->GetOptC("inputTreeDirName")+"/");
@@ -613,7 +621,7 @@ void myANNZ::Init() {
   glob->NewOptC("userOptsFile_genInputTrees",  (TString)glob->GetOptC("inputTreeDirName")+"userOpts.txt");
 
   // add the inTrainFlag to the output (of evaluation), if needed
-  if(glob->GetOptB("addInTrainFlag") && glob->GetOptB("doEval")) {
+  if(glob->GetOptB("addInTrainFlag") && (glob->GetOptB("doEval") || glob->GetOptB("doInTrainFlag"))) {
     TString addOutputVars = glob->GetOptC("addOutputVars");
     
     if(addOutputVars != "") addOutputVars += ";";
@@ -647,10 +655,11 @@ void myANNZ::Init() {
   // some sanity checks
   // -----------------------------------------------------------------------------------------------------------
   bool hasGoodOpt =   glob->GetOptB("doGenInputTrees") || 
-                   ( !glob->GetOptB("doGenInputTrees")  && (   glob->GetOptB("doTrain") || glob->GetOptB("doOptim")
-                                                            || glob->GetOptB("doVerif") || glob->GetOptB("doEval")  ) );
-  if(!hasGoodOpt) VERIFY(LOCATION,(TString)"Configuration problem... Did not find "+
-                                                  "\"doGenInputTrees\", \"doTrain\", \"doOptim\", \"doVerif\" or \"doEval\" options ...",false);
+                   ( !glob->GetOptB("doGenInputTrees")  && (   glob->GetOptB("doTrain")       || glob->GetOptB("doOptim")
+                                                            || glob->GetOptB("doVerif")       || glob->GetOptB("doEval")  
+                                                            || glob->GetOptB("doInTrainFlag")                             ) );
+  if(!hasGoodOpt) VERIFY(LOCATION,(TString)"Configuration problem... Did not find \"doGenInputTrees\", \"doTrain\", "+
+                                                  "\"doOptim\", \"doVerif\", \"doEval\" or \"doInTrainFlag\" options ...",false);
 
   if(glob->GetOptB("useWgtKNN") && glob->GetOptB("doGenInputTrees")) {
     VERIFY(LOCATION,(TString)"Configuration problem... Can not set \"useWgtKNN\""
@@ -709,33 +718,45 @@ void myANNZ::GenerateInputTrees() {
 void myANNZ::DoANNZ() {
 // ====================
 
-  ANNZ * aANNZ = new ANNZ("aANNZ",utils,glob,outputs);
+  if(glob->GetOptB("doInTrainFlag")) {
+    // initialize the outputs with the rootIn directory and reset it
+    outputs->InitializeDir(glob->GetOptC("outDirNameFull"),glob->GetOptC("baseName"));
 
-  if     (glob->GetOptB("doTrain")) aANNZ->Train(); // training
-  else if(glob->GetOptB("doOptim")) aANNZ->Optim(); // optimization and performance plots for doRegression
-  else if(glob->GetOptB("doVerif")) aANNZ->Optim(); // verification and performance plots for doBinnedCls
-  else if(glob->GetOptB("doEval")) {                // evaluation of an input dataset
     CatFormat * aCatFormat = new CatFormat("aCatFormat",utils,glob,outputs);
 
-    if(glob->GetOptB("addInTrainFlag")) {
-      // -----------------------------------------------------------------------------------------------------------
-      // create root trees from the input ascii files and add a weight branch, calculated with the KNN method
-      // -----------------------------------------------------------------------------------------------------------
-      aCatFormat->asciiToFullTree_wgtKNN(glob->GetOptC("inAsciiFiles"),glob->GetOptC("inAsciiVars"),glob->GetOptC("evalTreePostfix"));
-    }
-    else {
-      // -----------------------------------------------------------------------------------------------------------
-      // create root trees from the input dataset
-      // -----------------------------------------------------------------------------------------------------------
-      aCatFormat->asciiToFullTree(glob->GetOptC("inAsciiFiles"),glob->GetOptC("inAsciiVars"),glob->GetOptC("evalTreePostfix"));
-    }
+    aCatFormat->asciiToFullTree_wgtKNN(glob->GetOptC("inAsciiFiles"),glob->GetOptC("inAsciiVars"),glob->GetOptC("evalTreePostfix"));
 
     DELNULL(aCatFormat);
+  }
+  else {
+    ANNZ * aANNZ = new ANNZ("aANNZ",utils,glob,outputs);
 
-    // produce the solution
-    aANNZ->Eval();
+    if     (glob->GetOptB("doTrain")) aANNZ->Train(); // training
+    else if(glob->GetOptB("doOptim")) aANNZ->Optim(); // optimization and performance plots for doRegression
+    else if(glob->GetOptB("doVerif")) aANNZ->Optim(); // verification and performance plots for doBinnedCls
+    else if(glob->GetOptB("doEval")) {                // evaluation of an input dataset
+      CatFormat * aCatFormat = new CatFormat("aCatFormat",utils,glob,outputs);
+
+      if(glob->GetOptB("addInTrainFlag")) {
+        // -----------------------------------------------------------------------------------------------------------
+        // create root trees from the input ascii files and add a weight branch, calculated with the KNN method
+        // -----------------------------------------------------------------------------------------------------------
+        aCatFormat->asciiToFullTree_wgtKNN(glob->GetOptC("inAsciiFiles"),glob->GetOptC("inAsciiVars"),glob->GetOptC("evalTreePostfix"));
+      }
+      else {
+        // -----------------------------------------------------------------------------------------------------------
+        // create root trees from the input dataset
+        // -----------------------------------------------------------------------------------------------------------
+        aCatFormat->asciiToFullTree(glob->GetOptC("inAsciiFiles"),glob->GetOptC("inAsciiVars"),glob->GetOptC("evalTreePostfix"));
+      }
+
+      DELNULL(aCatFormat);
+
+      // produce the solution
+      aANNZ->Eval();
+   }
+   DELNULL(aANNZ);
  }
- DELNULL(aANNZ);
 
   return;
 }

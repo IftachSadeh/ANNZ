@@ -699,7 +699,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
   // -----------------------------------------------------------------------------------------------------------
   // write out the weights to an ascii file
   // -----------------------------------------------------------------------------------------------------------
-  if(doStoreToAscii && doRelWgts) {
+  if(doStoreToAscii ) {
     // extract the names of the variables which will be written out to the ascii output
     // including the derived KNN weights. Add the actuall weight variable if not already included
     vector <TString> outVarNames = utils->splitStringByChar(outAsciiVars,';');

@@ -2,6 +2,8 @@
 
 ## Master version
 
+- **Added the script, `annz_rndReg_weights.py`:** This shows how one may derive the weights based on the KNN method (using `useWgtKNN`), and/or the `inTrainFlag` quality-flag, without training/evaluating any MLMs.
+
 ## ANNZ 2.0.5 (17/6/2015)
 
 - Fixed bug in `CatFormat::addWgtKNNtoTree()`, where the weight expression for the KNN trees did not include the `ANNZ_KNN_w` weight in cases of `glob.annz["addInTrainFlag"] = True`.
