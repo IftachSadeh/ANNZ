@@ -667,6 +667,9 @@ void myANNZ::Init() {
                             +" without setting corresponding input files in \"inAsciiFiles_wgtKNN\"",(glob->GetOptC("inAsciiFiles_wgtKNN") != ""));
   }
 
+  int nSplit = glob->GetOptI("nSplit");
+  VERIFY(LOCATION,(TString)"Currently, only [\"nSplit\" = 2 or 3] is supported ...",(nSplit == 2 || nSplit == 3));
+
   if(glob->GetOptI("initSeedRnd") < 0) glob->SetOptI("initSeedRnd",0);
   if(glob->GetOptI("maxNobj")     < 0) glob->SetOptI("maxNobj"    ,0);
 
