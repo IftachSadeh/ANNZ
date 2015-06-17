@@ -108,8 +108,9 @@ int main(int argc, char * argv[]){
   // -----------------------------------------------------------------------------------------------------------
   // The various classes
   // -----------------------------------------------------------------------------------------------------------
-  if(aMyMain->glob->GetOptB("doGenInputTrees")) aMyMain->GenerateInputTrees(); // create catalogue trees
-  else                                          aMyMain->DoANNZ();             // training, validation and evaluation modes
+  if     (aMyMain->glob->GetOptB("doGenInputTrees")) aMyMain->GenerateInputTrees(); // create catalogue trees
+  else if(aMyMain->glob->GetOptB("doInTrainFlag"))   aMyMain->doInTrainFlag();      // inTrainFlag calculation, without the need for MLMs
+  else                                               aMyMain->DoANNZ();             // training, validation and evaluation modes
   
   DELNULL(aMyMain);
   cout<<endl;
@@ -710,6 +711,27 @@ void myANNZ::GenerateInputTrees() {
   return;
 }
 
+
+// ===========================================================================================================
+/**
+ * @brief    - Calculate the inTrainFlag quality-flag, without the need to train/optimize/evaluate MLMs.
+ */
+// ===========================================================================================================
+void myANNZ::doInTrainFlag() {
+// ===========================
+  // initialize the outputs with the rootIn directory and reset it
+  outputs->InitializeDir(glob->GetOptC("outDirNameFull"),glob->GetOptC("baseName"));
+
+  CatFormat * aCatFormat = new CatFormat("aCatFormat",utils,glob,outputs);
+
+  aCatFormat->asciiToFullTree_wgtKNN(glob->GetOptC("inAsciiFiles"),glob->GetOptC("inAsciiVars"),glob->GetOptC("evalTreePostfix"));
+
+  DELNULL(aCatFormat);
+
+  return;
+}
+
+
 // ===========================================================================================================
 /**
  * @brief  - Run selected ANNZ procedure (training, optimization, verification or evaluation).
@@ -718,45 +740,33 @@ void myANNZ::GenerateInputTrees() {
 void myANNZ::DoANNZ() {
 // ====================
 
-  if(glob->GetOptB("doInTrainFlag")) {
-    // initialize the outputs with the rootIn directory and reset it
-    outputs->InitializeDir(glob->GetOptC("outDirNameFull"),glob->GetOptC("baseName"));
+  ANNZ * aANNZ = new ANNZ("aANNZ",utils,glob,outputs);
 
+  if     (glob->GetOptB("doTrain")) aANNZ->Train(); // training
+  else if(glob->GetOptB("doOptim")) aANNZ->Optim(); // optimization and performance plots for doRegression
+  else if(glob->GetOptB("doVerif")) aANNZ->Optim(); // verification and performance plots for doBinnedCls
+  else if(glob->GetOptB("doEval")) {                // evaluation of an input dataset
     CatFormat * aCatFormat = new CatFormat("aCatFormat",utils,glob,outputs);
 
-    aCatFormat->asciiToFullTree_wgtKNN(glob->GetOptC("inAsciiFiles"),glob->GetOptC("inAsciiVars"),glob->GetOptC("evalTreePostfix"));
+    if(glob->GetOptB("addInTrainFlag")) {
+      // -----------------------------------------------------------------------------------------------------------
+      // create root trees from the input ascii files and add a weight branch, calculated with the KNN method
+      // -----------------------------------------------------------------------------------------------------------
+      aCatFormat->asciiToFullTree_wgtKNN(glob->GetOptC("inAsciiFiles"),glob->GetOptC("inAsciiVars"),glob->GetOptC("evalTreePostfix"));
+    }
+    else {
+      // -----------------------------------------------------------------------------------------------------------
+      // create root trees from the input dataset
+      // -----------------------------------------------------------------------------------------------------------
+      aCatFormat->asciiToFullTree(glob->GetOptC("inAsciiFiles"),glob->GetOptC("inAsciiVars"),glob->GetOptC("evalTreePostfix"));
+    }
 
     DELNULL(aCatFormat);
-  }
-  else {
-    ANNZ * aANNZ = new ANNZ("aANNZ",utils,glob,outputs);
 
-    if     (glob->GetOptB("doTrain")) aANNZ->Train(); // training
-    else if(glob->GetOptB("doOptim")) aANNZ->Optim(); // optimization and performance plots for doRegression
-    else if(glob->GetOptB("doVerif")) aANNZ->Optim(); // verification and performance plots for doBinnedCls
-    else if(glob->GetOptB("doEval")) {                // evaluation of an input dataset
-      CatFormat * aCatFormat = new CatFormat("aCatFormat",utils,glob,outputs);
-
-      if(glob->GetOptB("addInTrainFlag")) {
-        // -----------------------------------------------------------------------------------------------------------
-        // create root trees from the input ascii files and add a weight branch, calculated with the KNN method
-        // -----------------------------------------------------------------------------------------------------------
-        aCatFormat->asciiToFullTree_wgtKNN(glob->GetOptC("inAsciiFiles"),glob->GetOptC("inAsciiVars"),glob->GetOptC("evalTreePostfix"));
-      }
-      else {
-        // -----------------------------------------------------------------------------------------------------------
-        // create root trees from the input dataset
-        // -----------------------------------------------------------------------------------------------------------
-        aCatFormat->asciiToFullTree(glob->GetOptC("inAsciiFiles"),glob->GetOptC("inAsciiVars"),glob->GetOptC("evalTreePostfix"));
-      }
-
-      DELNULL(aCatFormat);
-
-      // produce the solution
-      aANNZ->Eval();
-   }
-   DELNULL(aANNZ);
+    // produce the solution
+    aANNZ->Eval();
  }
+ DELNULL(aANNZ);
 
   return;
 }

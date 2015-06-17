@@ -81,7 +81,7 @@ if glob.annz["doGenInputTrees"]:
     glob.annz["weightVarNames_wgtKNN"] = "MAG_U;MAG_G;MAG_R;MAG_I;MAG_Z"
     
     # optional parameters (may leave empty as default value):
-    glob.annz["sampleFracInp_wgtKNN"]  = 0.30                                          # fraction of dataset to use (positive number, smaller or equal to 1)
+    glob.annz["sampleFracInp_wgtKNN"]  = 0.10                                          # fraction of dataset to use (positive number, smaller or equal to 1)
     glob.annz["sampleFracRef_wgtKNN"]  = 0.95                                          # fraction of dataset to use (positive number, smaller or equal to 1)
     glob.annz["outAsciiVars_wgtKNN"]   = "MAG_U;MAG_G;MAGERR_U"                        # write out two additional variables to the output file
     glob.annz["weightRef_wgtKNN"]      = "(MAGERR_R<0.7)*1 + (MAGERR_R>=0.7)/MAGERR_R" # down-weight objects with high MAGERR_R
