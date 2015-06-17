@@ -376,6 +376,14 @@ void ANNZ::getRegClsErrKNN(VarMaps * var, TMVA::kNN::ModulekNN * knnErrModule, v
       if(isREG) { zErr = (quantV[2] - quantV[0])/2.; zErrP = (quantV[2] - quantV[1]); zErrN = (quantV[1] - quantV[0]); }
       else      { zErr = quantV[1];                  zErrP = 0;                       zErrN = 0;                       }
     }
+    else if(inLOG(Log::DEBUG_2)) {
+      aLOG(Log::DEBUG_2) <<coutRed<< " - got undefined err calculation for inputs:"<<coutDef<<endl;
+      for(int nInVarNow=0; nInVarNow<nInVar; nInVarNow++) {
+        int readerInptIndex = readerInptIndexV[nMLM_0][nInVarNow];
+        aLOG(Log::DEBUG_2) <<coutRed<<"   - "<<coutYellow<< readerInptV[readerInptIndex].first<<coutGreen
+                           <<CT<<readerInptV[readerInptIndex].second<<coutDef<<endl;
+      }
+    }
 
     zErrV[nMLMnow].resize(3);
     zErrV[nMLMnow][0] = zErrN; zErrV[nMLMnow][1] = zErr; zErrV[nMLMnow][2] = zErrP;

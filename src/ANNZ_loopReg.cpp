@@ -1052,10 +1052,12 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
     if((var->GetCntr("nObj")+1 % nObjectsToWrite == 0) || breakLoop) { var->printCntr(aChainName,Log::DEBUG_1); }
     if(breakLoop) break;
     
+    var->IncCntr("nObj"); if(var->GetCntr("nObj") == maxNobj) breakLoop = true;
+
     // get the target value and smear the reg-value of the best MLM
     double  zTrg     = var->GetVarF(zTrgName);
     double  zBest    = var->GetVarF(MLMnameBest);
-    double  zBestErr = var->GetVarF(MLMnameBest_e);
+    double  zBestErr = var->GetVarF(MLMnameBest_e);  if(zBestErr < EPS) continue;
     double  zBestSF  = rnd->Gaus(0,zBestErr);
     double  zBestNow = zBest + zBestSF;
 
@@ -1072,12 +1074,9 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
         TString MLMname_eN = getTagError(nMLMnow,"N"); TString MLMname_eP = getTagError(nMLMnow,"P");
 
         double  regNow    = var->GetVarF(MLMname);
-        double  errN      = var->GetVarF(MLMname_eN);
-        double  errP      = var->GetVarF(MLMname_eP);
-        double  weightNow = var->GetVarF(MLMname_w); if(weightNow < EPS) continue;
-
-        // if weightNow is positive, than the corresponding errors should have been calculated. Lets make sure...
-        VERIFY(LOCATION,(TString)"Somehow the MLM error has not been computed... Something is horribly wrong ?!?",(zBestErr >= 0));
+        double  errN      = var->GetVarF(MLMname_eN); if(errN      < EPS) continue;
+        double  errP      = var->GetVarF(MLMname_eP); if(errP      < EPS) continue;
+        double  weightNow = var->GetVarF(MLMname_w);  if(weightNow < EPS) continue;
 
         // generate random smearing factors for this MLM
         for(int nSmearRndNow=0; nSmearRndNow<nSmearsRnd; nSmearRndNow++) {
@@ -1107,7 +1106,6 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
       his2_N       [nPDFnow]->Fill(zPdfAvg-zTrg,zTrg);
     }
 
-    var->IncCntr("nObj"); if(var->GetCntr("nObj") == maxNobj) breakLoop = true;
   }
   if(!breakLoop) { var->printCntr(aChainName,Log::DEBUG_1); }
 
@@ -2141,8 +2139,9 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
       // -----------------------------------------------------------------------------------------------------------
       vector < vector <double> > regErrV(nMLMs,vector<double>(3,0));
 
-      bool breakLoop(false), mayWriteObjects(false), hasZeroErr(false);
+      bool breakLoop(false), mayWriteObjects(false);
       int  nObjectsToWrite(glob->GetOptI("nObjectsToWrite")), nObjectsToPrint(glob->GetOptI("nObjectsToPrint"));
+      int  nHasNoErr(0), nHasZeroErr(0);
       TString aChainName(aChain->GetName());
       var_0->clearCntr();
       for(Long64_t loopEntry=0; true; loopEntry++) {
@@ -2237,15 +2236,17 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
                   if(nPDFnow == 1) {
                     double clsErr = var_0->GetVarF(MLMname_e);
 
-                    for(int nSmearRndNow=0; nSmearRndNow<nSmearsRnd; nSmearRndNow++) {
-                      double sfNow     = fabs(rnd->Gaus(0,clsErr));        if(nSmearRndNow < nSmearsRndHalf) sfNow *= -1;
-                      double binSmr    = max(min((binVal + sfNow),1.),0.);
-                      double totWgtSmr = binSmr * binWgt * clsWgt;
+                    if(clsErr > EPS) {
+                      for(int nSmearRndNow=0; nSmearRndNow<nSmearsRnd; nSmearRndNow++) {
+                        double sfNow     = fabs(rnd->Gaus(0,clsErr));        if(nSmearRndNow < nSmearsRndHalf) sfNow *= -1;
+                        double binSmr    = max(min((binVal + sfNow),1.),0.);
+                        double totWgtSmr = binSmr * binWgt * clsWgt;
 
-                      hisPDF_w[nPDFnow]->Fill(zPDF_binC[nPdfBinNow],totWgtSmr);
-                      
-                      pdfWgtValV[nPDFnow][1] += totWgtSmr;
-                      pdfWgtNumV[nPDFnow][1] += binSmr * binWgt;
+                        hisPDF_w[nPDFnow]->Fill(zPDF_binC[nPdfBinNow],totWgtSmr);
+                        
+                        pdfWgtValV[nPDFnow][1] += totWgtSmr;
+                        pdfWgtNumV[nPDFnow][1] += binSmr * binWgt;
+                      }
                     }
                   }
                 }
@@ -2279,6 +2280,20 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
               regErrN = var_0->GetVarF(MLMname_eN); regErr = var_0->GetVarF(MLMname_e); regErrP = var_0->GetVarF(MLMname_eP);
             }
 
+            bool hasNoErrNow = (regErrN < 0 || regErr < 0 || regErrP < 0);
+
+            // in the (hopefully unlikely) event that the error calculation failed for a valid object
+            if(hasNoErrNow && regWgt > EPS) {
+              nHasNoErr++;
+              if(inLOG(Log::DEBUG_2)) {
+                aLOG(Log::DEBUG_2)<<coutYellow<<" - Got an undefined error calculation for:"<<coutDef<<endl;
+                var_0->printVars();
+              }
+            }
+
+            // objects with undefined errors can not be used...
+            if(hasNoErrNow) regWgt = 0;
+
             // the "best" MLM solution
             if(nLoopTypeNow == 1 && nMLMnow == bestANNZindex) {
               var_1->SetVarF(regBestNameVal, regVal);  var_1->SetVarF(regBestNameWgt,regWgt);
@@ -2289,14 +2304,9 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
               var_1->SetVarF(MLMname_eN,regErrN); var_1->SetVarF(MLMname_e,regErr); var_1->SetVarF(MLMname_eP,regErrP); 
             }
 
-            if(nLoopTypeNow == 0) continue; // in the 0-iteration, we only compute the MLM quantites and store a tree
-            if(regWgt < EPS)      continue; // if the weight is zero, no sense in continuing the loop
-
-            // only if regWgt==0 could there be undefined errors !
-            if(regErr < 0) {
-              var_0->printVars(); VERIFY(LOCATION,(TString)"Found problem with error calculation ... Something is horribly wrong ?!?!",false);
-            }
-            else if(regErr < EPS) hasZeroErr = true;
+            if(nLoopTypeNow == 0) continue;      // in the 0-iteration, we only compute the MLM quantites and store a tree
+            if(regWgt < EPS)      continue;      // if the weight is zero, no sense in continuing the loop
+            if(regErr < EPS)      nHasZeroErr++; // to prompt a warning message later on
 
             if(mlmSkipPdf[MLMname]) continue; // some MLMs may be requested by the user, but not needed for the pdfs
 
@@ -2418,7 +2428,10 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
       }
       if(!breakLoop) { var_0->printCntr(aChainName); outputs->WriteOutObjects(false,true); outputs->ResetObjects(); }
     
-      if(hasZeroErr) aLOG(Log::WARNING) <<coutWhiteOnRed<<" - Found some error estimates equal to 0 ... Please check that this makes sense !"<<coutDef<<endl;
+      if(nHasZeroErr > 0 || nHasNoErr > 0) {
+        aLOG(Log::WARNING) <<coutWhiteOnRed<<" - Found "<<nHasZeroErr<<" error estimates equal to 0 and "<<nHasNoErr
+                           <<" undefined errors... Please check that this makes sense !"<<coutDef<<endl;
+      }
 
       regErrV.clear();
 
