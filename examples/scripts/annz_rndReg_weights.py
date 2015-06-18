@@ -39,7 +39,7 @@ log.info(whtOnBlck(" - "+time.strftime("%d/%m/%y %H:%M:%S")+" - starting ANNZ"))
 #   - For these two cases, setting
 #       glob.annz["splitTypeTrain"] = glob.annz["splitTypeTest"]
 #     is a good choice. This is not mandatory, but is the recommended option, in order to
-#     try and minimize confuision ...
+#     try and minimize confusion ...
 # --------------------------------------------------------------------------------------------------
 # - IMPORTANT notes:
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
