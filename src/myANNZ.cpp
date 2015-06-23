@@ -433,7 +433,11 @@ myANNZ::myANNZ() {
   // uncertainty estimators - either KNN (K-near-neighbours) entimation (used by default), or input-error propagation.
   // -----------------------------------------------------------------------------------------------------------
   // by defaul will use standard-deviation to compute KNN-errors (may switch to sigma68 -> smaller error estimates)
-  glob->NewOptB("defErrBySigma68",true);
+  glob->NewOptB("defErrBySigma68",false);
+
+  // for plotting only - derive the scatter of the relative uncertainty estimator in as a Gaussian fit instead of as
+  // the scatter (or 68th percentile scatter) of the distribution
+  glob->NewOptB("doGausSigmaRelErr",true);
 
   glob->NewOptI("nErrKNN",100); // number of near-neighbours to use for the KNN error estimation, see setupKdTreeKNN().
 

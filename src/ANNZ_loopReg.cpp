@@ -2584,6 +2584,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
   TString baseTag_e           = glob->GetOptC("baseTag_e");
   TString baseTag_w           = glob->GetOptC("baseTag_w");
   bool    defErrBySigma68     = glob->GetOptB("defErrBySigma68");
+  bool    doGausSigmaRelErr   = glob->GetOptB("doGausSigmaRelErr");
   int     nPDFs               = glob->GetOptI("nPDFs");
   int     nPDFbins            = glob->GetOptI("nPDFbins");
   double  minValZ             = glob->GetOptF("minValZ");
@@ -3066,14 +3067,38 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
                 }
               }
               else if(nPlotType == 1) {
-                // get the sigma_68 or the sigma metric
-                int nMetricNow = defErrBySigma68 ? 2 : 1;
-                double yVal = utils->param->GetOptF((TString)"quant_"+metricNameV[nMetricNow]);
-                double yErr = (!metricNameV[nMetricNow].Contains("fracSig")) ? utils->param->GetOptF((TString)"quant_"+metricNameV[nMetricNow]+"Err") : EPS;
+                double yVal(-1), yErr(-1);
+
+                // get the Gaussian width, the sigma_68 or the sigma of the relative error distribution
+                if(doGausSigmaRelErr) {
+                  double mid = utils->param->GetOptF((TString)"quant_median");
+                  double bot = mid - 2 * utils->param->GetOptF((TString)"quant_sigma_68");
+                  double top = mid + 2 * utils->param->GetOptF((TString)"quant_sigma_68");
+
+                  TString hisNameNow = (TString)hisSum->GetName()+"_tmpHis";
+                  TF1     * fitFunc  = new TF1((TString)hisNameNow+"_func","gaus",bot,top);
+                  TH1     * his1     = new TH1F(hisNameNow,hisNameNow,500,-10,10);
+                  
+                  int nBinsX = hisSum->GetXaxis()->GetNbins();
+                  for(int nBinXnow=1; nBinXnow<nBinsX+1; nBinXnow++) {
+                    his1->Fill(hisSum->GetBinCenter(nBinXnow),hisSum->GetBinContent(nBinXnow));
+                  }
+                  his1->Fit(fitFunc,"r0Q"); // his1->SaveAs((TString)his1->GetName()+".C");
+                  
+                  yVal = fitFunc->GetParameter(2);
+                  yErr = fitFunc->GetParError(2);
+
+                  DELNULL(fitFunc); DELNULL(his1);
+                }
+                else {
+                  int nMetricNow = defErrBySigma68 ? 2 : 1;
+                  yVal = utils->param->GetOptF((TString)"quant_"+metricNameV[nMetricNow]);
+                  yErr = (!metricNameV[nMetricNow].Contains("fracSig")) ? utils->param->GetOptF((TString)"quant_"+metricNameV[nMetricNow]+"Err") : EPS;
+                }
                 if(yErr > maxSigmaRelErrToPlot) yErr = -1;
 
                 // store it in the sigmaRelErr position
-                nMetricNow = nMetrics;
+                int nMetricNow = nMetrics;
                 assert(metricNameV[nMetricNow] == "sigmaRelErr"); // sanity check that the nMetricNow is correct
 
                 graphAvg_Xv[nMetricNow][nTypesSoFar] = nTypesSoFar; graphAvg_Xe[nMetricNow][nTypesSoFar] = EPS;

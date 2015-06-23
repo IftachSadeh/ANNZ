@@ -4,9 +4,9 @@
 
 - **Added the script, `annz_rndReg_weights.py`:** This shows how one may derive the weights based on the KNN method (using `useWgtKNN`), and/or the `inTrainFlag` quality-flag, without training/evaluating any MLMs.
 
-- Changed default value of defErrBySigma68 to `True` (for better estimation of PDF uncertainties).
-
 - Added a plot-reference guide (`thePlotsExplained.pdf`).
+
+- Added the option `doGausSigmaRelErr` (now set to `True` by default) to estimate the scatter of the relative uncertainty of regression solutions by a Gaussian fit, instead of by the RMS or the 68th percentile of the distribution of the relative uncertainty. This only affects the plotting output of regression problems (`ANNZ::doMetricPlots()`).
 
 ## ANNZ 2.0.5 (17/6/2015)
 
