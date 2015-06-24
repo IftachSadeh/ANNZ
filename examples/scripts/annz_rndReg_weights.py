@@ -154,10 +154,12 @@ if glob.annz["doInTrainFlag"]:
   #                                The calculation is performed using a KNN approach, similar to the algorithm used for
   #                                the [glob.annz["useWgtKNN"] = True] calculation.
   #   - minNobjInVol_inTrain     - The number of reference objects in the reference dataset which are used in the calculation.
-  #   - maxRelRatioInRef_inTrain - A number in the range, [0,1] - The minimal threshold of the relative difference between
-  #                              distances in the inTrainFlag calculation for accepting an object - Should be a (<0.5) positive number.
+  #   - maxRelRatioInRef_inTrain - Nominally, a number in the range, [0,1] - The minimal threshold of the relative difference between
+  #                                distances in the inTrainFlag calculation for accepting an object - Should be a (<0.5) positive number.
+  #                                If [maxRelRatioInRef_inTrain < 0] then this number is ignored, and the "inTrainFlag" flag becomes
+  #                                a number in the range [0,1], instead of a binary flag.
   #   - ...._inTrain             - The rest of the parameters ending with "_inTrain" have a similar role as
-  #                              their "_wgtKNN" counterparts, which are used with [glob.annz["useWgtKNN"] = True]. These are:
+  #                                their "_wgtKNN" counterparts, which are used with [glob.annz["useWgtKNN"] = True]. These are:
   #                                - "outAsciiVars_inTrain", "weightInp_inTrain", "cutInp_inTrain",
   #                                  "cutRef_inTrain", "sampleFracInp_inTrain" and "sampleFracRef_inTrain"
   # --------------------------------------------------------------------------------------------------

@@ -372,18 +372,37 @@ void VarMaps::copyVarData(VarMaps * inObj, vector < pair<TString,TString> > & va
 
 
 // ===========================================================================================================
-void VarMaps::setDefaultVals() {
-// =============================
-  for(map <TString,Bool_t>     ::iterator itr=varB .begin(); itr!=varB .end(); ++itr) { SetVarB_ (itr->first , DefOpts::DefB ); }
-  for(map <TString,TObjString*>::iterator itr=varC .begin(); itr!=varC .end(); ++itr) { SetVarC_ (itr->first , DefOpts::DefC ); }
-  for(map <TString,Short_t>    ::iterator itr=varS .begin(); itr!=varS .end(); ++itr) { SetVarS_ (itr->first , DefOpts::DefS ); }
-  for(map <TString,Int_t>      ::iterator itr=varI .begin(); itr!=varI .end(); ++itr) { SetVarI_ (itr->first , DefOpts::DefI ); }
-  for(map <TString,Long64_t>   ::iterator itr=varL .begin(); itr!=varL .end(); ++itr) { SetVarL_ (itr->first , DefOpts::DefL ); }
-  for(map <TString,UShort_t>   ::iterator itr=varUS.begin(); itr!=varUS.end(); ++itr) { SetVarUS_(itr->first , DefOpts::DefUS); }
-  for(map <TString,UInt_t>     ::iterator itr=varUI.begin(); itr!=varUI.end(); ++itr) { SetVarUI_(itr->first , DefOpts::DefUI); }
-  for(map <TString,ULong64_t>  ::iterator itr=varUL.begin(); itr!=varUL.end(); ++itr) { SetVarUL_(itr->first , DefOpts::DefUL); }
-  for(map <TString,Float_t>    ::iterator itr=varF .begin(); itr!=varF .end(); ++itr) { SetVarF_ (itr->first , DefOpts::DefF ); }
-  for(map <TString,Double_t>   ::iterator itr=varD .begin(); itr!=varD .end(); ++itr) { SetVarD_ (itr->first , DefOpts::DefD ); }
+void VarMaps::setDefaultVals(vector < pair<TString,TString> > * varTypeNameV) {
+// ============================================================================
+
+  if(dynamic_cast<vector< pair<TString,TString> >*>(varTypeNameV)) {
+    vector < pair<TString,TString> >::iterator itr, itrEnd;
+    for(itr=varTypeNameV->begin(), itrEnd=varTypeNameV->end(); itr!=itrEnd; ++itr) {
+      if     (itr->first == "B" ) { SetVarB_ ( itr->second , DefOpts::DefB  ); }
+      else if(itr->first == "C" ) { SetVarC_ ( itr->second , DefOpts::DefC  ); }
+      else if(itr->first == "S" ) { SetVarS_ ( itr->second , DefOpts::DefS  ); }
+      else if(itr->first == "I" ) { SetVarI_ ( itr->second , DefOpts::DefI  ); }
+      else if(itr->first == "L" ) { SetVarL_ ( itr->second , DefOpts::DefL  ); }
+      else if(itr->first == "US") { SetVarUS_( itr->second , DefOpts::DefUS ); }
+      else if(itr->first == "UI") { SetVarUI_( itr->second , DefOpts::DefUI ); }
+      else if(itr->first == "UL") { SetVarUL_( itr->second , DefOpts::DefUL ); }
+      else if(itr->first == "F" ) { SetVarF_ ( itr->second , DefOpts::DefF  ); }
+      else if(itr->first == "D" ) { SetVarD_ ( itr->second , DefOpts::DefD  ); }
+    }
+  }
+  else {
+    for(map <TString,Bool_t>     ::iterator itr=varB .begin(); itr!=varB .end(); ++itr) { SetVarB_ (itr->first , DefOpts::DefB ); }
+    for(map <TString,TObjString*>::iterator itr=varC .begin(); itr!=varC .end(); ++itr) { SetVarC_ (itr->first , DefOpts::DefC ); }
+    for(map <TString,Short_t>    ::iterator itr=varS .begin(); itr!=varS .end(); ++itr) { SetVarS_ (itr->first , DefOpts::DefS ); }
+    for(map <TString,Int_t>      ::iterator itr=varI .begin(); itr!=varI .end(); ++itr) { SetVarI_ (itr->first , DefOpts::DefI ); }
+    for(map <TString,Long64_t>   ::iterator itr=varL .begin(); itr!=varL .end(); ++itr) { SetVarL_ (itr->first , DefOpts::DefL ); }
+    for(map <TString,UShort_t>   ::iterator itr=varUS.begin(); itr!=varUS.end(); ++itr) { SetVarUS_(itr->first , DefOpts::DefUS); }
+    for(map <TString,UInt_t>     ::iterator itr=varUI.begin(); itr!=varUI.end(); ++itr) { SetVarUI_(itr->first , DefOpts::DefUI); }
+    for(map <TString,ULong64_t>  ::iterator itr=varUL.begin(); itr!=varUL.end(); ++itr) { SetVarUL_(itr->first , DefOpts::DefUL); }
+    for(map <TString,Float_t>    ::iterator itr=varF .begin(); itr!=varF .end(); ++itr) { SetVarF_ (itr->first , DefOpts::DefF ); }
+    for(map <TString,Double_t>   ::iterator itr=varD .begin(); itr!=varD .end(); ++itr) { SetVarD_ (itr->first , DefOpts::DefD ); }
+  }
+
   return;
 }
 
@@ -475,6 +494,46 @@ void VarMaps::GetAllVarNames(vector <TString> & varNames, TString type) {
   if(type == "ALL" || type == "UL") { for(map <TString,ULong64_t>  ::iterator itr=varUL.begin(); itr!=varUL.end(); ++itr) varNames.push_back(itr->first); }
   if(type == "ALL" || type == "F" ) { for(map <TString,Float_t>    ::iterator itr=varF .begin(); itr!=varF .end(); ++itr) varNames.push_back(itr->first); }
   if(type == "ALL" || type == "D" ) { for(map <TString,Double_t>   ::iterator itr=varD .begin(); itr!=varD .end(); ++itr) varNames.push_back(itr->first); }
+  return;    
+}
+
+// ===========================================================================================================
+void VarMaps::GetAllVarNameTypes(vector < pair<TString,TString> > & varTypeNameV, TString type) {
+// ==============================================================================================
+  TString typeNow("");
+
+  varTypeNameV.clear();
+
+  typeNow = "B";  if(type == "ALL" || type == typeNow) {
+    for(map <TString,Bool_t>     ::iterator itr=varB .begin(); itr!=varB .end(); ++itr) varTypeNameV.push_back(pair<TString,TString>(typeNow,itr->first));
+  }
+  typeNow = "C";  if(type == "ALL" || type == typeNow) {
+    for(map <TString,TObjString*>::iterator itr=varC .begin(); itr!=varC .end(); ++itr) varTypeNameV.push_back(pair<TString,TString>(typeNow,itr->first));
+  }
+  typeNow = "S";  if(type == "ALL" || type == typeNow) {
+    for(map <TString,Short_t>    ::iterator itr=varS .begin(); itr!=varS .end(); ++itr) varTypeNameV.push_back(pair<TString,TString>(typeNow,itr->first));
+  }
+  typeNow = "I";  if(type == "ALL" || type == typeNow) {
+    for(map <TString,Int_t>      ::iterator itr=varI .begin(); itr!=varI .end(); ++itr) varTypeNameV.push_back(pair<TString,TString>(typeNow,itr->first));
+  }
+  typeNow = "L";  if(type == "ALL" || type == typeNow) {
+    for(map <TString,Long64_t>   ::iterator itr=varL .begin(); itr!=varL .end(); ++itr) varTypeNameV.push_back(pair<TString,TString>(typeNow,itr->first));
+  }
+  typeNow = "US"; if(type == "ALL" || type == typeNow) {
+    for(map <TString,UShort_t>   ::iterator itr=varUS.begin(); itr!=varUS.end(); ++itr) varTypeNameV.push_back(pair<TString,TString>(typeNow,itr->first));
+  }
+  typeNow = "UI"; if(type == "ALL" || type == typeNow) {
+    for(map <TString,UInt_t>     ::iterator itr=varUI.begin(); itr!=varUI.end(); ++itr) varTypeNameV.push_back(pair<TString,TString>(typeNow,itr->first));
+  }
+  typeNow = "UL"; if(type == "ALL" || type == typeNow) {
+    for(map <TString,ULong64_t>  ::iterator itr=varUL.begin(); itr!=varUL.end(); ++itr) varTypeNameV.push_back(pair<TString,TString>(typeNow,itr->first));
+  }
+  typeNow = "F";  if(type == "ALL" || type == typeNow) {
+    for(map <TString,Float_t>    ::iterator itr=varF .begin(); itr!=varF .end(); ++itr) varTypeNameV.push_back(pair<TString,TString>(typeNow,itr->first));
+  }
+  typeNow = "D";  if(type == "ALL" || type == typeNow) {
+    for(map <TString,Double_t>   ::iterator itr=varD .begin(); itr!=varD .end(); ++itr) varTypeNameV.push_back(pair<TString,TString>(typeNow,itr->first));
+  }
   return;    
 }
 

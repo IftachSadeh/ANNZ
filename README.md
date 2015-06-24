@@ -371,7 +371,13 @@ In addition to the above-mentioned variables, the parameter `inTrainFlag` is inc
 ```python
 glob.annz["addInTrainFlag"] = True
 ```
-(See `scripts/annz_rndReg_advanced.py`.) This output indicates if the an evaluated object is "compatible" with corresponding objects from the training dataset. The compatibility is estimated by comparing the density of objects in the training dataset in the vicinity of the evaluated object. If the evaluated object belongs to an area of parameter-space which is not represented in the training dataset, we will get `inTrainFlag = 0`. In this case, the output of the training is probably unreliable. The calculation is performed using a KNN approach, similar to the algorithm used for the `glob.annz["useWgtKNN"] = True` calculation.
+(See `scripts/annz_rndReg_advanced.py` or `scripts/annz_rndReg_weights.py`.)
+
+  - This output indicates if the an evaluated object is "compatible" with corresponding objects from the training dataset. The compatibility is estimated by comparing the density of objects in the training dataset in the vicinity of the evaluated object. If the evaluated object belongs to an area of parameter-space which is not represented in the training dataset, we will get `inTrainFlag = 0`. In this case, the output of the training is probably unreliable.
+
+  - The calculation is performed using a KNN approach, similar to the algorithm used for the `useWgtKNN` calculation. It is possible to generate either binary flags (i.e., `inTrainFlag = 0` or `1`) or to get a floating-point value between zero and one. The binary decision is based on the `maxRelRatioInRef_inTrain` parameter; the latter represents a threshold for the relative density of objects from the training sample in the area of the evaluated object. (If `maxRelRatioInRef_inTrain > 0`, then `inTrainFlag` is binary.)
+
+  - It is recommended to first generate a floating-point estimate of `inTrainFlag` and to study the distribution. For production, once a proper cut value for `maxRelRatioInRef_inTrain` is determined, `inTrainFlag` should be set to produce a binary decision.
 
 ### Single regression
 
@@ -406,11 +412,13 @@ glob.annz["addClsKNNerr"] = True
 
 The weights for the different estimators which were mentioned above (`ANNZ_8_wgt`, `ANNZ_best_wgt`, `ANNZ_MLM_avg_0_wgt` etc.) serve two purposes:
 
-  1. **numerical weights:** the numerical value of the weight is composed of the weight-definition provided by the user through the `userWeights_train` and `userWeights_valid` variables, combined with the reference dataset weight, which can be added using `useWgtKNN` (see the advanced example scripts).
+  1. **numerical weights:** the numerical value of the weight is composed of the weight-definition provided by the user through the `userWeights_train` and `userWeights_valid` variables, combined with the reference dataset weight, which can be added using `useWgtKNN` (see the advanced example scripts). 
   
   2. **binary cuts:** objects which do not pass the cuts end up with a zero weight. A trivial example of a cut, is an object which has a value of the regression target for which `zTrg < minValZ` or `zTrg > maxValZ`. Cut may also be defined by using the `userCuts_train` and `userCuts_valid` variables (see the advanced example scripts).
 
 A few notes:
+
+  - For instance, lets assume that `userWeights_train`, `userWeights_valid`, `userCuts_train` and `userCuts_valid` are not set, while `useWgtKNN = True`. In this case, the weight variables (i.e., `ANNZ_best_wgt`) would correspond exactly to the reference dataset correction factors, which are stored e.g., in `output/test_randReg_advanced/rootIn/ANNZ_KNN_wANNZ_tree_valid_0000.csv`. This naturally only holds for the training/validation dataset. For a general evaluation sample, weight variables such as `ANNZ_best_wgt` would be derived by `userWeights_train`, `userWeights_valid`, `userCuts_train` and `userCuts_valid` alone.
 
   - The estimator weights have nothing to do with the PDF-weights discussed above. The object weights represent per-object numbers which are derived from the overall properties of an object - they can even depend on variables which are not part of the training. For instance, in the examples, one may limit the impact on training, of objects with high uncertainty on the I-band magnitude:
   ```python

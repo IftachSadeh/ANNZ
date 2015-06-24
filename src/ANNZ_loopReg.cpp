@@ -2134,9 +2134,11 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
 
       var_1->createTreeBranches(treeOut); 
 
+      vector < pair<TString,TString> > varTypeNameV_com, varTypeNameV_all;
       // get the full list of variables common to both var_0 and var_1
-      vector < pair<TString,TString> > varTypeNameV;
-      var_1->varStruct(var_0,NULL,NULL,&varTypeNameV,false);
+      var_1->varStruct(var_0,NULL,NULL,&varTypeNameV_com,false);
+      // get the full list of variables and variable-types in var_1
+      // var_1->GetAllVarNameTypes(varTypeNameV_all);
 
       // -----------------------------------------------------------------------------------------------------------
       // loop on the tree
@@ -2159,9 +2161,9 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
         if(breakLoop) break;
         
         // set to default before anything else
-        var_1->setDefaultVals();
+        var_1->setDefaultVals(&varTypeNameV_all);
         // copy current content of all common variables (index + content of addVarV)
-        var_1->copyVarData(var_0,varTypeNameV);
+        var_1->copyVarData(var_0,varTypeNameV_com);
 
         if(nLoopTypeNow == 1) {
           for(int nPDFnow=0; nPDFnow<nPDFs; nPDFnow++) {
@@ -2458,7 +2460,7 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
 
       if(nLoopTypeNow == 0) clearReaders();
 
-      DELNULL(var_0); DELNULL(var_1); varTypeNameV.clear();
+      DELNULL(var_0); DELNULL(var_1); varTypeNameV_com.clear(); varTypeNameV_all.clear();
       DELNULL(treeOut); outputs->TreeMap.erase(outTreeNameV[nLoopTypeNow][nDivLoopNow]);
     } // ENDOF for(int nDivLoopNow=0; nDivLoopNow<nDivLoops; nDivLoopNow++) {}
   } // ENDOF for(int nLoopTypeNow=0; nLoopTypeNow<2; nLoopTypeNow++) {}

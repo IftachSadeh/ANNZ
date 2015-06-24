@@ -228,7 +228,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
 
   // force reasonable min/max values
   minNobjInVol     = max(minNobjInVol,20);
-  maxRelRatioInRef = max(min(maxRelRatioInRef,0.999),0.001);
+  maxRelRatioInRef = (maxRelRatioInRef > 0) ? max(min(maxRelRatioInRef,0.999),0.001) : -1;
 
   int     maxNobj         = 0;  // maxNobj = glob->GetOptI("maxNobj"); // only allow maxNobj limits for debugging !! 
   TString outBaseName     = (TString)outDirNameFull+glob->GetOptC("treeName")+wgtKNNname;
@@ -568,10 +568,13 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
           // measures then compute a binary decision, based on the minimal threshold set by maxRelRatioInRef
           // -----------------------------------------------------------------------------------------------------------
           weightKNN = max( ((dist_Ref0_RefNear - dist_Ref_Inp) / dist_Ref0_RefNear) , 0.);
-          weightKNN = (weightKNN > maxRelRatioInRef) ? 1 : 0;
+          if(maxRelRatioInRef > 0) weightKNN = (weightKNN > maxRelRatioInRef) ? 1 : 0;
+          weightKNN = max(min(weightKNN,1.),0.);
 
           var_0->IncCntr("Found good weight");
-          if(weightKNN > maxRelRatioInRef) var_0->IncCntr(wgtKNNname+" = 1"); else var_0->IncCntr(wgtKNNname+" = 0");
+          if(maxRelRatioInRef > 0) {
+            if(weightKNN > maxRelRatioInRef) var_0->IncCntr(wgtKNNname+" = 1"); else var_0->IncCntr(wgtKNNname+" = 0");
+          }
         }
         else {
           // assign zero weight if could not complete the calculation

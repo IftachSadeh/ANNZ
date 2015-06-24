@@ -215,7 +215,7 @@ void ANNZ::Init() {
   // no PDFs currently defined for classification
   else                                  { glob->SetOptI("nPDFs", 0                                    ); }
 
-  if(glob->GetOptB("doRegression")) {
+  if(glob->GetOptB("doRegression") && !glob->GetOptB("doTrain")) {
     aLOG(Log::INFO) <<coutBlue<<" - Will generate "<<coutYellow<<glob->GetOptI("nPDFs")<<coutBlue<<" PDFs ... "<<coutDef<<endl;
   }
 
@@ -1832,7 +1832,7 @@ void ANNZ::splitToSigBckTrees(map < TString,TChain* > & chainM, map < TString,TC
       if(var->hasFailedTreeCuts(varCutNameCmn)) continue;
 
       // set to default before anything else
-      varSig->setDefaultVals(); varBck->setDefaultVals();
+      varSig->setDefaultVals(&varTypeNameV); varBck->setDefaultVals(&varTypeNameV);
 
       if(!var->hasFailedTreeCuts(varCutNameSig)) {
         varSig->copyVarData(var,varTypeNameV);

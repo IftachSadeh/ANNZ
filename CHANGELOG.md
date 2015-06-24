@@ -12,6 +12,8 @@
 
 - Did some code optimization for tree-looping operations.
 
+- Nominally, the `inTrainFlag` quality flag is a binary operator, and may only take values of either `0` or `1`. Have now added the option of setting `maxRelRatioInRef_inTrain < 0`. In this case, the `maxRelRatioInRef_inTrain` parameter is ignored. As a result the `inTrainFlag` may take floating-point values between zero and one.
+
 ## ANNZ 2.0.5 (17/6/2015)
 
 - Fixed bug in `CatFormat::addWgtKNNtoTree()`, where the weight expression for the KNN trees did not include the `ANNZ_KNN_w` weight in cases of `glob.annz["addInTrainFlag"] = True`.

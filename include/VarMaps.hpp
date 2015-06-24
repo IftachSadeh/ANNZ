@@ -80,10 +80,11 @@ public:
   void            copyVarData     (VarMaps * inObj);
   void            copyVarData     (VarMaps * inObj, vector < pair<TString,TString> > & varTypeNameV);
   void            rmVarPattern(TString pattern, TString type);
-  void            setDefaultVals();
+  void            setDefaultVals(vector < pair<TString,TString> > * varTypeNameV = NULL);
 
   void            getVarPattern(TString type, vector <TString> & optV, TString pattern, bool ignorCase);
   void            GetAllVarNames(vector <TString> & optNames, TString type = "ALL");
+  void            GetAllVarNameTypes(vector < pair<TString,TString> > & varTypeNameV, TString type = "ALL");
   void            printVarNames(TString type = "ALL", TString title = "");
   
   void            printCut(TString cutType, bool debug = false);

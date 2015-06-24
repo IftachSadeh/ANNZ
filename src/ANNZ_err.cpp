@@ -71,6 +71,7 @@ void ANNZ::createTreeErrKNN(int nMLMnow) {
   TTree   * outTree   = new TTree(outTreeName,outTreeName); outTree->SetDirectory(0); outputs->TreeMap[outTreeName] = outTree;
 
   var_1->createTreeBranches(outTree); 
+  var_1->setDefaultVals();
 
   // 
   // -----------------------------------------------------------------------------------------------------------
@@ -85,9 +86,6 @@ void ANNZ::createTreeErrKNN(int nMLMnow) {
       outputs->WriteOutObjects(false,true); outputs->ResetObjects(); mayWriteObjects = false;
     }
     if(breakLoop) break;
-
-    // set to default before anything else
-    var_1->setDefaultVals();
 
     var_1->SetVarI(MLMname_i,var_0->GetVarI(indexName));
 
