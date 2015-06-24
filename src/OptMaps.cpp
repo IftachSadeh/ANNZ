@@ -113,10 +113,10 @@ void OptMaps::checkName(TString messageTag, TString aName) {
 void OptMaps::copyOptStruct(OptMaps * inObj) {
 // ===========================================
   // use NewOptB() in order to make sure the variable is replaced if it already exists, holding the current value of inObj
-  for(map <TString,bool>   ::iterator Itr = inObj->optB.begin(); Itr!=inObj->optB.end(); ++Itr) { NewOptB(Itr->first,Itr->second); }
-  for(map <TString,int>    ::iterator Itr = inObj->optI.begin(); Itr!=inObj->optI.end(); ++Itr) { NewOptI(Itr->first,Itr->second); }
-  for(map <TString,double> ::iterator Itr = inObj->optF.begin(); Itr!=inObj->optF.end(); ++Itr) { NewOptF(Itr->first,Itr->second); }
-  for(map <TString,TString>::iterator Itr = inObj->optC.begin(); Itr!=inObj->optC.end(); ++Itr) { NewOptC(Itr->first,Itr->second); }
+  for(map <TString,bool>   ::iterator itr = inObj->optB.begin(); itr!=inObj->optB.end(); ++itr) { NewOptB(itr->first,itr->second); }
+  for(map <TString,int>    ::iterator itr = inObj->optI.begin(); itr!=inObj->optI.end(); ++itr) { NewOptI(itr->first,itr->second); }
+  for(map <TString,double> ::iterator itr = inObj->optF.begin(); itr!=inObj->optF.end(); ++itr) { NewOptF(itr->first,itr->second); }
+  for(map <TString,TString>::iterator itr = inObj->optC.begin(); itr!=inObj->optC.end(); ++itr) { NewOptC(itr->first,itr->second); }
   return;    
 };
 
@@ -124,10 +124,10 @@ void OptMaps::copyOptStruct(OptMaps * inObj) {
 void OptMaps::GetAllOptNames(vector <TString> & optNames, TString type) {
 // ======================================================================
   optNames.clear();
-  if(type == "ALL" || type == "B") { for(map <TString,bool>   ::iterator Itr = optB.begin(); Itr!=optB.end(); ++Itr) optNames.push_back(Itr->first); }
-  if(type == "ALL" || type == "I") { for(map <TString,int>    ::iterator Itr = optI.begin(); Itr!=optI.end(); ++Itr) optNames.push_back(Itr->first); }
-  if(type == "ALL" || type == "F") { for(map <TString,double> ::iterator Itr = optF.begin(); Itr!=optF.end(); ++Itr) optNames.push_back(Itr->first); }
-  if(type == "ALL" || type == "C") { for(map <TString,TString>::iterator Itr = optC.begin(); Itr!=optC.end(); ++Itr) optNames.push_back(Itr->first); }
+  if(type == "ALL" || type == "B") { for(map <TString,bool>   ::iterator itr = optB.begin(); itr!=optB.end(); ++itr) optNames.push_back(itr->first); }
+  if(type == "ALL" || type == "I") { for(map <TString,int>    ::iterator itr = optI.begin(); itr!=optI.end(); ++itr) optNames.push_back(itr->first); }
+  if(type == "ALL" || type == "F") { for(map <TString,double> ::iterator itr = optF.begin(); itr!=optF.end(); ++itr) optNames.push_back(itr->first); }
+  if(type == "ALL" || type == "C") { for(map <TString,TString>::iterator itr = optC.begin(); itr!=optC.end(); ++itr) optNames.push_back(itr->first); }
   return;    
 };
 
@@ -147,15 +147,15 @@ void OptMaps::printMap(map <TString,TObjString*> & input, TString message, int n
   int nIncPatts = (int)incPatrns.size();
 
   int nItr(0);
-  for(map <TString,TObjString*>::iterator Itr = input.begin(); Itr!=input.end(); ++Itr, nItr++) {
+  for(map <TString,TObjString*>::iterator itr = input.begin(); itr!=input.end(); ++itr, nItr++) {
     if(nItr == 0) aCleanLOG()<<coutYellow<<" - "<<message<<endl<<"  ";
     if(nIncPatts) {
       bool hasIncPatt(false);
-      for(int nIncPattNow=0; nIncPattNow<nIncPatts; nIncPattNow++) if((Itr->first).Contains(incPatrns[nIncPattNow])) hasIncPatt = true;
+      for(int nIncPattNow=0; nIncPattNow<nIncPatts; nIncPattNow++) if((itr->first).Contains(incPatrns[nIncPattNow])) hasIncPatt = true;
       if(!hasIncPatt) continue;
     }
     nItr++;
-    aCleanLOG() <<coutBlue<<std::setw(width)<< Itr->first << " = " <<coutGreen<<std::setw(width)<<std::left<< Itr->second->String() <<std::right<< "  "<<coutDef;
+    aCleanLOG() <<coutBlue<<std::setw(width)<< itr->first << " = " <<coutGreen<<std::setw(width)<<std::left<< itr->second->String() <<std::right<< "  "<<coutDef;
     if(nItr%nPrintRow == 0) aCleanLOG()<<endl<<"  ";
   }
   if(nItr) aCleanLOG() <<coutDef<<endl;
@@ -190,9 +190,9 @@ void OptMaps::getOptPattern(TString type, vector <TString> & optV, TString patte
 // ===========================================================================================================
 void OptMaps::setDefaultOpts() {
 // =============================
-  for(map <TString,bool>   ::iterator Itr = optB.begin(); Itr!=optB.end(); ++Itr) { SetOptB(Itr->first,DefOpts::DefB); }
-  for(map <TString,int>    ::iterator Itr = optI.begin(); Itr!=optI.end(); ++Itr) { SetOptI(Itr->first,DefOpts::DefI); }
-  for(map <TString,double> ::iterator Itr = optF.begin(); Itr!=optF.end(); ++Itr) { SetOptF(Itr->first,DefOpts::DefD); }
-  for(map <TString,TString>::iterator Itr = optC.begin(); Itr!=optC.end(); ++Itr) { SetOptC(Itr->first,DefOpts::DefC); }
+  for(map <TString,bool>   ::iterator itr = optB.begin(); itr!=optB.end(); ++itr) { SetOptB(itr->first,DefOpts::DefB); }
+  for(map <TString,int>    ::iterator itr = optI.begin(); itr!=optI.end(); ++itr) { SetOptI(itr->first,DefOpts::DefI); }
+  for(map <TString,double> ::iterator itr = optF.begin(); itr!=optF.end(); ++itr) { SetOptF(itr->first,DefOpts::DefD); }
+  for(map <TString,TString>::iterator itr = optC.begin(); itr!=optC.end(); ++itr) { SetOptC(itr->first,DefOpts::DefC); }
   return;
 }

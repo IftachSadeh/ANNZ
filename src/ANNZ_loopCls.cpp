@@ -682,7 +682,8 @@ void  ANNZ::doEvalCls() {
 
   // possible additional variables added to the output (do once after connectTreeBranchesForm of the input tree)
   // -----------------------------------------------------------------------------------------------------------
-  var_1->copyVarStruct(var_0,&addVarV);
+  vector < pair<TString,TString> > varTypeNameV;
+  var_1->varStruct(var_0,&addVarV,NULL,&varTypeNameV);
 
   // create the output tree and connect it to the output vars
   // -----------------------------------------------------------------------------------------------------------
@@ -691,6 +692,7 @@ void  ANNZ::doEvalCls() {
   TTree   * treeOut   = new TTree(outTreeName,outTreeName); treeOut->SetDirectory(0);
   outputs->TreeMap[outTreeName] = treeOut;
   var_1->createTreeBranches(treeOut); 
+  var_1->setDefaultVals();
 
   // -----------------------------------------------------------------------------------------------------------
   // loop on the tree
@@ -709,10 +711,8 @@ void  ANNZ::doEvalCls() {
     }
     if(breakLoop) break;
     
-    // set to default before anything else
-    var_1->setDefaultVals();
     // copy current content of all common variables (index + content of addVarV)
-    var_1->copyVarData(var_0);
+    var_1->copyVarData(var_0,varTypeNameV);
 
     // -----------------------------------------------------------------------------------------------------------
     // calculate the KNN errors if needed, for each variation of knnErrModule
@@ -751,7 +751,7 @@ void  ANNZ::doEvalCls() {
   }
   if(!breakLoop) { var_0->printCntr(inTreeName); outputs->WriteOutObjects(false,true); outputs->ResetObjects(); }
 
-  DELNULL(var_0); DELNULL(var_1);
+  DELNULL(var_0); DELNULL(var_1); varTypeNameV.clear();
   DELNULL(treeOut); outputs->TreeMap.erase(outTreeName);
 
   regErrV.clear();

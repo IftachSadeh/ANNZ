@@ -8,6 +8,10 @@
 
 - Added the option `doGausSigmaRelErr` (now set to `True` by default) to estimate the scatter of the relative uncertainty of regression solutions by a Gaussian fit, instead of by the RMS or the 68th percentile of the distribution of the relative uncertainty. This only affects the plotting output of regression problems (`ANNZ::doMetricPlots()`).
 
+- Added support for general math expressions for the `weightVarNames_wgtKNN` and `weightVarNames_inTrain` variables.
+
+- Did some code optimization for tree-looping operations.
+
 ## ANNZ 2.0.5 (17/6/2015)
 
 - Fixed bug in `CatFormat::addWgtKNNtoTree()`, where the weight expression for the KNN trees did not include the `ANNZ_KNN_w` weight in cases of `glob.annz["addInTrainFlag"] = True`.

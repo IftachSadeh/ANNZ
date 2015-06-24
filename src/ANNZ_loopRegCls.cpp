@@ -581,6 +581,7 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
     TTree * treeOut = new TTree(inTreeName,inTreeName); treeOut->SetDirectory(0);
     outputs->TreeMap[inTreeName] = treeOut;
     var_1->createTreeBranches(treeOut); 
+    var_1->setDefaultVals();
 
     // -----------------------------------------------------------------------------------------------------------
     // loop on the tree
@@ -599,9 +600,6 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
         outputs->WriteOutObjects(false,true); outputs->ResetObjects(); mayWriteObjects = false;
       }
       if(breakLoop) break;
-
-      // set to default before anything else
-      var_1->setDefaultVals();
 
       // check if passed cuts ("_comn" , and (MLMname+treeNamePostfix))
       bool passCuts    = !var_0->hasFailedTreeCuts(baseCutsName);
@@ -1093,8 +1091,11 @@ TChain * ANNZ::mergeTreeFriends(TChain * aChain, TChain * aChainFriend, vector<T
   TTree * mergedTree = new TTree(inTreeName,inTreeName); mergedTree->SetDirectory(0);
   outputs->TreeMap[inTreeName] = mergedTree;
 
+  vector < pair<TString,TString> > varTypeNameV;
+
   var_0->connectTreeBranches(aChain);
-  var_1->copyVarStruct(var_0,acceptV,rejectV); var_1->createTreeBranches(mergedTree); 
+  var_1->varStruct(var_0,acceptV,rejectV,&varTypeNameV); var_1->createTreeBranches(mergedTree); 
+  var_1->setDefaultVals();
 
   bool hasCut = (aCut != "");
   if(hasCut) var_0->setTreeCuts("aCut",aCut);
@@ -1113,9 +1114,7 @@ TChain * ANNZ::mergeTreeFriends(TChain * aChain, TChain * aChainFriend, vector<T
 
     if(hasCut) { if(var_0->hasFailedTreeCuts("aCut")) continue; }
 
-    // set to default before anything else
-    var_1->setDefaultVals();
-    var_1->copyVarData(var_0);
+    var_1->copyVarData(var_0,varTypeNameV);
 
     mergedTree->Fill();
 
@@ -1123,7 +1122,7 @@ TChain * ANNZ::mergeTreeFriends(TChain * aChain, TChain * aChainFriend, vector<T
   }
   if(!breakLoop) { var_0->printCntr(inTreeName,Log::DEBUG); outputs->WriteOutObjects(false,true); outputs->ResetObjects(); }
 
-  DELNULL(var_0); DELNULL(var_1);
+  DELNULL(var_0); DELNULL(var_1); varTypeNameV.clear();
 
   for(int nFriendNow=0; nFriendNow<(int)aChainFriendV.size(); nFriendNow++) DELNULL(aChainFriendV[nFriendNow]);
   aChainFriendV.clear();

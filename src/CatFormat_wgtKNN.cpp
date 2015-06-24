@@ -270,19 +270,6 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
     TChain * aChain = (nChainNow == 0) ? aChainInp : aChainRef;
     aChainV[nChainNow]   = (TChain*)aChain->Clone((TString)aChain->GetName()+nChainKNNname);  aChainV[nChainNow]->SetDirectory(0);
 
-    // make sure the input variables all exist in the chain
-    vector <TString> branchNameV;
-    utils->getTreeBranchNames(aChain,branchNameV);
-
-    for(int nVarNow=0; nVarNow<nVars; nVarNow++) {
-      bool hasBranch = (find(branchNameV.begin(),branchNameV.end(),varNames[nVarNow]) != branchNameV.end());
-
-      VERIFY(LOCATION,(TString)"got KNN-variable = \""+varNames[nVarNow]+"\" ... variables included in \"weightVarNames"+typePostfix
-                              +"\" must exist in the input file (complex expressions of input variables are not supported)",hasBranch);
-    }
-    
-    branchNameV.clear();
-
     double  objFracNow   = (nChainNow == 0) ? sampleFracInp : sampleFracRef;
     int     nTrainObj    = static_cast<int>(floor(aChainV[nChainNow]->GetEntries() * objFracNow));
 
@@ -319,7 +306,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
     knnErrFactory[nChainNow] = new TMVA::Factory(wgtKNNname, knnErrOutFile[nChainNow], (TString)verbLvlF+drawProgBarStr+transStr+analysType);    
 
     // define all input variables as floats in the factory
-    for(int nVarNow=0; nVarNow<nVars; nVarNow++) knnErrFactory[nChainNow]->AddVariable(varNames[nVarNow],"","",'F');
+    for(int nVarNow=0; nVarNow<nVars; nVarNow++) knnErrFactory[nChainNow]->AddVariable(varNames[nVarNow],varNames[nVarNow],"",'F');
 
     knnErrFactory[nChainNow]->AddRegressionTree(aChainV[nChainNow], 1, TMVA::Types::kTraining);
     knnErrFactory[nChainNow]->SetWeightExpression(chainWgtV[nChainNow],"Regression");
@@ -339,7 +326,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
     for(int nVarNow=0; nVarNow<nVars; nVarNow++) {
       if(nChainNow == 0 && nVarNow > 0) break;
 
-      TString hisName   = (TString)nChainKNNname+"_hisTMP_"+varNames[nVarNow];
+      TString hisName   = (TString)nChainKNNname+"_hisTMP_"+utils->regularizeName(varNames[nVarNow]);
       TString drawExprs = (TString)varNames[nVarNow]+">>"+hisName;
       TString wgtCut    = (TString)"("+chainCutV[nChainNow]+")*("+chainWgtV[nChainNow]+")";
       wgtCut.ReplaceAll("()*()","").ReplaceAll("*()","").ReplaceAll("()*","").ReplaceAll("()","1");
@@ -412,7 +399,8 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
 
   var_0->connectTreeBranches(aChainInp);
 
-  var_1->copyVarStruct(var_0);
+  vector < pair<TString,TString> > varTypeNameV;
+  var_1->varStruct(var_0,NULL,NULL,&varTypeNameV);
 
   // the wgtKNNname variable for "baseName_wgtKNN" was created by CatFormat if all went
   // well, but not for "baseName_inTrain"; we therefore add it here if not already defined
@@ -445,7 +433,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
 
     if(breakLoop) break;
 
-    var_1->copyVarData(var_0);
+    var_1->copyVarData(var_0,varTypeNameV);
 
     // fill the current object vector and use it later in order to create a TMVA::kNN::Event object
     // if any of the variables is beyond the limits derived from the reference sample, the weight is
@@ -603,6 +591,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
   if(!breakLoop) { var_0->printCntr(outTreeName); outputs->WriteOutObjects(false,true); outputs->ResetObjects(); }
   
   DELNULL(var_0); DELNULL(var_1); DELNULL(outTree); outputs->TreeMap.erase(outTreeName);
+  varTypeNameV.clear();
 
   TChain * aChainInpWgt(NULL);
 
@@ -639,7 +628,9 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
     var_1 = new VarMaps(glob,utils,"treeWeightsKNNvar_1");
 
     var_0->connectTreeBranches(aChainInpWgt);
-    var_1->copyVarStruct(var_0);
+
+    vector < pair<TString,TString> > varTypeNameV;
+    var_1->varStruct(var_0,NULL,NULL,&varTypeNameV);
 
     outTree = new TTree(outTreeName,outTreeName); outTree->SetDirectory(0); outputs->TreeMap[outTreeName] = outTree;
     var_1->createTreeBranches(outTree); 
@@ -658,7 +649,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
       }
       if(breakLoop) break;
 
-      var_1->copyVarData(var_0);
+      var_1->copyVarData(var_0,varTypeNameV);
 
       double weightKNN = var_0->GetVarF(wgtKNNname) * weightNorm;
       var_1->SetVarF(wgtKNNname,weightKNN);
@@ -670,6 +661,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
     if(!breakLoop) { var_0->printCntr(outTreeName); outputs->WriteOutObjects(false,true); outputs->ResetObjects(); }
 
     DELNULL(var_1); DELNULL(outTree); outputs->TreeMap.erase(outTreeName);
+    varTypeNameV.clear();
 
     // remove the temporary sub-dir and the intermediary trees inside
     utils->safeRM(outDirNameTMP,inLOG(Log::DEBUG));

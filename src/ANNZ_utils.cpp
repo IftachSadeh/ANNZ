@@ -1704,13 +1704,17 @@ void ANNZ::createCutTrainTrees(map < TString,TChain* > & chainM, map < TString,T
     var_0->setTreeCuts(varCutNameCmn,cutM["_comn"]+cutM[trainValidName]);
 
     // create splitIndex variables for signal and background (countinous counters for each sub-sample that can later be used for cuts)
-    VarMaps * var_1      = new VarMaps(glob,utils,varName+"_cut");  var_1->copyVarStruct(var_0);
+    VarMaps * var_1      = new VarMaps(glob,utils,varName+"_cut");
+
+    vector < pair<TString,TString> > varTypeNameV;
+    var_1->varStruct(var_0,NULL,NULL,&varTypeNameV);
 
     // create an output tree with branches according to var_0
     TString inTreeName = (TString)chainM[trainValidName]->GetName();
     TTree   * cutTree  = new TTree(inTreeName,inTreeName); cutTree->SetDirectory(0); outputs->TreeMap[inTreeName] = cutTree;
 
     var_1->createTreeBranches(cutTree); 
+    var_1->setDefaultVals();
 
     bool  breakLoop(false), mayWriteObjects(false);
     var_0->clearCntr();
@@ -1726,9 +1730,7 @@ void ANNZ::createCutTrainTrees(map < TString,TChain* > & chainM, map < TString,T
       // -----------------------------------------------------------------------------------------------------------
       if(var_0->hasFailedTreeCuts(varCutNameCmn)) continue;
 
-      // set to default before anything else
-      var_1->setDefaultVals();
-      var_1->copyVarData(var_0);
+      var_1->copyVarData(var_0,varTypeNameV);
 
       cutTree->Fill();
 
@@ -1749,7 +1751,7 @@ void ANNZ::createCutTrainTrees(map < TString,TChain* > & chainM, map < TString,T
     chainM[trainValidName+"_cut"]->SetDirectory(0); chainM[trainValidName+"_cut"]->Add(outFileName);
 
     // cleanup
-    DELNULL(var_0); DELNULL(var_1);
+    DELNULL(var_0); DELNULL(var_1); varTypeNameV.clear();
   }
 
   int n_train_cut = (maxNobj > 0)?min(maxNobj,optMap->GetOptI("n_train_cut")):optMap->GetOptI("n_train_cut"); optMap->NewOptI("ANNZ_nTrain",n_train_cut);
@@ -1800,8 +1802,10 @@ void ANNZ::splitToSigBckTrees(map < TString,TChain* > & chainM, map < TString,TC
     TString inTreeNameBck = (TString)inTreeName+"_bck";
 
     // create splitIndex variables for signal and background (countinous counters for each sub-sample that can later be used for cuts)
-    VarMaps * varSig = new VarMaps(glob,utils,varName+"_sig");  varSig->copyVarStruct(var);  varSig->NewVarI(splitName+"_sigBck");
-    VarMaps * varBck = new VarMaps(glob,utils,varName+"_bck");  varBck->copyVarStruct(var);  varBck->NewVarI(splitName+"_sigBck");
+    vector < pair<TString,TString> > varTypeNameV;
+
+    VarMaps * varSig = new VarMaps(glob,utils,varName+"_sig"); varSig->varStruct(var,NULL,NULL,&varTypeNameV); varSig->NewVarI(splitName+"_sigBck");
+    VarMaps * varBck = new VarMaps(glob,utils,varName+"_bck"); varBck->varStruct(var);                         varBck->NewVarI(splitName+"_sigBck");
 
     // create an output tree with branches according to var
     TTree * mergedTreeSig = new TTree(inTreeNameSig,inTreeNameSig); mergedTreeSig->SetDirectory(0);  outputs->TreeMap[inTreeNameSig] = mergedTreeSig;
@@ -1831,7 +1835,7 @@ void ANNZ::splitToSigBckTrees(map < TString,TChain* > & chainM, map < TString,TC
       varSig->setDefaultVals(); varBck->setDefaultVals();
 
       if(!var->hasFailedTreeCuts(varCutNameSig)) {
-        varSig->copyVarData(var);
+        varSig->copyVarData(var,varTypeNameV);
         varSig->SetVarI(splitName+"_sigBck",var->GetCntr(nObjNameSig));
         var->IncCntr(nObjNameSig);
 
@@ -1840,7 +1844,7 @@ void ANNZ::splitToSigBckTrees(map < TString,TChain* > & chainM, map < TString,TC
       else var->IncCntr((TString)"failedCut: "+var->getFailedCutType());
 
       if(!var->hasFailedTreeCuts(varCutNameBck)) {
-        varBck->copyVarData(var);
+        varBck->copyVarData(var,varTypeNameV);
         varBck->SetVarI(splitName+"_sigBck",var->GetCntr(nObjNameBck));
         var->IncCntr(nObjNameBck);
 
@@ -1873,7 +1877,7 @@ void ANNZ::splitToSigBckTrees(map < TString,TChain* > & chainM, map < TString,TC
     chainM[trainValidName+"_sig"]->Add(inFileNameSig);                       chainM[trainValidName+"_bck"]->Add(inFileNameBck);
 
     // cleanup
-    DELNULL(var); DELNULL(varSig); DELNULL(varBck);
+    DELNULL(var); DELNULL(varSig); DELNULL(varBck); varTypeNameV.clear();
   }
 
   int n_train_sig = (maxNobj > 0)?min(maxNobj,optMap->GetOptI("n_train_sig")):optMap->GetOptI("n_train_sig"); optMap->NewOptI("ANNZ_nTrain_sig",n_train_sig);

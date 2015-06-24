@@ -2114,7 +2114,7 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
       // possible additional variables added to the output (do once after connectTreeBranchesForm
       // of the input tree), create the output tree, and connects it to the vars
       // -----------------------------------------------------------------------------------------------------------
-      var_1->copyVarStruct(var_0,&addVarV);
+      var_1->varStruct(var_0,&addVarV);
       
       // best MLM solution - replaced the original variables and with the correct tag - no need to
       // store this solution, unless needed by the pdf
@@ -2133,6 +2133,10 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
       treeOut->SetDirectory(0); outputs->TreeMap[outTreeNameV[nLoopTypeNow][nDivLoopNow]] = treeOut;
 
       var_1->createTreeBranches(treeOut); 
+
+      // get the full list of variables common to both var_0 and var_1
+      vector < pair<TString,TString> > varTypeNameV;
+      var_1->varStruct(var_0,NULL,NULL,&varTypeNameV,false);
 
       // -----------------------------------------------------------------------------------------------------------
       // loop on the tree
@@ -2157,7 +2161,7 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
         // set to default before anything else
         var_1->setDefaultVals();
         // copy current content of all common variables (index + content of addVarV)
-        var_1->copyVarData(var_0);
+        var_1->copyVarData(var_0,varTypeNameV);
 
         if(nLoopTypeNow == 1) {
           for(int nPDFnow=0; nPDFnow<nPDFs; nPDFnow++) {
@@ -2454,7 +2458,7 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
 
       if(nLoopTypeNow == 0) clearReaders();
 
-      DELNULL(var_0); DELNULL(var_1);
+      DELNULL(var_0); DELNULL(var_1); varTypeNameV.clear();
       DELNULL(treeOut); outputs->TreeMap.erase(outTreeNameV[nLoopTypeNow][nDivLoopNow]);
     } // ENDOF for(int nDivLoopNow=0; nDivLoopNow<nDivLoops; nDivLoopNow++) {}
   } // ENDOF for(int nLoopTypeNow=0; nLoopTypeNow<2; nLoopTypeNow++) {}

@@ -75,8 +75,10 @@ public:
   void            clearVar();
   void            clearTrees();
   inline void     clearAll()       { clearTrees(); clearVar(); return; }
-  void            copyVarStruct   (VarMaps * inObj, vector <TString> * acceptV = NULL, vector <TString> * rejectV = NULL);
+  void            varStruct       (VarMaps * inObj, vector <TString> * acceptV = NULL, vector <TString> * rejectV = NULL,
+                                                    vector < pair<TString,TString> > * varTypeNameV = NULL, bool isCopy = true);
   void            copyVarData     (VarMaps * inObj);
+  void            copyVarData     (VarMaps * inObj, vector < pair<TString,TString> > & varTypeNameV);
   void            rmVarPattern(TString pattern, TString type);
   void            setDefaultVals();
 
@@ -135,12 +137,12 @@ public:
 
   // remove a variable
   // -----------------------------------------------------------------------------------------------------------
-  inline void DelVarB(TString aName) { checkLock(aName); DelVarB_ (aName);                                     return; }
-  inline void DelVarC(TString aName) { checkLock(aName); DelVarC_ (aName);                                     return; }
-  inline void DelVarI(TString aName) { checkLock(aName); DelVarS_ (aName); DelVarI_ (aName); DelVarL_ (aName); return; }
-  inline void DelVarU(TString aName) { checkLock(aName); DelVarUS_(aName); DelVarUI_(aName); DelVarUL_(aName); return; }
-  inline void DelVarF(TString aName) { checkLock(aName); DelVarF_ (aName); DelVarD_ (aName);                   return; }
-  inline void DelForm(TString aName) { checkLock(aName); DelForm_ (aName);                                     return; }
+  inline void DelVarB(TString aName) { checkLock(aName); DelVarB_ (aName);                                     }
+  inline void DelVarC(TString aName) { checkLock(aName); DelVarC_ (aName);                                     }
+  inline void DelVarI(TString aName) { checkLock(aName); DelVarS_ (aName); DelVarI_ (aName); DelVarL_ (aName); }
+  inline void DelVarU(TString aName) { checkLock(aName); DelVarUS_(aName); DelVarUI_(aName); DelVarUL_(aName); }
+  inline void DelVarF(TString aName) { checkLock(aName); DelVarF_ (aName); DelVarD_ (aName);                   }
+  inline void DelForm(TString aName) { checkLock(aName); DelForm_ (aName);                                     }
 
   // set the value of a variable
   // -----------------------------------------------------------------------------------------------------------
@@ -278,14 +280,14 @@ public:
 
   // counter access
   // -----------------------------------------------------------------------------------------------------------
-  inline void     resetCntr()                            { cntrMap->resetCntr();           return; }
-  inline void     clearCntr()                            { cntrMap->clearCntr();           return; }
-  inline void     NewCntr(TString  aName, int input = 0) { cntrMap->NewCntr(aName,input);  return; }
-  inline void     IncCntr(TString  aName, int val   = 1) { cntrMap->IncCntr(aName,val);    return; }
-  inline void     DecCntr(TString  aName, int val   = 1) { cntrMap->DecCntr(aName,val);    return; }
-  inline int      GetCntr(TString  aName)                { return cntrMap->GetCntr(aName);         }
-  inline bool     HasCntr(TString  aName)                { return cntrMap->HasCntr(aName);         }
-  inline void     DelCntr(TString  aName)                { cntrMap->DelCntr(aName);        return; }
+  inline void     resetCntr()                            { cntrMap->resetCntr();           }
+  inline void     clearCntr()                            { cntrMap->clearCntr();           }
+  inline void     NewCntr(TString  aName, int input = 0) { cntrMap->NewCntr(aName,input);  }
+  inline void     IncCntr(TString  aName, int val   = 1) { cntrMap->IncCntr(aName,val);    }
+  inline void     DecCntr(TString  aName, int val   = 1) { cntrMap->DecCntr(aName,val);    }
+  inline int      GetCntr(TString  aName)                { return cntrMap->GetCntr(aName); }
+  inline bool     HasCntr(TString  aName)                { return cntrMap->HasCntr(aName); }
+  inline void     DelCntr(TString  aName)                { cntrMap->DelCntr(aName);        }
   
   inline void     printCntr(TString nameTag = "", Log::LOGtypes logLevel = Log::INFO) {
     cntrMap->printCntr(nameTag,logLevel); return;
@@ -295,44 +297,44 @@ private:
   // -----------------------------------------------------------------------------------------------------------
   // internal functions for variable manipulatios
   // -----------------------------------------------------------------------------------------------------------
-  inline void NewVarB_ (TString aName, Bool_t    input) { verifyType(aName,"B");  DelVarB_ (aName); varB [aName] = input; hasB [aName] = true; return; }
+  inline void NewVarB_ (TString aName, Bool_t    input) { verifyType(aName,"B");  DelVarB_ (aName); varB [aName] = input; hasB [aName] = true; }
   inline void NewVarC_ (TString aName, TString   input) { verifyType(aName,"C");  DelVarC_ (aName); varC [aName] = new TObjString(aName);
-                                                                                          varC [aName]->SetString(input); hasC [aName] = true; return; } 
-  inline void NewVarS_ (TString aName, Short_t   input) { verifyType(aName,"S");  DelVarS_ (aName); varS [aName] = input; hasS [aName] = true; return; }
-  inline void NewVarI_ (TString aName, Int_t     input) { verifyType(aName,"I");  DelVarI_ (aName); varI [aName] = input; hasI [aName] = true; return; }
-  inline void NewVarL_ (TString aName, Long64_t  input) { verifyType(aName,"L");  DelVarL_ (aName); varL [aName] = input; hasL [aName] = true; return; }
-  inline void NewVarUS_(TString aName, UShort_t  input) { verifyType(aName,"US"); DelVarUS_(aName); varUS[aName] = input; hasUS[aName] = true; return; }
-  inline void NewVarUI_(TString aName, UInt_t    input) { verifyType(aName,"UI"); DelVarUI_(aName); varUI[aName] = input; hasUI[aName] = true; return; }
-  inline void NewVarUL_(TString aName, ULong64_t input) { verifyType(aName,"UL"); DelVarUL_(aName); varUL[aName] = input; hasUL[aName] = true; return; }
-  inline void NewVarF_ (TString aName, Float_t   input) { verifyType(aName,"F");  DelVarF_ (aName); varF [aName] = input; hasF [aName] = true; return; }
-  inline void NewVarD_ (TString aName, Double_t  input) { verifyType(aName,"D");  DelVarD_ (aName); varD [aName] = input; hasD [aName] = true; return; }
-  inline void NewForm_ (TString aName, TString   input) { verifyType(aName,"FM"); DelForm_ (aName); varFM[aName] = input; hasFM[aName] = true; return; }
+                                                                                          varC [aName]->SetString(input); hasC [aName] = true; } 
+  inline void NewVarS_ (TString aName, Short_t   input) { verifyType(aName,"S");  DelVarS_ (aName); varS [aName] = input; hasS [aName] = true; }
+  inline void NewVarI_ (TString aName, Int_t     input) { verifyType(aName,"I");  DelVarI_ (aName); varI [aName] = input; hasI [aName] = true; }
+  inline void NewVarL_ (TString aName, Long64_t  input) { verifyType(aName,"L");  DelVarL_ (aName); varL [aName] = input; hasL [aName] = true; }
+  inline void NewVarUS_(TString aName, UShort_t  input) { verifyType(aName,"US"); DelVarUS_(aName); varUS[aName] = input; hasUS[aName] = true; }
+  inline void NewVarUI_(TString aName, UInt_t    input) { verifyType(aName,"UI"); DelVarUI_(aName); varUI[aName] = input; hasUI[aName] = true; }
+  inline void NewVarUL_(TString aName, ULong64_t input) { verifyType(aName,"UL"); DelVarUL_(aName); varUL[aName] = input; hasUL[aName] = true; }
+  inline void NewVarF_ (TString aName, Float_t   input) { verifyType(aName,"F");  DelVarF_ (aName); varF [aName] = input; hasF [aName] = true; }
+  inline void NewVarD_ (TString aName, Double_t  input) { verifyType(aName,"D");  DelVarD_ (aName); varD [aName] = input; hasD [aName] = true; }
+  inline void NewForm_ (TString aName, TString   input) { verifyType(aName,"FM"); DelForm_ (aName); varFM[aName] = input; hasFM[aName] = true; }
   
   // -----------------------------------------------------------------------------------------------------------
-  inline void DelVarB_ (TString aName) { checkLock(aName); if(HasVarB_ (aName)) {                     varB .erase(aName); hasB .erase(aName); } return; }
-  inline void DelVarC_ (TString aName) { checkLock(aName); if(HasVarC_ (aName)) { delete varC[aName]; varC .erase(aName); hasC .erase(aName); } return; }
-  inline void DelVarS_ (TString aName) { checkLock(aName); if(HasVarS_ (aName)) {                     varS .erase(aName); hasS .erase(aName); } return; }
-  inline void DelVarI_ (TString aName) { checkLock(aName); if(HasVarI_ (aName)) {                     varI .erase(aName); hasI .erase(aName); } return; }
-  inline void DelVarL_ (TString aName) { checkLock(aName); if(HasVarL_ (aName)) {                     varL .erase(aName); hasL .erase(aName); } return; }
-  inline void DelVarUS_(TString aName) { checkLock(aName); if(HasVarUS_(aName)) {                     varUS.erase(aName); hasUS.erase(aName); } return; }
-  inline void DelVarUI_(TString aName) { checkLock(aName); if(HasVarUI_(aName)) {                     varUI.erase(aName); hasUI.erase(aName); } return; }
-  inline void DelVarUL_(TString aName) { checkLock(aName); if(HasVarUL_(aName)) {                     varUL.erase(aName); hasUL.erase(aName); } return; }
-  inline void DelVarF_ (TString aName) { checkLock(aName); if(HasVarF_ (aName)) {                     varF .erase(aName); hasF .erase(aName); } return; }
-  inline void DelVarD_ (TString aName) { checkLock(aName); if(HasVarD_ (aName)) {                     varD .erase(aName); hasD .erase(aName); } return; }  
-  inline void DelForm_ (TString aName) { checkLock(aName); if(HasForm_ (aName)) {                     varFM.erase(aName); hasFM.erase(aName); } return; }  
+  inline void DelVarB_ (TString aName) { checkLock(aName); if(HasVarB_ (aName)) {                     varB .erase(aName); hasB .erase(aName); } }
+  inline void DelVarC_ (TString aName) { checkLock(aName); if(HasVarC_ (aName)) { delete varC[aName]; varC .erase(aName); hasC .erase(aName); } }
+  inline void DelVarS_ (TString aName) { checkLock(aName); if(HasVarS_ (aName)) {                     varS .erase(aName); hasS .erase(aName); } }
+  inline void DelVarI_ (TString aName) { checkLock(aName); if(HasVarI_ (aName)) {                     varI .erase(aName); hasI .erase(aName); } }
+  inline void DelVarL_ (TString aName) { checkLock(aName); if(HasVarL_ (aName)) {                     varL .erase(aName); hasL .erase(aName); } }
+  inline void DelVarUS_(TString aName) { checkLock(aName); if(HasVarUS_(aName)) {                     varUS.erase(aName); hasUS.erase(aName); } }
+  inline void DelVarUI_(TString aName) { checkLock(aName); if(HasVarUI_(aName)) {                     varUI.erase(aName); hasUI.erase(aName); } }
+  inline void DelVarUL_(TString aName) { checkLock(aName); if(HasVarUL_(aName)) {                     varUL.erase(aName); hasUL.erase(aName); } }
+  inline void DelVarF_ (TString aName) { checkLock(aName); if(HasVarF_ (aName)) {                     varF .erase(aName); hasF .erase(aName); } }
+  inline void DelVarD_ (TString aName) { checkLock(aName); if(HasVarD_ (aName)) {                     varD .erase(aName); hasD .erase(aName); } }  
+  inline void DelForm_ (TString aName) { checkLock(aName); if(HasForm_ (aName)) {                     varFM.erase(aName); hasFM.erase(aName); } }  
   
   // -----------------------------------------------------------------------------------------------------------
-  inline void SetVarB_ (TString aName, Bool_t    input) { AsrtVar(HasVarB_ (aName),aName+" (SetVarB)" ); varB [aName]          = input;  return; }
-  inline void SetVarC_ (TString aName, TString   input) { AsrtVar(HasVarC_ (aName),aName+" (SetVarC)" ); varC [aName]->SetString(input); return; }
-  inline void SetVarS_ (TString aName, Short_t   input) { AsrtVar(HasVarS_ (aName),aName+" (SetVarS)" ); varS [aName]          = input;  return; }
-  inline void SetVarI_ (TString aName, Int_t     input) { AsrtVar(HasVarI_ (aName),aName+" (SetVarI)" ); varI [aName]          = input;  return; }
-  inline void SetVarL_ (TString aName, Long64_t  input) { AsrtVar(HasVarL_ (aName),aName+" (SetVarL)" ); varL [aName]          = input;  return; }
-  inline void SetVarUS_(TString aName, UShort_t  input) { AsrtVar(HasVarUS_(aName),aName+" (SetVarUS)"); varUS[aName]          = input;  return; }
-  inline void SetVarUI_(TString aName, UInt_t    input) { AsrtVar(HasVarUI_(aName),aName+" (SetVarUI)"); varUI[aName]          = input;  return; }
-  inline void SetVarUL_(TString aName, ULong64_t input) { AsrtVar(HasVarUL_(aName),aName+" (SetVarUL)"); varUL[aName]          = input;  return; }
-  inline void SetVarF_ (TString aName, Float_t   input) { AsrtVar(HasVarF_ (aName),aName+" (SetVarF)" ); varF [aName]          = input;  return; }
-  inline void SetVarD_ (TString aName, Double_t  input) { AsrtVar(HasVarD_ (aName),aName+" (SetVarD)" ); varD [aName]          = input;  return; }
-  inline void SetForm_ (TString aName, TString   input) { AsrtVar(HasForm_ (aName),aName+" (SetVarFM)"); varFM[aName]          = input;  return; }
+  inline void SetVarB_ (TString aName, Bool_t    input, bool asrtVar = true) { if(asrtVar) AsrtVar(HasVarB_ (aName),aName+" (SetVarB)" ); varB [aName] = input; }
+  inline void SetVarC_ (TString aName, TString   input, bool asrtVar = true) { if(asrtVar) AsrtVar(HasVarC_ (aName),aName+" (SetVarC)" ); varC [aName]->SetString(input); }
+  inline void SetVarS_ (TString aName, Short_t   input, bool asrtVar = true) { if(asrtVar) AsrtVar(HasVarS_ (aName),aName+" (SetVarS)" ); varS [aName] = input; }
+  inline void SetVarI_ (TString aName, Int_t     input, bool asrtVar = true) { if(asrtVar) AsrtVar(HasVarI_ (aName),aName+" (SetVarI)" ); varI [aName] = input; }
+  inline void SetVarL_ (TString aName, Long64_t  input, bool asrtVar = true) { if(asrtVar) AsrtVar(HasVarL_ (aName),aName+" (SetVarL)" ); varL [aName] = input; }
+  inline void SetVarUS_(TString aName, UShort_t  input, bool asrtVar = true) { if(asrtVar) AsrtVar(HasVarUS_(aName),aName+" (SetVarUS)"); varUS[aName] = input; }
+  inline void SetVarUI_(TString aName, UInt_t    input, bool asrtVar = true) { if(asrtVar) AsrtVar(HasVarUI_(aName),aName+" (SetVarUI)"); varUI[aName] = input; }
+  inline void SetVarUL_(TString aName, ULong64_t input, bool asrtVar = true) { if(asrtVar) AsrtVar(HasVarUL_(aName),aName+" (SetVarUL)"); varUL[aName] = input; }
+  inline void SetVarF_ (TString aName, Float_t   input, bool asrtVar = true) { if(asrtVar) AsrtVar(HasVarF_ (aName),aName+" (SetVarF)" ); varF [aName] = input; }
+  inline void SetVarD_ (TString aName, Double_t  input, bool asrtVar = true) { if(asrtVar) AsrtVar(HasVarD_ (aName),aName+" (SetVarD)" ); varD [aName] = input; }
+  inline void SetForm_ (TString aName, TString   input, bool asrtVar = true) { if(asrtVar) AsrtVar(HasForm_ (aName),aName+" (SetVarFM)"); varFM[aName] = input; }
   
   // -----------------------------------------------------------------------------------------------------------  
   inline Bool_t    GetVarB_ (TString aName) { AsrtVar(HasVarB_ (aName),aName+" (GetVarB)" ); return varB [aName];           }

@@ -153,15 +153,15 @@ public:
     int nIncPatts = (int)incPatrns.size();
     
     int nItr(0);
-    for(typename map <TString,T>::iterator Itr = input.begin(); Itr!=input.end(); ++Itr) {
+    for(typename map <TString,T>::iterator itr = input.begin(); itr!=input.end(); ++itr) {
       if(nItr == 0) aCleanLOG()<<endl<<coutYellow<<" - "<<message<<endl<<"  ";
       if(nIncPatts) {
         bool hasIncPatt(false);
-        for(int nIncPattNow=0; nIncPattNow<nIncPatts; nIncPattNow++) if((Itr->first).Contains(incPatrns[nIncPattNow])) hasIncPatt = true;
+        for(int nIncPattNow=0; nIncPattNow<nIncPatts; nIncPattNow++) if((itr->first).Contains(incPatrns[nIncPattNow])) hasIncPatt = true;
         if(!hasIncPatt) continue;
       }
       nItr++;
-      aCleanLOG() <<coutBlue<<std::setw(width)<< Itr->first << " = " <<coutGreen<<std::setw(width)<<std::left<< Itr->second <<std::right<< "  "<<coutDef;
+      aCleanLOG() <<coutBlue<<std::setw(width)<< itr->first << " = " <<coutGreen<<std::setw(width)<<std::left<< itr->second <<std::right<< "  "<<coutDef;
       if(nItr%nPrintRow == 0) aCleanLOG()<<endl<<"  ";
     }
     if(nItr) aCleanLOG() <<coutDef<<endl;
@@ -172,11 +172,11 @@ public:
   // ===========================================================================================================
   template <typename T> void  getElePattern(map <TString,T> & input, vector <TString> & optVarV, TString pattern, bool ignorCase = false) {
   // ======================================================================================================================================
-    for(typename map <TString,T>::iterator Itr = input.begin(); Itr!=input.end(); ++Itr) {
-      bool  hasEle = (ignorCase) ? ((TString)Itr->first).Contains(pattern,TString::kIgnoreCase)
-                                 : ((TString)Itr->first).Contains(pattern);
+    for(typename map <TString,T>::iterator itr = input.begin(); itr!=input.end(); ++itr) {
+      bool  hasEle = (ignorCase) ? ((TString)itr->first).Contains(pattern,TString::kIgnoreCase)
+                                 : ((TString)itr->first).Contains(pattern);
 
-      if(hasEle) optVarV.push_back(Itr->first);
+      if(hasEle) optVarV.push_back(itr->first);
     }
     return ;
   };
