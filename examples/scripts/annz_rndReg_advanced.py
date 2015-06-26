@@ -74,10 +74,13 @@ if glob.annz["doGenInputTrees"]:
   #       - random: -> valid;test;test;train;valid;test;valid;valid;test;train;valid;train...
   #       - separate input files. Must supplay at least one file in splitTypeTrain and one in splitTypeTest.
   #         In this case, [nSplit = 2]. Optionally can set [nSplit = 3] and provide a list of files in "splitTypeValid" as well.
+  #   - It is possible to use root input files instead of ascii inputs. In this case, use the "splitTypeTrain", "splitTypeTest",
+  #     "splitTypeValid" and "inAsciiFiles" variables in the same way as for ascii inputs, but in addition, specify the name of the
+  #     tree inside the root files, as the variable "inTreeName". Make sure not to mix ascii and root input files!
   # - example use:
   #   set inFileOpt and choose one of the following options for input file configuration:
   # --------------------------------------------------------------------------------------------------
-  inFileOpt = 2
+  inFileOpt = 1
   # splitTypeTrain - list of files for training. splitTypeTest - list of files for testing and validation
   if   inFileOpt == 0:
     glob.annz["nSplit"]         = 2
@@ -95,6 +98,12 @@ if glob.annz["doGenInputTrees"]:
     glob.annz["nSplit"]         = 3
     glob.annz["splitType"]      = "serial" # "serial", "blocks" or "random"
     glob.annz["inAsciiFiles"]   = "boss_dr10_0.csv;boss_dr10_1.csv;boss_dr10_2.csv;boss_dr10_3.csv"
+  # example ofr using a root tree input file, instead of an ascii input
+  elif inFileOpt == 3:
+    glob.annz["nSplit"]         = 2
+    glob.annz["splitType"]      = "serial" # "serial", "blocks" or "random"
+    glob.annz["inTreeName"]     = "ANNZ_tree_full"  
+    glob.annz["inAsciiFiles"]   = "ANNZ_tree_full_00000.root"
   else:
     inFileOpt("Unsupported...",False)
 
@@ -130,23 +139,35 @@ if glob.annz["doGenInputTrees"]:
   #     cutInp_wgtKNN,
   #     cutRef_wgtKNN         - a possible cut expression used for the kd-tree (defines which entries
   #                             from the reference sample are excluded from the calculation).
+  #     inTreeName_wgtKNN     - If inAsciiFiles_wgtKNN deines a root input file instead of an ascii input, use inTreeName_wgtKNN
+  #                             to set the name of the tree inside the root input files. If inTreeName_wgtKNN is not set, then
+  #                             inTreeName is used. (This may cause a conflict, if inTreeName is set to a different value for
+  #                             some input which may be defined in inAsciiFiles for the nominal sample.)
+  #     doWidthRescale_wgtKNN - Transform the input variables to the kd-tree to the range [-1,1] (set to True by default)
   # - example use:
   #   set useWgtKNN as [True] to generate and use the weights
   # --------------------------------------------------------------------------------------------------
-  useWgtKNN = False
+  useWgtKNN = True
   if useWgtKNN:
     glob.annz["useWgtKNN"]             = True
     glob.annz["minNobjInVol_wgtKNN"]   = 50
     glob.annz["inAsciiFiles_wgtKNN"]   = "boss_dr10_colorCuts.csv"
     glob.annz["inAsciiVars_wgtKNN"]    = glob.annz["inAsciiVars"]
     glob.annz["weightVarNames_wgtKNN"] = "MAG_U;MAG_G;MAG_R;MAG_I;MAG_Z"
-    
+
     # optional parameters (may leave empty as default value):
-    glob.annz["sampleFracInp_wgtKNN"]  = 0.95                                          # fraction of dataset to use (positive number, smaller or equal to 1)
+    glob.annz["sampleFracInp_wgtKNN"]  = 0.15                                          # fraction of dataset to use (positive number, smaller or equal to 1)
     glob.annz["sampleFracRef_wgtKNN"]  = 0.95                                          # fraction of dataset to use (positive number, smaller or equal to 1)
     glob.annz["outAsciiVars_wgtKNN"]   = "MAG_U;MAG_G;MAGERR_U"                        # write out two additional variables to the output file
     glob.annz["weightRef_wgtKNN"]      = "(MAGERR_R<0.7)*1 + (MAGERR_R>=0.7)/MAGERR_R" # down-weight objects with high MAGERR_R
     glob.annz["cutRef_wgtKNN"]         = "MAGERR_U<200"                                # only use objects which have small MAGERR_U
+
+    # example for using a root file as input, instead of an ascii input:
+    useRootInputFile = False
+    if useRootInputFile:
+      glob.annz["inAsciiFiles_wgtKNN"]   = "ANNZ_tree_full_00000.root"
+      glob.annz["inTreeName_wgtKNN"]     = "ANNZ_tree_full"  
+
 
   # run ANNZ with the current settings
   runANNZ()
@@ -395,10 +416,12 @@ if glob.annz["doOptim"] or glob.annz["doEval"]:
     #                                The calculation is performed using a KNN approach, similar to the algorithm used for
     #                                the [glob.annz["useWgtKNN"] = True] calculation.
     #   - minNobjInVol_inTrain     - The number of reference objects in the reference dataset which are used in the calculation.
-    #   - maxRelRatioInRef_inTrain - A number in the range, [0,1] - The minimal threshold of the relative difference between
-    #                              distances in the inTrainFlag calculation for accepting an object - Should be a (<0.5) positive number.
+    #   - maxRelRatioInRef_inTrain - Nominally, a number in the range, [0,1] - The minimal threshold of the relative difference between
+    #                                distances in the inTrainFlag calculation for accepting an object - Should be a (<0.5) positive number.
+    #                                If [maxRelRatioInRef_inTrain < 0] then this number is ignored, and the "inTrainFlag" flag becomes
+    #                                a floating-point number in the range [0,1], instead of a binary flag.
     #   - ...._inTrain             - The rest of the parameters ending with "_inTrain" have a similar role as
-    #                              their "_wgtKNN" counterparts, which are used with [glob.annz["useWgtKNN"] = True]. These are:
+    #                                their "_wgtKNN" counterparts, which are used with [glob.annz["useWgtKNN"] = True]. These are:
     #                                - "outAsciiVars_inTrain", "weightInp_inTrain", "cutInp_inTrain",
     #                                  "cutRef_inTrain", "sampleFracInp_inTrain" and "sampleFracRef_inTrain"
     # --------------------------------------------------------------------------------------------------

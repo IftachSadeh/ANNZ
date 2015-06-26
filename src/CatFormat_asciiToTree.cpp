@@ -47,11 +47,12 @@ void CatFormat::Init() {
  * @param inAsciiFiles      - semicolon-separated list of input ascii files
  * @param inAsciiVars       - semicolon-separated list of input parameter names, corresponding to columns in the input files
  * @param treeNamePostfix   - Optional additional postfix for the tree name
+ * @param inTreeName        - Optional name of tree, if using root tree inputs instead of ascii inputs
  */
 // ===========================================================================================================
-void CatFormat::asciiToFullTree(TString inAsciiFiles, TString inAsciiVars, TString treeNamePostfix) {
-// ==================================================================================================
-  aLOG(Log::INFO) <<coutWhiteOnBlack<<coutBlue<<" - starting asciiToFullTree("<<coutRed<< glob->GetOptC("inAsciiFiles")
+void CatFormat::inputToFullTree(TString inAsciiFiles, TString inAsciiVars, TString treeNamePostfix, TString inTreeName) {
+// ======================================================================================================================
+  aLOG(Log::INFO) <<coutWhiteOnBlack<<coutBlue<<" - starting inputToFullTree("<<coutRed<< inAsciiFiles
                   <<coutBlue<<") ... "<<coutDef<<endl;
 
   // global to local variables
@@ -62,7 +63,10 @@ void CatFormat::asciiToFullTree(TString inAsciiFiles, TString inAsciiVars, TStri
   TString origFileName    = glob->GetOptC("origFileName");
   TString indexName       = glob->GetOptC("indexName");
   TString weightName      = glob->GetOptC("baseName_wgtKNN");
+  
+  if(inTreeName == "") inTreeName = glob->GetOptC("inTreeName");
 
+  vector <int>      nLineV;
   map <TString,int> intMap;
   vector <TString>  inFileNameV, inVarNames, inVarTypes;
 
@@ -76,9 +80,21 @@ void CatFormat::asciiToFullTree(TString inAsciiFiles, TString inAsciiVars, TStri
   // add the path to the file names
   for(int nInFileNow=0; nInFileNow<nInFiles; nInFileNow++) inFileNameV[nInFileNow] = glob->GetOptC("inDirName")+inFileNameV[nInFileNow];
 
-  vector <int> nLineV;
-  int nLinesTot = utils->getNlinesAsciiFile(inFileNameV,true,&nLineV);
-  VERIFY(LOCATION,(TString)"found no content in \"inAsciiFiles\"...",(nLinesTot > 0));
+  bool isRootInput = inFileNameV[0].EndsWith(".root");
+
+  // make sure the input files are consistently of the same type
+  if(isRootInput) {
+    for(int nInFileNow=0; nInFileNow<nInFiles; nInFileNow++) {
+      TString inFileNameNow    = inFileNameV[nInFileNow];
+      bool    isExpectedFormat = (isRootInput && inFileNameV[nInFileNow].EndsWith(".root")) || (!isRootInput && !inFileNameV[nInFileNow].EndsWith(".root"));
+
+      VERIFY(LOCATION,(TString)"Found some files ending with \".root\" and some without... must give one type of input!",isExpectedFormat);
+    }
+  }
+  else {
+    int nLinesTot = utils->getNlinesAsciiFile(inFileNameV,true,&nLineV);
+    VERIFY(LOCATION,(TString)"found no content in \"inAsciiFiles\"...",(nLinesTot > 0));
+  }
 
   // clear tree objects and reserve variables which are not part of the input file
   VarMaps * var = new VarMaps(glob,utils,"treeVars");  //var->printMapOpt(nPrintRow,width); cout<<endl;
@@ -106,53 +122,110 @@ void CatFormat::asciiToFullTree(TString inAsciiFiles, TString inAsciiVars, TStri
     TString  reducedFileName = (TString)(((std::string)inFileNameNow).substr(posSlash+1));
 
     // skip input files with no content
-    if(nLineV[nInFileNow] == 0) {
-      aLOG(Log::WARNING)<<coutBlue<<" - Skipping "<<coutRed<<inFileNameNow<<coutBlue<<" (no content in file) ... "<<coutDef<<endl;
-      continue;
+    if(!isRootInput) {
+      if(nLineV[nInFileNow] == 0) {
+        aLOG(Log::WARNING)<<coutBlue<<" - Skipping "<<coutRed<<inFileNameNow<<coutBlue<<" (no content in file) ... "<<coutDef<<endl;
+        continue;
+      }
     }
     aLOG(Log::INFO)<<coutGreen<<" - Now reading-in "<<coutYellow<<inFileNameNow<<coutGreen<<" ... "<<coutDef<<endl;
 
     // -----------------------------------------------------------------------------------------------------------
     // the loop
     // -----------------------------------------------------------------------------------------------------------
-    std::ifstream inputFile(inFileNameNow,std::ios::in);
-    std::string   line;
     var->NewCntr("nLine",0);
-    while(!inputFile.eof()) {
-      // get an object
-      // -----------------------------------------------------------------------------------------------------------
-      getline(inputFile, line);  if(!inputLineToVars((TString)line,var,inVarNames,inVarTypes)) continue;
+    
+    if(isRootInput) {
+      TChain  * inChain = new TChain(inTreeName,inTreeName); inChain->SetDirectory(0); inChain->Add(inFileNameNow);
+      aLOG(Log::DEBUG) <<coutRed<<" - added chain "<<coutGreen<<inTreeName<<"("<<inChain->GetEntries()<<")"<<" from "<<coutBlue<<inFileNameNow<<coutDef<<endl;
 
-      if((mayWriteObjects && var->GetCntr("nObj") % nObjectsToWrite == 0) || breakLoop) {
-        mayWriteObjects = false;
-        var->printCntr(treeName,Log::INFO); outputs->WriteOutObjects(false,true); outputs->ResetObjects(); 
+      VarMaps * var_0   = new VarMaps(glob,utils,(TString)"inputTree_"+inTreeName);
+      var_0->connectTreeBranches(inChain);
+
+      // get the full list of variables common to both var and var_0
+      vector < pair<TString,TString> > varTypeNameV;
+      var->varStruct(var_0,NULL,NULL,&varTypeNameV,false);
+
+      bool breakLoopTree(false);
+      for(Long64_t loopEntry=0; true; loopEntry++) {
+        if(!var_0->getTreeEntry(loopEntry)) breakLoopTree = true;
+
+        if((mayWriteObjects && var->GetCntr("nObj") % nObjectsToWrite == 0) || breakLoop || breakLoopTree) {
+          mayWriteObjects = false;
+          var->printCntr(treeName,Log::INFO); outputs->WriteOutObjects(false,true); outputs->ResetObjects(); 
+        }
+        if(breakLoop || breakLoopTree) break;
+
+        if(var->GetCntr("nLine") % nObjectsToPrint == 0) {
+          aLOG(Log::DEBUG) <<coutGreen<<" - "<<coutBlue<<glob->GetOptC("outDirName")<<coutGreen<<" - "<<coutBlue<<glob->GetOptC("baseName")<<coutGreen<<" - "
+          <<coutGreen<<" Objects in current file = "<<coutYellow<<TString::Format("%3.3g \t",(double)var->GetCntr("nLine"))
+          <<coutRed<<" Total = "<<coutYellow<<TString::Format("%3.3g \t",(double)var->GetCntr("nObj"))<<coutDef<<endl;
+        }
+
+        var->copyVarData(var_0,varTypeNameV);
+
+        // update variable with input file name
+        var->SetVarC(origFileName,reducedFileName);
+        // the object index
+        var->SetVarI(indexName, var->GetCntr("nObj"));
+        // update the placeholder to KNN weights
+        var->SetVarF(weightName,1);
+        
+        // fill the tree with the current variables
+        treeOut->Fill();
+
+        if(inLOG(Log::DEBUG_3)) {
+          int nPrintRow(4), width(14);
+          cout <<coutYellow<<"Line # "<<var->GetCntr("nObj")<<endl<<coutYellow<<std::setw(100)<<std::setfill('.')<<" "<<std::setfill(' ')<<coutDef;
+          var->printVars(nPrintRow,width);
+        }
+        
+        // update counters
+        var->IncCntr("nObj"); var->IncCntr("nLine"); mayWriteObjects = true; if(var->GetCntr("nObj") == maxNobj) breakLoop = true;
       }
-      if(breakLoop) break;
 
-      if(var->GetCntr("nLine") % nObjectsToPrint == 0) {
-        aLOG(Log::DEBUG) <<coutGreen<<" - "<<coutBlue<<glob->GetOptC("outDirName")<<coutGreen<<" - "<<coutBlue<<glob->GetOptC("baseName")<<coutGreen<<" - "
-        <<coutGreen<<" Objects in current file = "<<coutYellow<<TString::Format("%3.3g \t",(double)var->GetCntr("nLine"))
-        <<coutRed<<" Total = "<<coutYellow<<TString::Format("%3.3g \t",(double)var->GetCntr("nObj"))<<coutDef<<endl;
+      DELNULL(var_0); DELNULL(inChain); varTypeNameV.clear();
+    }
+    else {
+      std::ifstream inputFile(inFileNameNow,std::ios::in);
+      std::string   line;
+
+      while(!inputFile.eof()) {
+        // get an object
+        // -----------------------------------------------------------------------------------------------------------
+        getline(inputFile, line);  if(!inputLineToVars((TString)line,var,inVarNames,inVarTypes)) continue;
+
+        if((mayWriteObjects && var->GetCntr("nObj") % nObjectsToWrite == 0) || breakLoop) {
+          mayWriteObjects = false;
+          var->printCntr(treeName,Log::INFO); outputs->WriteOutObjects(false,true); outputs->ResetObjects(); 
+        }
+        if(breakLoop) break;
+
+        if(var->GetCntr("nLine") % nObjectsToPrint == 0) {
+          aLOG(Log::DEBUG) <<coutGreen<<" - "<<coutBlue<<glob->GetOptC("outDirName")<<coutGreen<<" - "<<coutBlue<<glob->GetOptC("baseName")<<coutGreen<<" - "
+          <<coutGreen<<" Objects in current file = "<<coutYellow<<TString::Format("%3.3g \t",(double)var->GetCntr("nLine"))
+          <<coutRed<<" Total = "<<coutYellow<<TString::Format("%3.3g \t",(double)var->GetCntr("nObj"))<<coutDef<<endl;
+        }
+
+        // update variable with input file name
+        var->SetVarC(origFileName,reducedFileName);
+        // the object index
+        var->SetVarI(indexName, var->GetCntr("nObj"));
+        // update the placeholder to KNN weights
+        var->SetVarF(weightName,1);
+        
+        // fill the tree with the current variables
+        treeOut->Fill();
+
+        if(inLOG(Log::DEBUG_3)) {
+          int nPrintRow(4), width(14);
+          cout <<coutYellow<<"Line # "<<var->GetCntr("nObj")<<endl<<coutYellow<<std::setw(100)<<std::setfill('.')<<" "<<std::setfill(' ')<<coutDef;
+          var->printVars(nPrintRow,width);
+        }
+        
+        // update counters
+        var->IncCntr("nObj"); var->IncCntr("nLine"); mayWriteObjects = true; if(var->GetCntr("nObj") == maxNobj) breakLoop = true;
       }
-
-      // update variable with input file name
-      var->SetVarC(origFileName,reducedFileName);
-      // the object index
-      var->SetVarI(indexName, var->GetCntr("nObj"));
-      // update the placeholder to KNN weights
-      var->SetVarF(weightName,1);
-      
-      // fill the tree with the current variables
-      treeOut->Fill();
-
-      if(inLOG(Log::DEBUG_3)) {
-        int nPrintRow(4), width(14);
-        cout <<coutYellow<<"Line # "<<var->GetCntr("nObj")<<endl<<coutYellow<<std::setw(100)<<std::setfill('.')<<" "<<std::setfill(' ')<<coutDef;
-        var->printVars(nPrintRow,width);
-      }
-      
-      // update counters
-      var->IncCntr("nObj"); var->IncCntr("nLine"); mayWriteObjects = true; if(var->GetCntr("nObj") == maxNobj) breakLoop = true;
     }
 
   }
@@ -184,9 +257,9 @@ void CatFormat::asciiToFullTree(TString inAsciiFiles, TString inAsciiVars, TStri
  * @param inAsciiVars    - semicolon-separated list of input parameter names, corresponding to columns in the input files
  */
 // ===========================================================================================================
-void CatFormat::asciiToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
+void CatFormat::inputToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
 // ==========================================================================
-  aLOG(Log::INFO) <<coutWhiteOnBlack<<coutBlue<<" - starting asciiToSplitTree("<<coutRed<< inAsciiFiles
+  aLOG(Log::INFO) <<coutWhiteOnBlack<<coutBlue<<" - starting inputToSplitTree("<<coutRed<< inAsciiFiles
                   <<coutBlue<<") ... "<<coutDef<<endl;
 
   // global to local variables
@@ -204,6 +277,7 @@ void CatFormat::asciiToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
   bool    doPlots         = glob->GetOptB("doPlots");
   TString plotExt         = glob->GetOptC("printPlotExtension");
   TString outDirNameFull  = glob->GetOptC("outDirNameFull");
+  TString inTreeName      = glob->GetOptC("inTreeName");
 
   VERIFY(LOCATION,(TString)"found unsupported number of splittings ("+utils->intToStr(nSplit)+"). Allowed values are: 1,2,3"
                   ,(nSplit >= 1 && nSplit <= 3));
@@ -212,7 +286,8 @@ void CatFormat::asciiToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
   TRandom * rnd = new TRandom3(glob->GetOptI("splitSeed"));
   VERIFY(LOCATION,(TString)"Random seed must be >= 0",(glob->GetOptI("splitSeed") >= 0));
 
-  int               nInFiles(0), nLinesTot(0), inFileTypeChange(0);
+  bool              isRootInput(false);
+  int               nInFiles(0), inFileTypeChange(0);
   map <TString,int> intMap;
   vector <TString>  inFileNameV, inVarNames, inVarTypes;
   vector <int>      inFileTypeV;
@@ -220,9 +295,7 @@ void CatFormat::asciiToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
   // -----------------------------------------------------------------------------------------------------------
   // input files - if diffrent for each type
   // -----------------------------------------------------------------------------------------------------------
-  if(splitType == "byInFiles") {
-    VERIFY(LOCATION,(TString)"Setting conflict - can not set (nSplit = 1) together with \"byInFiles\"",(nSplit > 1));
-
+  if(splitType == "byInFiles" && nSplit > 1) {
     vector <TString> inFileNameV_now;
     for(int nSplitNow=0; nSplitNow<nSplit; nSplitNow++) {
       TString splitTypeNow("");
@@ -233,18 +306,24 @@ void CatFormat::asciiToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
 
       inFileNameV_now = utils->splitStringByChar((glob->GetOptC(splitTypeNow)).ReplaceAll(" ",""),';');
       nInFiles        = (int)inFileNameV_now.size();
+      VERIFY(LOCATION,(TString)"found no input files defined in "+splitTypeNow+" (nSplitNow = "+utils->intToStr(nSplitNow)+") ?!?",(nInFiles > 0));
+
       for(int nInFileNow=0; nInFileNow<nInFiles; nInFileNow++) {
         inFileNameV_now[nInFileNow] = glob->GetOptC("inDirName")+inFileNameV_now[nInFileNow];        
         
         inFileTypeV.push_back(nSplitNow);
         inFileNameV.push_back(inFileNameV_now[nInFileNow]);
       }
-      
-      VERIFY(LOCATION,(TString)"found no input files defined in "+splitTypeNow+" (nSplitNow = "+utils->intToStr(nSplitNow)+") ?!?",(nInFiles > 0));
-      utils->getNlinesAsciiFile(inFileNameV_now,true); // make sure the files are not all empty
+
+      isRootInput = inFileNameV[0].EndsWith(".root");
+      if(!isRootInput) {
+        utils->getNlinesAsciiFile(inFileNameV_now,true); // make sure the files are not all empty
+      }
       
       inFileNameV_now.clear();
     }
+
+    nInFiles = (int)inFileNameV.size();
   }
   // -----------------------------------------------------------------------------------------------------------
   // input files - if common files for training,testing(,validating)
@@ -254,21 +333,48 @@ void CatFormat::asciiToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
     nInFiles    = (int)inFileNameV.size();
     VERIFY(LOCATION,(TString)"found no input files defined in \"inAsciiFiles\"...",(nInFiles > 0));
 
+    isRootInput = inFileNameV[0].EndsWith(".root");
+
     // add the path to the file names
     for(int nInFileNow=0; nInFileNow<nInFiles; nInFileNow++) inFileNameV[nInFileNow] = glob->GetOptC("inDirName")+inFileNameV[nInFileNow];
+  }
 
-    nLinesTot = utils->getNlinesAsciiFile(inFileNameV,true);
+  // make sure the input files are consistently of the same type
+  // -----------------------------------------------------------------------------------------------------------
+  if(isRootInput) {
+    for(int nInFileNow=0; nInFileNow<nInFiles; nInFileNow++) {
+      TString inFileNameNow    = inFileNameV[nInFileNow];
+      bool    isExpectedFormat = (isRootInput && inFileNameV[nInFileNow].EndsWith(".root")) || (!isRootInput && !inFileNameV[nInFileNow].EndsWith(".root"));
+
+      VERIFY(LOCATION,(TString)"Found some files ending with \".root\" and some without... must give one type of input!",isExpectedFormat);
+    }
   }
 
   // derive the number of lines to use in case of (splitType == "blocks") option
   // -----------------------------------------------------------------------------------------------------------
   if(splitType == "blocks") {
+    int nLinesTot(0);
+    if(isRootInput) {
+      for(int nInFileNow=0; nInFileNow<nInFiles; nInFileNow++) {
+        TString inFileNameNow = inFileNameV[nInFileNow];
+        TChain  * inChain     = new TChain(inTreeName,inTreeName); inChain->SetDirectory(0); inChain->Add(inFileNameNow);
+
+        nLinesTot += inChain->GetEntries();
+
+        DELNULL(inChain);
+      }
+    }
+    else {
+      nLinesTot = utils->getNlinesAsciiFile(inFileNameV,true);
+    }
     if(maxNobj > 0) nLinesTot = min(nLinesTot,maxNobj);
+    
     intMap["nLine_splitBlocks"] = static_cast<int>(floor(0.1+nLinesTot/double(nSplit)));
   }
 
   // clear tree objects and reserve variables which are not part of the input file
   VarMaps * var = new VarMaps(glob,utils,"treeVars");  //var->printMapOpt(nPrintRow,width); cout<<endl;
+  
   var->NewVarI(indexName);     var->NewVarI(splitName);
   var->NewVarI(testValidType); var->NewVarC(origFileName); var->NewVarF(weightName);
 
@@ -282,7 +388,7 @@ void CatFormat::asciiToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
   vector <TTree *> treeOut  (nTrees); 
   vector <TString> treeNames(nTrees);
 
-  if(nTrees == 1) { treeNames[0] = (TString)treeName;                                                     }
+  if(nTrees == 1) { treeNames[0] = (TString)treeName+"_full";                                             }
   else            { treeNames[0] = (TString)treeName+"_train"; treeNames[1] = (TString)treeName+"_valid"; }
 
   for(int nTreeNow=0; nTreeNow<nTrees; nTreeNow++) {
@@ -301,28 +407,30 @@ void CatFormat::asciiToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
   int   nSplitType(0);
   bool  breakLoop(false), mayWriteObjects(false);
 
-  if     (splitType == "serial")    nSplitType = 0;
-  else if(splitType == "blocks")    nSplitType = 1;
-  else if(splitType == "random")    nSplitType = 2;
-  else if(splitType == "byInFiles") nSplitType = 3;
-  else VERIFY(LOCATION,(TString)"found unsupported splitType ("+splitType+"). "+
-                                       "Allowed values are: \"serial\",\"blocks\",\"random\",\"byInFiles\"",false);
-
+  if(nSplit > 1) {
+    if     (splitType == "serial")    nSplitType = 0;
+    else if(splitType == "blocks")    nSplitType = 1;
+    else if(splitType == "random")    nSplitType = 2;
+    else if(splitType == "byInFiles") nSplitType = 3;
+    else VERIFY(LOCATION,(TString)"found unsupported splitType ("+splitType+"). "+
+                                         "Allowed values are: \"serial\",\"blocks\",\"random\",\"byInFiles\"",false);
+  }
   intMap["nSplitType"] = nSplitType;
 
   // -----------------------------------------------------------------------------------------------------------
   // loop on all the input files
   // -----------------------------------------------------------------------------------------------------------
-  nInFiles = (int)inFileNameV.size();
   for(int nInFileNow=0; nInFileNow<nInFiles; nInFileNow++) {
     TString  inFileNameNow   = inFileNameV[nInFileNow];
     unsigned posSlash        = ((std::string)inFileNameNow).find_last_of("/");
     TString  reducedFileName = (TString)(((std::string)inFileNameNow).substr(posSlash+1));
 
     // skip input files with no content
-    if(utils->getNlinesAsciiFile(inFileNameNow,false) == 0) {
-      aLOG(Log::WARNING)<<coutBlue<<" - Skipping "<<coutRed<<inFileNameNow<<coutBlue<<" (no content in file) ... "<<coutDef<<endl;
-      continue;
+    if(!isRootInput) {
+      if(utils->getNlinesAsciiFile(inFileNameNow,false) == 0) {
+        aLOG(Log::WARNING)<<coutBlue<<" - Skipping "<<coutRed<<inFileNameNow<<coutBlue<<" (no content in file) ... "<<coutDef<<endl;
+        continue;
+      }
     }
 
     // write out trees and initialize counters if moving from one type to another (e.g., from train to test)
@@ -344,46 +452,103 @@ void CatFormat::asciiToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
     // -----------------------------------------------------------------------------------------------------------
     // the loop
     // -----------------------------------------------------------------------------------------------------------
-    std::ifstream inputFile(inFileNameNow,std::ios::in);
-    std::string   line;
     var->NewCntr("nLineFile",0);
-    while(!inputFile.eof()) {
-      // get an object
-      // -----------------------------------------------------------------------------------------------------------
-      getline(inputFile, line);  if(!inputLineToVars((TString)line,var,inVarNames,inVarTypes)) continue;
 
-      if((mayWriteObjects && var->GetCntr("nObj") % nObjectsToWrite == 0) || breakLoop) {
-        mayWriteObjects = false;
-        var->printCntr(treeName,Log::INFO); outputs->WriteOutObjects(false,true); outputs->ResetObjects(); 
+    if(isRootInput) {
+      TChain  * inChain = new TChain(inTreeName,inTreeName); inChain->SetDirectory(0); inChain->Add(inFileNameNow);
+      aLOG(Log::DEBUG) <<coutRed<<" - added chain "<<coutGreen<<inTreeName<<"("<<inChain->GetEntries()<<")"<<" from "<<coutBlue<<inFileNameNow<<coutDef<<endl;
+
+      VarMaps * var_0   = new VarMaps(glob,utils,(TString)"inputTree_"+inTreeName);
+      var_0->connectTreeBranches(inChain);
+
+      // get the full list of variables common to both var and var_0
+      vector < pair<TString,TString> > varTypeNameV;
+      var->varStruct(var_0,NULL,NULL,&varTypeNameV,false);
+
+      bool breakLoopTree(false);
+      for(Long64_t loopEntry=0; true; loopEntry++) {
+        if(!var_0->getTreeEntry(loopEntry)) breakLoopTree = true;
+
+        if((mayWriteObjects && var->GetCntr("nObj") % nObjectsToWrite == 0) || breakLoop || breakLoopTree) {
+          mayWriteObjects = false;
+          var->printCntr(treeName,Log::INFO); outputs->WriteOutObjects(false,true); outputs->ResetObjects(); 
+        }
+        if(breakLoop || breakLoopTree) break;
+
+        if(var->GetCntr("nLine") % nObjectsToPrint == 0) {
+          aLOG(Log::DEBUG) <<coutGreen<<" - "<<coutBlue<<glob->GetOptC("outDirName")<<coutGreen<<" - "<<coutBlue<<glob->GetOptC("baseName")<<coutGreen<<" - "
+          <<coutGreen<<" Objects in current file = "<<coutYellow<<TString::Format("%3.3g \t",(double)var->GetCntr("nLineFile"))
+          <<coutRed<<" Total = "<<coutYellow<<TString::Format("%3.3g \t",(double)var->GetCntr("nObj"))<<coutDef<<endl;
+        }
+
+        var->copyVarData(var_0,varTypeNameV);
+
+        // update variable with input file name
+        var->SetVarC(origFileName,reducedFileName);
+        // update the placeholder to KNN weights
+        var->SetVarF(weightName,1);
+
+        // set the indexing variables, and get the corresponding intMap["nSplitTree"]
+        setSplitVars(var,rnd,intMap);
+
+        // fill the tree with the current variables
+        treeOut[intMap["nSplitTree"]]->Fill();
+
+        if(inLOG(Log::DEBUG_3)) {
+          int nPrintRow(4), width(14);
+          cout <<coutYellow<<"Line # "<<var->GetCntr("nObj")<<endl<<coutYellow<<std::setw(100)<<std::setfill('.')<<" "<<std::setfill(' ')<<coutDef;
+          var->printVars(nPrintRow,width);
+        }
+        
+        // update counters
+        var->IncCntr("nObj"); var->IncCntr("nLineFile"); mayWriteObjects = true; if(var->GetCntr("nObj") == maxNobj) breakLoop = true;
       }
-      if(breakLoop) break;
 
-      if(var->GetCntr("nLine") % nObjectsToPrint == 0) {
-        aLOG(Log::DEBUG) <<coutGreen<<" - "<<coutBlue<<glob->GetOptC("outDirName")<<coutGreen<<" - "<<coutBlue<<glob->GetOptC("baseName")<<coutGreen<<" - "
-        <<coutGreen<<" Objects in current file = "<<coutYellow<<TString::Format("%3.3g \t",(double)var->GetCntr("nLineFile"))
-        <<coutRed<<" Total = "<<coutYellow<<TString::Format("%3.3g \t",(double)var->GetCntr("nObj"))<<coutDef<<endl;
-      }
-
-      // update variable with input file name
-      var->SetVarC(origFileName,reducedFileName);
-      // update the placeholder to KNN weights
-      var->SetVarF(weightName,1);
-
-      // set the indexing variables, and get the corresponding intMap["nSplitTree"]
-      setSplitVars(var,rnd,intMap);
-
-      // fill the tree with the current variables
-      treeOut[intMap["nSplitTree"]]->Fill();
-
-      if(inLOG(Log::DEBUG_3)) {
-        int nPrintRow(4), width(14);
-        cout <<coutYellow<<"Line # "<<var->GetCntr("nObj")<<endl<<coutYellow<<std::setw(100)<<std::setfill('.')<<" "<<std::setfill(' ')<<coutDef;
-        var->printVars(nPrintRow,width);
-      }
-      
-      // update counters
-      var->IncCntr("nObj"); var->IncCntr("nLineFile"); mayWriteObjects = true; if(var->GetCntr("nObj") == maxNobj) breakLoop = true;
+      DELNULL(var_0); DELNULL(inChain); varTypeNameV.clear();
     }
+    else {
+      std::ifstream inputFile(inFileNameNow,std::ios::in);
+      std::string   line;
+
+      while(!inputFile.eof()) {
+        // get an object
+        // -----------------------------------------------------------------------------------------------------------
+        getline(inputFile, line);  if(!inputLineToVars((TString)line,var,inVarNames,inVarTypes)) continue;
+
+        if((mayWriteObjects && var->GetCntr("nObj") % nObjectsToWrite == 0) || breakLoop) {
+          mayWriteObjects = false;
+          var->printCntr(treeName,Log::INFO); outputs->WriteOutObjects(false,true); outputs->ResetObjects(); 
+        }
+        if(breakLoop) break;
+
+        if(var->GetCntr("nLine") % nObjectsToPrint == 0) {
+          aLOG(Log::DEBUG) <<coutGreen<<" - "<<coutBlue<<glob->GetOptC("outDirName")<<coutGreen<<" - "<<coutBlue<<glob->GetOptC("baseName")<<coutGreen<<" - "
+          <<coutGreen<<" Objects in current file = "<<coutYellow<<TString::Format("%3.3g \t",(double)var->GetCntr("nLineFile"))
+          <<coutRed<<" Total = "<<coutYellow<<TString::Format("%3.3g \t",(double)var->GetCntr("nObj"))<<coutDef<<endl;
+        }
+
+        // update variable with input file name
+        var->SetVarC(origFileName,reducedFileName);
+        // update the placeholder to KNN weights
+        var->SetVarF(weightName,1);
+
+        // set the indexing variables, and get the corresponding intMap["nSplitTree"]
+        setSplitVars(var,rnd,intMap);
+
+        // fill the tree with the current variables
+        treeOut[intMap["nSplitTree"]]->Fill();
+
+        if(inLOG(Log::DEBUG_3)) {
+          int nPrintRow(4), width(14);
+          cout <<coutYellow<<"Line # "<<var->GetCntr("nObj")<<endl<<coutYellow<<std::setw(100)<<std::setfill('.')<<" "<<std::setfill(' ')<<coutDef;
+          var->printVars(nPrintRow,width);
+        }
+        
+        // update counters
+        var->IncCntr("nObj"); var->IncCntr("nLineFile"); mayWriteObjects = true; if(var->GetCntr("nObj") == maxNobj) breakLoop = true;
+      }
+    }
+
   }
   if(!breakLoop) { var->printCntr(treeName,Log::INFO); outputs->WriteOutObjects(false,true); outputs->ResetObjects(); }
 
@@ -438,15 +603,6 @@ void CatFormat::asciiToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
       }
 
       outputs->WriteOutObjects(true,true); outputs->ResetObjects();
-
-      // move the plots to a new sub-dir (create it if needed)
-      // TString plotDirName   = (TString)outDirNameFull+"plots/";
-      // TString mkdirCmnd     = (TString)"mkdir -p "+plotDirName;
-      // utils->exeShellCmndOutput(mkdirCmnd,inLOG(Log::DEBUG),true);
-
-      // bool    hasPlotExt    = (plotExt != "" && plotExt != "NULL");
-      // TString mvCmnd        = (TString)"mv "+outDirNameFull+"*.C "+(hasPlotExt ? (TString)outDirNameFull+"*."+plotExt : "")+" "+plotDirName;
-      // utils->exeShellCmndOutput(mvCmnd,inLOG(Log::DEBUG),true);
 
       branchNameV.clear(); branchNameV_0.clear();
     }

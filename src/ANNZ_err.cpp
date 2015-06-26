@@ -241,7 +241,7 @@ void ANNZ::setupKdTreeKNN(TChain * aChainKnn, TFile *& knnErrOutFile, TMVA::Fact
                      <<")"<<coutYellow<<" , opts = "<<coutRed<<optKNN<<coutYellow<<" , "<<coutRed<<trainValidStr<<coutYellow
                      <<" , cuts = "<<coutRed<<cutsAll<<coutYellow<<" , weights = "<<coutRed<<wgtAll<<coutDef<<endl;
 
-  // sanity check - if this is not true, the events in the binary tree will have the wrong "units"
+  // sanity check - if this is not true, the distance calculations will be off
   VERIFY(LOCATION,(TString)"Somehow the fScaleFrac for the kd-tree is not zero ... Something is horribly wrong ?!?!?",(knnErrMethod->fScaleFrac < EPS));
 
   outputs->BaseDir->cd();

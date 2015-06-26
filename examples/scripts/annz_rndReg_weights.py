@@ -1,3 +1,30 @@
+# --------------------------------------------------------------------------------------------------
+# - We define two use-cases for this script:
+# --------------------------------------------------------------------------------------------------
+#   1. We are interested in deriving weights for unrepresentative datasets (using [useWgtKNN=True]):
+#     - Since there is no actual training of MLMs here, just weight derivation, we don't really care about
+#       the "training"/"testing" labels. We therefore set ["nSplit" = 1] and use the entire dataset defined in "inAsciiFiles".
+#     - The results will be stored in e.g.:
+#       ./output/test_randReg_weights/rootIn/ANNZ_KNN_wANNZ_tree_full_0000.csv
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#   2. We are interested in deriving the inTrainFlag quality-flag:
+#       the outcome of the calculation will be a flag between zero and one,
+#       where zero will implay an object which is "not compatible" with the reference dataset.
+#     - In this case, we must first run --genInputTrees. The output of this
+#       will serve as the reference dataset for the --inTrainFlag calculation.
+#     - The results will be stored in e.g.:
+#       ./output/test_randReg_weights/inTrainFlag/inTrainFlagANNZ_tree_wgtTree_0000.csv
+# --------------------------------------------------------------------------------------------------
+# - IMPORTANT notes:
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#   - For these two cases, please note that the "inAsciiFiles" variable serves different purpose !!!
+#   - One does not need to set [useWgtKNN=True] during --genInputTrees, but --genInputTrees needs
+#     to be run beforehand regardless, as the output of --genInputTrees is used during --inTrainFlag.
+#     If [useWgtKNN=True] is indeed set during --genInputTrees, then these weights are also taken
+#     into account during the --inTrainFlag calculation.
+# --------------------------------------------------------------------------------------------------
+
+
 from helperFuncs import *
 
 # command line arguments and basic settings
@@ -13,47 +40,7 @@ init()
 # --------------------------------------------------------------------------------------------------
 log.info(whtOnBlck(" - "+time.strftime("%d/%m/%y %H:%M:%S")+" - starting ANNZ"))
 
-
-# --------------------------------------------------------------------------------------------------
-# - We define two use-cases for this script:
-# --------------------------------------------------------------------------------------------------
-#   1. We are interested in deriving weights for unrepresentative datasets (using [useWgtKNN=True]:
-#     - In general, splitTypeTrain is the training dataset and splitTypeTest is the evaluation dataset.
-#       For each one, the weights will be computed with regards to thereference dataset (defined in inAsciiFiles_wgtKNN).
-#     - Since there is no actuall training of MLMs here, just weight derivation, we don't really care about
-#       the "training"/"testing" labels. We just need to make sure that at least one of these two variables
-#       holds the dataset for which we want to derive the weights.
-#     - The results will be stored in e.g.:
-#       ./output/test_randReg_weights/rootIn/ANNZ_KNN_wANNZ_tree_train_0000.csv (for the content of splitTypeTrain)
-#       ./output/test_randReg_weights/rootIn/ANNZ_KNN_wANNZ_tree_valid_0000.csv (for the content of splitTypeTest)
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-#   2. We are interested in deriving the inTrainFlag quality-flag:
-#     - In this case, we are specifically interested in the content of splitTypeTrain. This "training" dataset
-#       will be used as the reference sample when we run --inTrainFlag. (The purpose of the --inTrainFlag
-#       run is to calculate "compatibility" with the reference training sample defined in splitTypeTrain.)
-#     - Since the content of splitTypeTest will be ignored, we just need to set a random input file 
-#       with the correct variable structure. the easiest is to use the same input as for splitTypeTrain
-#     - The results will be stored in e.g.:
-#       ./output/test_randReg_weights/inTrainFlag/inTrainFlagANNZ_tree_wgtTree_0000.csv
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-#   - For these two cases, setting
-#       glob.annz["splitTypeTrain"] = glob.annz["splitTypeTest"]
-#     is a good choice. This is not mandatory, but is the recommended option, in order to
-#     try and minimize confusion ...
-# --------------------------------------------------------------------------------------------------
-# - IMPORTANT notes:
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-#   - It is only possible to run --inTrainFlag after running --genInputTrees, since
-#     the output of --genInputTrees is the "training" data which serves as the reference sample
-#     for the --inTrainFlag calculation - the outcome of the calculation will be a flag which is equal
-#     to either zero or one, where zero will implay an object which is "not compatible" with the
-#     reference dataset (the training sample).
-#   - One does not need to set [useWgtKNN=True] during --genInputTrees, but --genInputTrees needs
-#     to be run beforehand regardless, as the output of --genInputTrees is used during --inTrainFlag.
-#     If [useWgtKNN=True] is indeed set during --genInputTrees, then these weights are also taken
-#     into account during the --inTrainFlag calculation.
-# --------------------------------------------------------------------------------------------------
-
+# glob.annz["logLevel"]      = "DEBUG_2"
 
 # --------------------------------------------------------------------------------------------------
 # general options which are the same for all stages
@@ -61,6 +48,9 @@ log.info(whtOnBlck(" - "+time.strftime("%d/%m/%y %H:%M:%S")+" - starting ANNZ"))
 # --------------------------------------------------------------------------------------------------
 # outDirName - set output directory name
 glob.annz["outDirName"] = "test_randReg_weights"
+
+# no splitting of the dataset into training/validation is needed here
+glob.annz["nSplit"]     = 1
 
 # --------------------------------------------------------------------------------------------------
 # pre-processing of the input dataset
@@ -71,12 +61,13 @@ if glob.annz["doGenInputTrees"]:
 
   # inAsciiVars  - list of parameter types and parameter names, corresponding to columns in the input
   #                file, e.g., [TYPE:NAME] may be [F:MAG_U], with 'F' standing for float. (see advanced example for detailed explanation)
-  glob.annz["inAsciiVars"]    = "F:MAG_U;F:MAGERR_U;F:MAG_G;F:MAGERR_G;F:MAG_R;F:MAGERR_R;F:MAG_I;F:MAGERR_I;F:MAG_Z;F:MAGERR_Z"
+  glob.annz["inAsciiVars"]    = "F:MAG_U;F:MAGERR_U;F:MAG_G;F:MAGERR_G;F:MAG_R;F:MAGERR_R;F:MAG_I;F:MAGERR_I;F:MAG_Z;F:MAGERR_Z;D:Z"
 
-  # input datasets
-  glob.annz["nSplit"]         = 2
-  glob.annz["splitTypeTrain"] = glob.annz["splitTypeTest"] = "boss_dr10_0_large_magCut_noZ.csv"
+  # input dataset
+  glob.annz["inAsciiFiles"]   = "boss_dr10_0.csv;boss_dr10_1.csv;boss_dr10_2.csv;boss_dr10_3.csv" 
 
+  # glob.annz["inAsciiVars"]  = "F:MAG_U;F:MAGERR_U;F:MAG_G;F:MAGERR_G;F:MAG_R;F:MAGERR_R;F:MAG_I;F:MAGERR_I;F:MAG_Z;F:MAGERR_Z"
+  # glob.annz["inAsciiFiles"] = "boss_dr10_0_large_magCut_noZ.csv"
 
   # --------------------------------------------------------------------------------------------------
   # add weights based on the KNN method (see: Cunha et al. (2008), http://arxiv.org/abs/0810.2991v4)
@@ -110,6 +101,7 @@ if glob.annz["doGenInputTrees"]:
   #     cutInp_wgtKNN,
   #     cutRef_wgtKNN         - a possible cut expression used for the kd-tree (defines which entries
   #                             from the reference sample are excluded from the calculation).
+  #     doWidthRescale_wgtKNN - Transform the input variables to the kd-tree to the range [-1,1] (set to True by default)
   # - example use:
   #   set useWgtKNN as [True] to generate and use the weights
   # --------------------------------------------------------------------------------------------------
@@ -118,15 +110,18 @@ if glob.annz["doGenInputTrees"]:
     glob.annz["useWgtKNN"]             = True
     glob.annz["minNobjInVol_wgtKNN"]   = 50
     glob.annz["inAsciiFiles_wgtKNN"]   = "boss_dr10_colorCuts.csv"
-    glob.annz["inAsciiVars_wgtKNN"]    = "F:MAG_U;F:MAGERR_U;F:MAG_G;F:MAGERR_G;F:MAG_R;F:MAGERR_R;F:MAG_I;F:MAGERR_I;F:MAG_Z;F:MAGERR_Z;D:Z"
+    glob.annz["inAsciiVars_wgtKNN"]    = glob.annz["inAsciiVars"]
     glob.annz["weightVarNames_wgtKNN"] = "MAG_U;MAG_G;MAG_R;MAG_I;MAG_Z"
-    
+
     # optional parameters (may leave empty as default value):
-    glob.annz["sampleFracInp_wgtKNN"]  = 0.10                                          # fraction of dataset to use (positive number, smaller or equal to 1)
+    glob.annz["sampleFracInp_wgtKNN"]  = 0.15                                          # fraction of dataset to use (positive number, smaller or equal to 1)
     glob.annz["sampleFracRef_wgtKNN"]  = 0.95                                          # fraction of dataset to use (positive number, smaller or equal to 1)
     glob.annz["outAsciiVars_wgtKNN"]   = "MAG_U;MAG_G;MAGERR_U"                        # write out two additional variables to the output file
     glob.annz["weightRef_wgtKNN"]      = "(MAGERR_R<0.7)*1 + (MAGERR_R>=0.7)/MAGERR_R" # down-weight objects with high MAGERR_R
     glob.annz["cutRef_wgtKNN"]         = "MAGERR_U<200"                                # only use objects which have small MAGERR_U
+    glob.annz["doWidthRescale_wgtKNN"] = True
+
+
 
   # run ANNZ with the current settings
   runANNZ()
@@ -157,7 +152,7 @@ if glob.annz["doInTrainFlag"]:
   #   - maxRelRatioInRef_inTrain - Nominally, a number in the range, [0,1] - The minimal threshold of the relative difference between
   #                                distances in the inTrainFlag calculation for accepting an object - Should be a (<0.5) positive number.
   #                                If [maxRelRatioInRef_inTrain < 0] then this number is ignored, and the "inTrainFlag" flag becomes
-  #                                a number in the range [0,1], instead of a binary flag.
+  #                                a floating-point number in the range [0,1], instead of a binary flag.
   #   - ...._inTrain             - The rest of the parameters ending with "_inTrain" have a similar role as
   #                                their "_wgtKNN" counterparts, which are used with [glob.annz["useWgtKNN"] = True]. These are:
   #                                - "outAsciiVars_inTrain", "weightInp_inTrain", "cutInp_inTrain",
@@ -168,6 +163,7 @@ if glob.annz["doInTrainFlag"]:
   glob.annz["maxRelRatioInRef_inTrain"] = 0.1
   glob.annz["weightVarNames_inTrain"]   = "MAG_U;MAG_G;MAG_R;MAG_I;MAG_Z"
   glob.annz["outAsciiVars_inTrain"]     = "MAG_G;MAG_R" 
+  glob.annz["doWidthRescale_inTrain"]   = True
 
   # run ANNZ with the current settings
   runANNZ()

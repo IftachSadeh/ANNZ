@@ -10,9 +10,19 @@
 
 - Added support for general math expressions for the `weightVarNames_wgtKNN` and `weightVarNames_inTrain` variables.
 
+- Nominally, the `inTrainFlag` quality flag is a binary operator, and may only take values of either `0` or `1`. Have now added the option of setting `maxRelRatioInRef_inTrain < 0`. In this case, the `maxRelRatioInRef_inTrain` parameter is ignored. As a result the `inTrainFlag` may take floating-point values between zero and one.
+
+- Added a transformation of the input parameters used for the kd-tree during `glob.annz["useWgtKNN"] = True` and `glob.annz["addInTrainFlag"] = True` setups. The variables after the transformaition span the range [-1,1]. The transformations are performed by default, and may be turned off using the flags,
+```python
+glob.annz["doWidthRescale_wgtKNN"]  = False
+glob.annz["doWidthRescale_inTrain"] = False
+```
+
 - Did some code optimization for tree-looping operations.
 
-- Nominally, the `inTrainFlag` quality flag is a binary operator, and may only take values of either `0` or `1`. Have now added the option of setting `maxRelRatioInRef_inTrain < 0`. In this case, the `maxRelRatioInRef_inTrain` parameter is ignored. As a result the `inTrainFlag` may take floating-point values between zero and one.
+- Added support for ROOT file inputs, which may be used instead of ascii inputs (example given in `scripts/annz_rndReg_advanced.py`).
+
+- Other minor modifications.
 
 ## ANNZ 2.0.5 (17/6/2015)
 

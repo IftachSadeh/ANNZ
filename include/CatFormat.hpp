@@ -52,10 +52,10 @@ public:
   // member functions
   // -----------------------------------------------------------------------------------------------------------
   void    Init();
-  void    asciiToSplitTree(TString inAsciiFiles, TString inAsciiVars);
-  void    asciiToFullTree(TString inAsciiFiles, TString inAsciiVars, TString treeNamePostfix = "");
-  void    asciiToSplitTree_wgtKNN(TString inAsciiFiles, TString inAsciiVars, TString inAsciiFiles_wgtKNN, TString inAsciiVars_wgtKNN);
-  void    asciiToFullTree_wgtKNN(TString inAsciiFiles, TString inAsciiVars, TString treeNamePostfix);
+  void    inputToSplitTree(TString inAsciiFiles, TString inAsciiVars);
+  void    inputToFullTree(TString inAsciiFiles, TString inAsciiVars, TString treeNamePostfix = "", TString inTreeName = "");
+  void    inputToSplitTree_wgtKNN(TString inAsciiFiles, TString inAsciiVars, TString inAsciiFiles_wgtKNN, TString inAsciiVars_wgtKNN);
+  void    inputToFullTree_wgtKNN(TString inAsciiFiles, TString inAsciiVars, TString treeNamePostfix);
   void    parseInputVars(VarMaps * var, TString inAsciiVars, vector <TString> & inVarNames, vector <TString> & inVarTypes);
   bool    inputLineToVars(TString line, VarMaps * var, vector <TString> & inVarNames, vector <TString> & inVarTypes);
   void    setSplitVars(VarMaps * var, TRandom * rnd, map <TString,int> & intMap);

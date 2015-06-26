@@ -188,6 +188,14 @@ myANNZ::myANNZ() {
   glob->NewOptC("cutRef_wgtKNN"        ,"");    // cut expression for reference kd-tree (function of the variables used in weightVarNames_wgtKNN)
   glob->NewOptF("sampleFracInp_wgtKNN" ,1);     // fraction of the input sample to use for the kd-tree (positive number, smaller or equal to 1)
   glob->NewOptF("sampleFracRef_wgtKNN" ,1);     // fraction of the input sample to use for the kd-tree (positive number, smaller or equal to 1)
+  glob->NewOptB("doWidthRescale_wgtKNN",true);  // transform the input parameters used for the kd-tree to the range [-1,1]
+
+  // input files (given by splitTypeTrain, splitTypeTest, splitTypeValid and inAsciiFiles) may also be root files, containing
+  // root trees, instead of ascii files. In this case, the name of the tree in the input files is defined in inTreeName
+  glob->NewOptC("inTreeName"     ,"");
+  // if root input is given in inAsciiFiles_wgtKNN, the corresponding tree name is defined in treeName_wgtKNN
+  glob->NewOptC("inTreeName_wgtKNN"     ,"");
+  
 
   // addInTrainFlag, minNobjInVol_inTrain, maxRelRatioInRef_inTrain -
   // -----------------------------------------------------------------------------------------------------------
@@ -211,6 +219,7 @@ myANNZ::myANNZ() {
   glob->NewOptC("cutRef_inTrain"          ,"");    // cut expression for reference kd-tree (function of the variables used in weightVarNames_inTrain)
   glob->NewOptF("sampleFracInp_inTrain"   ,1);     // fraction of the input sample to use for the kd-tree (positive number, smaller or equal to 1)
   glob->NewOptF("sampleFracRef_inTrain"   ,1);     // fraction of the input sample to use for the kd-tree (positive number, smaller or equal to 1)
+  glob->NewOptB("doWidthRescale_inTrain"  ,true);  // transform the input parameters used for the kd-tree to the range [-1,1]
 
 
   // -----------------------------------------------------------------------------------------------------------
@@ -672,7 +681,7 @@ void myANNZ::Init() {
   }
 
   int nSplit = glob->GetOptI("nSplit");
-  VERIFY(LOCATION,(TString)"Currently, only [\"nSplit\" = 2 or 3] is supported ...",(nSplit == 2 || nSplit == 3));
+  VERIFY(LOCATION,(TString)"Currently, only [\"nSplit\" = 2 or 3] is supported ...",(nSplit >= 1 && nSplit <= 3));
 
   if(glob->GetOptI("initSeedRnd") < 0) glob->SetOptI("initSeedRnd",0);
   if(glob->GetOptI("maxNobj")     < 0) glob->SetOptI("maxNobj"    ,0);
@@ -703,14 +712,14 @@ void myANNZ::GenerateInputTrees() {
   // create root trees from the input ascii files and add a weight branch, calculated with the KNN method
   // -----------------------------------------------------------------------------------------------------------
   if(glob->GetOptB("useWgtKNN")) {
-    aCatFormat->asciiToSplitTree_wgtKNN(glob->GetOptC("inAsciiFiles"),glob->GetOptC("inAsciiVars"),
+    aCatFormat->inputToSplitTree_wgtKNN(glob->GetOptC("inAsciiFiles"),       glob->GetOptC("inAsciiVars"),
                                         glob->GetOptC("inAsciiFiles_wgtKNN"),glob->GetOptC("inAsciiVars_wgtKNN"));
   }  
   // -----------------------------------------------------------------------------------------------------------
   // create root trees from the input ascii files
   // -----------------------------------------------------------------------------------------------------------
   else {
-    aCatFormat->asciiToSplitTree(glob->GetOptC("inAsciiFiles"),glob->GetOptC("inAsciiVars"));
+    aCatFormat->inputToSplitTree(glob->GetOptC("inAsciiFiles"),glob->GetOptC("inAsciiVars"));
   }
 
   DELNULL(aCatFormat);
@@ -731,7 +740,7 @@ void myANNZ::doInTrainFlag() {
 
   CatFormat * aCatFormat = new CatFormat("aCatFormat",utils,glob,outputs);
 
-  aCatFormat->asciiToFullTree_wgtKNN(glob->GetOptC("inAsciiFiles"),glob->GetOptC("inAsciiVars"),glob->GetOptC("evalTreePostfix"));
+  aCatFormat->inputToFullTree_wgtKNN(glob->GetOptC("inAsciiFiles"),glob->GetOptC("inAsciiVars"),glob->GetOptC("evalTreePostfix"));
 
   DELNULL(aCatFormat);
 
@@ -759,13 +768,13 @@ void myANNZ::DoANNZ() {
       // -----------------------------------------------------------------------------------------------------------
       // create root trees from the input ascii files and add a weight branch, calculated with the KNN method
       // -----------------------------------------------------------------------------------------------------------
-      aCatFormat->asciiToFullTree_wgtKNN(glob->GetOptC("inAsciiFiles"),glob->GetOptC("inAsciiVars"),glob->GetOptC("evalTreePostfix"));
+      aCatFormat->inputToFullTree_wgtKNN(glob->GetOptC("inAsciiFiles"),glob->GetOptC("inAsciiVars"),glob->GetOptC("evalTreePostfix"));
     }
     else {
       // -----------------------------------------------------------------------------------------------------------
       // create root trees from the input dataset
       // -----------------------------------------------------------------------------------------------------------
-      aCatFormat->asciiToFullTree(glob->GetOptC("inAsciiFiles"),glob->GetOptC("inAsciiVars"),glob->GetOptC("evalTreePostfix"));
+      aCatFormat->inputToFullTree(glob->GetOptC("inAsciiFiles"),glob->GetOptC("inAsciiVars"),glob->GetOptC("evalTreePostfix"));
     }
 
     DELNULL(aCatFormat);

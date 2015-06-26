@@ -495,6 +495,8 @@ A few notes:
   glob.annz["isBatch"] = True
   ```
 
+  - It is possible to use root input files instead of ascii inputs. In this case, use the `splitTypeTrain`, `splitTypeTest`, `splitTypeValid`, `inAsciiFiles` and `inAsciiFiles_wgtKNN` variables in the same way as for ascii inputs; in addition, specify the name of the tree inside the root files. The latter is done using the variable `inTreeName` (for the nominal set) or `inTreeName_wgtKNN` (for the `inAsciiFiles_wgtKNN` variable). An example is given in `scripts/annz_rndReg_advanced.py`.
+
   - The output of ANNZ includes escape sequences for color. To avoid these, set 
   ```python
   glob.annz["useCoutCol"]  = False
