@@ -832,6 +832,8 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
           else if(nChainNow == 1) { aChain = aChainInp; hisTitle = "Original";  }
           else if(nChainNow == 2) { aChain = aChainOut; hisTitle = "Weighted";  }
 
+          if(nChainNow == 2 && wgtKNNname != weightName) weightNow = wgtKNNname;
+
           if(nChainNow == 0) {
             if(chainWgtV[1] != "") weightNow = (TString)"("+weightNow+")*("+chainWgtV[1]+")";
             if(chainCutV[1] != "") weightNow = (TString)"("+weightNow+")*("+chainCutV[1]+")";
@@ -840,7 +842,8 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
             if(chainWgtV[0] != "") weightNow = (TString)"("+weightNow+")*("+chainWgtV[0]+")";
             if(chainCutV[0] != "") weightNow = (TString)"("+weightNow+")*("+chainCutV[0]+")";
           }
-          if(nChainNow == 1) weightNow.ReplaceAll(weightName,"1");
+          
+          if(nChainNow == 1 && wgtKNNname == weightName) weightNow.ReplaceAll(weightName,"1");
 
           if(varNameNow == wgtKNNname) {
             if(nChainNow != 2) continue;
