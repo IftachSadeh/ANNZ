@@ -77,8 +77,7 @@ public:
   inline void     clearAll()       { clearTrees(); clearVar(); return; }
   void            varStruct       (VarMaps * inObj, vector <TString> * acceptV = NULL, vector <TString> * rejectV = NULL,
                                                     vector < pair<TString,TString> > * varTypeNameV = NULL, bool isCopy = true);
-  void            copyVarData     (VarMaps * inObj);
-  void            copyVarData     (VarMaps * inObj, vector < pair<TString,TString> > & varTypeNameV);
+  void            copyVarData     (VarMaps * inObj, vector < pair<TString,TString> > * varTypeNameV = NULL);
   void            rmVarPattern(TString pattern, TString type);
   void            setDefaultVals(vector < pair<TString,TString> > * varTypeNameV = NULL);
 

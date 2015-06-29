@@ -1730,7 +1730,7 @@ void ANNZ::createCutTrainTrees(map < TString,TChain* > & chainM, map < TString,T
       // -----------------------------------------------------------------------------------------------------------
       if(var_0->hasFailedTreeCuts(varCutNameCmn)) continue;
 
-      var_1->copyVarData(var_0,varTypeNameV);
+      var_1->copyVarData(var_0,&varTypeNameV);
 
       cutTree->Fill();
 
@@ -1835,7 +1835,7 @@ void ANNZ::splitToSigBckTrees(map < TString,TChain* > & chainM, map < TString,TC
       varSig->setDefaultVals(&varTypeNameV); varBck->setDefaultVals(&varTypeNameV);
 
       if(!var->hasFailedTreeCuts(varCutNameSig)) {
-        varSig->copyVarData(var,varTypeNameV);
+        varSig->copyVarData(var,&varTypeNameV);
         varSig->SetVarI(splitName+"_sigBck",var->GetCntr(nObjNameSig));
         var->IncCntr(nObjNameSig);
 
@@ -1844,7 +1844,7 @@ void ANNZ::splitToSigBckTrees(map < TString,TChain* > & chainM, map < TString,TC
       else var->IncCntr((TString)"failedCut: "+var->getFailedCutType());
 
       if(!var->hasFailedTreeCuts(varCutNameBck)) {
-        varBck->copyVarData(var,varTypeNameV);
+        varBck->copyVarData(var,&varTypeNameV);
         varBck->SetVarI(splitName+"_sigBck",var->GetCntr(nObjNameBck));
         var->IncCntr(nObjNameBck);
 

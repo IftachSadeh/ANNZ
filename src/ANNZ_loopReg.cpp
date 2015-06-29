@@ -2163,7 +2163,7 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
         // set to default before anything else
         var_1->setDefaultVals(&varTypeNameV_all);
         // copy current content of all common variables (index + content of addVarV)
-        var_1->copyVarData(var_0,varTypeNameV_com);
+        var_1->copyVarData(var_0,&varTypeNameV_com);
 
         if(nLoopTypeNow == 1) {
           for(int nPDFnow=0; nPDFnow<nPDFs; nPDFnow++) {

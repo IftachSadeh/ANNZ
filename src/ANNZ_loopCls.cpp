@@ -712,7 +712,7 @@ void  ANNZ::doEvalCls() {
     if(breakLoop) break;
     
     // copy current content of all common variables (index + content of addVarV)
-    var_1->copyVarData(var_0,varTypeNameV);
+    var_1->copyVarData(var_0,&varTypeNameV);
 
     // -----------------------------------------------------------------------------------------------------------
     // calculate the KNN errors if needed, for each variation of knnErrModule

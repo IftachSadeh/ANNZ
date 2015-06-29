@@ -1114,7 +1114,7 @@ TChain * ANNZ::mergeTreeFriends(TChain * aChain, TChain * aChainFriend, vector<T
 
     if(hasCut) { if(var_0->hasFailedTreeCuts("aCut")) continue; }
 
-    var_1->copyVarData(var_0,varTypeNameV);
+    var_1->copyVarData(var_0,&varTypeNameV);
 
     mergedTree->Fill();
 

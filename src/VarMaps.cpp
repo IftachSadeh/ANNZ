@@ -334,39 +334,39 @@ void VarMaps::varStruct(VarMaps * inObj, vector <TString> * acceptV, vector <TSt
 }
 
 // ===========================================================================================================
-void VarMaps::copyVarData(VarMaps * inObj) {
-// =========================================
-  for(map <TString,Bool_t>     ::iterator itr=inObj->varB .begin(); itr!=inObj->varB .end(); ++itr) { if(HasVarB_ (itr->first)) SetVarB_ (itr->first,itr->second,false); }
-  for(map <TString,TObjString*>::iterator itr=inObj->varC .begin(); itr!=inObj->varC .end(); ++itr) { if(HasVarC_ (itr->first)) SetVarC_ (itr->first,itr->second->String(),false); }
-  for(map <TString,Short_t>    ::iterator itr=inObj->varS .begin(); itr!=inObj->varS .end(); ++itr) { if(HasVarS_ (itr->first)) SetVarS_ (itr->first,itr->second,false); }
-  for(map <TString,Int_t>      ::iterator itr=inObj->varI .begin(); itr!=inObj->varI .end(); ++itr) { if(HasVarI_ (itr->first)) SetVarI_ (itr->first,itr->second,false); }
-  for(map <TString,Long64_t>   ::iterator itr=inObj->varL .begin(); itr!=inObj->varL .end(); ++itr) { if(HasVarL_ (itr->first)) SetVarL_ (itr->first,itr->second,false); }
-  for(map <TString,UShort_t>   ::iterator itr=inObj->varUS.begin(); itr!=inObj->varUS.end(); ++itr) { if(HasVarUS_(itr->first)) SetVarUS_(itr->first,itr->second,false); }
-  for(map <TString,UInt_t>     ::iterator itr=inObj->varUI.begin(); itr!=inObj->varUI.end(); ++itr) { if(HasVarUI_(itr->first)) SetVarUI_(itr->first,itr->second,false); }
-  for(map <TString,ULong64_t>  ::iterator itr=inObj->varUL.begin(); itr!=inObj->varUL.end(); ++itr) { if(HasVarUL_(itr->first)) SetVarUL_(itr->first,itr->second,false); }
-  for(map <TString,Float_t>    ::iterator itr=inObj->varF .begin(); itr!=inObj->varF .end(); ++itr) { if(HasVarF_ (itr->first)) SetVarF_ (itr->first,itr->second,false); }
-  for(map <TString,Double_t>   ::iterator itr=inObj->varD .begin(); itr!=inObj->varD .end(); ++itr) { if(HasVarD_ (itr->first)) SetVarD_ (itr->first,itr->second,false); }
-  for(map <TString,TString>    ::iterator itr=inObj->varFM.begin(); itr!=inObj->varFM.end(); ++itr) { if(HasForm_ (itr->first)) SetForm_ (itr->first,itr->second,false); }
-  return;    
-}
-
-// ===========================================================================================================
-void VarMaps::copyVarData(VarMaps * inObj, vector < pair<TString,TString> > & varTypeNameV) {
+void VarMaps::copyVarData(VarMaps * inObj, vector < pair<TString,TString> > * varTypeNameV) {
 // ==========================================================================================
-  vector < pair<TString,TString> >::iterator itr, itrEnd;
-  for(itr=varTypeNameV.begin(), itrEnd=varTypeNameV.end(); itr!=itrEnd; ++itr) {
-    if     (itr->first == "B" ) { SetVarB_ ( itr->second , inObj->GetVarB(itr->second) ); }
-    else if(itr->first == "C" ) { SetVarC_ ( itr->second , inObj->GetVarC(itr->second) ); }
-    else if(itr->first == "S" ) { SetVarS_ ( itr->second , inObj->GetVarI(itr->second) ); }
-    else if(itr->first == "I" ) { SetVarI_ ( itr->second , inObj->GetVarI(itr->second) ); }
-    else if(itr->first == "L" ) { SetVarL_ ( itr->second , inObj->GetVarI(itr->second) ); }
-    else if(itr->first == "US") { SetVarUS_( itr->second , inObj->GetVarU(itr->second) ); }
-    else if(itr->first == "UI") { SetVarUI_( itr->second , inObj->GetVarU(itr->second) ); }
-    else if(itr->first == "UL") { SetVarUL_( itr->second , inObj->GetVarU(itr->second) ); }
-    else if(itr->first == "F" ) { SetVarF_ ( itr->second , inObj->GetVarF(itr->second) ); }
-    else if(itr->first == "D" ) { SetVarD_ ( itr->second , inObj->GetVarF(itr->second) ); }
-    else if(itr->first == "FM") { SetForm_ ( itr->second , inObj->GetForm(itr->second) ); }
+  
+  if(dynamic_cast<vector< pair<TString,TString> >*>(varTypeNameV)) {
+    vector < pair<TString,TString> >::iterator itr, itrEnd;
+    for(itr=varTypeNameV->begin(), itrEnd=varTypeNameV->end(); itr!=itrEnd; ++itr) {
+      if     (itr->first == "B" ) { SetVarB_ ( itr->second , inObj->GetVarB(itr->second) ); }
+      else if(itr->first == "C" ) { SetVarC_ ( itr->second , inObj->GetVarC(itr->second) ); }
+      else if(itr->first == "S" ) { SetVarS_ ( itr->second , inObj->GetVarI(itr->second) ); }
+      else if(itr->first == "I" ) { SetVarI_ ( itr->second , inObj->GetVarI(itr->second) ); }
+      else if(itr->first == "L" ) { SetVarL_ ( itr->second , inObj->GetVarI(itr->second) ); }
+      else if(itr->first == "US") { SetVarUS_( itr->second , inObj->GetVarU(itr->second) ); }
+      else if(itr->first == "UI") { SetVarUI_( itr->second , inObj->GetVarU(itr->second) ); }
+      else if(itr->first == "UL") { SetVarUL_( itr->second , inObj->GetVarU(itr->second) ); }
+      else if(itr->first == "F" ) { SetVarF_ ( itr->second , inObj->GetVarF(itr->second) ); }
+      else if(itr->first == "D" ) { SetVarD_ ( itr->second , inObj->GetVarF(itr->second) ); }
+      else if(itr->first == "FM") { SetForm_ ( itr->second , inObj->GetForm(itr->second) ); }
+    }
   }
+  else {
+    for(map <TString,Bool_t>     ::iterator itr=inObj->varB .begin(); itr!=inObj->varB .end(); ++itr) { if(HasVarB_ (itr->first)) SetVarB_ (itr->first,itr->second,false); }
+    for(map <TString,TObjString*>::iterator itr=inObj->varC .begin(); itr!=inObj->varC .end(); ++itr) { if(HasVarC_ (itr->first)) SetVarC_ (itr->first,itr->second->String(),false); }
+    for(map <TString,Short_t>    ::iterator itr=inObj->varS .begin(); itr!=inObj->varS .end(); ++itr) { if(HasVarS_ (itr->first)) SetVarS_ (itr->first,itr->second,false); }
+    for(map <TString,Int_t>      ::iterator itr=inObj->varI .begin(); itr!=inObj->varI .end(); ++itr) { if(HasVarI_ (itr->first)) SetVarI_ (itr->first,itr->second,false); }
+    for(map <TString,Long64_t>   ::iterator itr=inObj->varL .begin(); itr!=inObj->varL .end(); ++itr) { if(HasVarL_ (itr->first)) SetVarL_ (itr->first,itr->second,false); }
+    for(map <TString,UShort_t>   ::iterator itr=inObj->varUS.begin(); itr!=inObj->varUS.end(); ++itr) { if(HasVarUS_(itr->first)) SetVarUS_(itr->first,itr->second,false); }
+    for(map <TString,UInt_t>     ::iterator itr=inObj->varUI.begin(); itr!=inObj->varUI.end(); ++itr) { if(HasVarUI_(itr->first)) SetVarUI_(itr->first,itr->second,false); }
+    for(map <TString,ULong64_t>  ::iterator itr=inObj->varUL.begin(); itr!=inObj->varUL.end(); ++itr) { if(HasVarUL_(itr->first)) SetVarUL_(itr->first,itr->second,false); }
+    for(map <TString,Float_t>    ::iterator itr=inObj->varF .begin(); itr!=inObj->varF .end(); ++itr) { if(HasVarF_ (itr->first)) SetVarF_ (itr->first,itr->second,false); }
+    for(map <TString,Double_t>   ::iterator itr=inObj->varD .begin(); itr!=inObj->varD .end(); ++itr) { if(HasVarD_ (itr->first)) SetVarD_ (itr->first,itr->second,false); }
+    for(map <TString,TString>    ::iterator itr=inObj->varFM.begin(); itr!=inObj->varFM.end(); ++itr) { if(HasForm_ (itr->first)) SetForm_ (itr->first,itr->second,false); }
+  }
+
   return;    
 }
 

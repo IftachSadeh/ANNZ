@@ -501,7 +501,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
 
     if(breakLoop) break;
 
-    var_1->copyVarData(var_0,varTypeNameV);
+    var_1->copyVarData(var_0,&varTypeNameV);
 
     // fill the current object vector and use it later in order to create a TMVA::kNN::Event object
     // if any of the variables is beyond the limits derived from the reference sample, the weight is
@@ -719,7 +719,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
       }
       if(breakLoop) break;
 
-      var_1->copyVarData(var_0,varTypeNameV);
+      var_1->copyVarData(var_0,&varTypeNameV);
 
       double weightKNN = var_0->GetVarF(wgtKNNname) * weightNorm;
       var_1->SetVarF(wgtKNNname,weightKNN);
@@ -826,25 +826,32 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
         for(int nChainNow=0; nChainNow<3; nChainNow++) {
           TString nChainKNNname = TString::Format("_nChain%d",nChainNow);
 
-          TString weightNow(""), hisTitle("");
+          TString weightNow("1"), hisTitle("");
           TChain  * aChain(NULL);
-          if     (nChainNow == 0) { aChain = aChainRef; hisTitle = "Reference"; weightNow = "1";        }
-          else if(nChainNow == 1) { aChain = aChainInp; hisTitle = "Original";  weightNow = "1";        }
-          else if(nChainNow == 2) { aChain = aChainOut; hisTitle = "Weighted";  weightNow = wgtKNNname; }
+          if     (nChainNow == 0) { aChain = aChainRef; hisTitle = "Reference"; }
+          else if(nChainNow == 1) { aChain = aChainInp; hisTitle = "Original";  }
+          else if(nChainNow == 2) { aChain = aChainOut; hisTitle = "Weighted";  }
 
           if(nChainNow == 0) {
             if(chainWgtV[1] != "") weightNow = (TString)"("+weightNow+")*("+chainWgtV[1]+")";
             if(chainCutV[1] != "") weightNow = (TString)"("+weightNow+")*("+chainCutV[1]+")";
           }
+          else {
+            if(chainWgtV[0] != "") weightNow = (TString)"("+weightNow+")*("+chainWgtV[0]+")";
+            if(chainCutV[0] != "") weightNow = (TString)"("+weightNow+")*("+chainCutV[0]+")";
+          }
+          if(nChainNow == 1) weightNow.ReplaceAll(weightName,"1");
 
           if(varNameNow == wgtKNNname) {
             if(nChainNow != 2) continue;
             else               weightNow = "1";
           }
+          weightNow = utils->cleanWeightExpr(weightNow);
 
           TString hisName   = (TString)baseName+aChainInp->GetName()+nVarName+nChainKNNname;
           TString drawExprs = (TString)varNameNow+">>"+hisName;
           if(nDrawNow == 1) drawExprs += TString::Format("(%d,%f,%f)",nDrawBins,drawLim0,drawLim1);
+          // cout <<drawExprs<<" \t --> "<<weightNow <<endl;
 
           TCanvas * tmpCnvs = new TCanvas("tmpCnvs","tmpCnvs");
           aChain->Draw(drawExprs,weightNow); DELNULL(tmpCnvs);

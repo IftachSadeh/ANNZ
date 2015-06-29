@@ -162,7 +162,7 @@ void CatFormat::inputToFullTree(TString inAsciiFiles, TString inAsciiVars, TStri
           <<coutRed<<" Total = "<<coutYellow<<TString::Format("%3.3g \t",(double)var->GetCntr("nObj"))<<coutDef<<endl;
         }
 
-        var->copyVarData(var_0,varTypeNameV);
+        var->copyVarData(var_0,&varTypeNameV);
 
         // update variable with input file name
         var->SetVarC(origFileName,reducedFileName);
@@ -481,7 +481,7 @@ void CatFormat::inputToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
           <<coutRed<<" Total = "<<coutYellow<<TString::Format("%3.3g \t",(double)var->GetCntr("nObj"))<<coutDef<<endl;
         }
 
-        var->copyVarData(var_0,varTypeNameV);
+        var->copyVarData(var_0,&varTypeNameV);
 
         // update variable with input file name
         var->SetVarC(origFileName,reducedFileName);
@@ -551,7 +551,6 @@ void CatFormat::inputToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
 
   }
   if(!breakLoop) { var->printCntr(treeName,Log::INFO); outputs->WriteOutObjects(false,true); outputs->ResetObjects(); }
-
 
   // -----------------------------------------------------------------------------------------------------------
   // some histograms of the input branches
