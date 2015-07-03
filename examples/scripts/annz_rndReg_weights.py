@@ -108,7 +108,7 @@ if glob.annz["doGenInputTrees"]:
   useWgtKNN = True
   if useWgtKNN:
     glob.annz["useWgtKNN"]             = True
-    glob.annz["minNobjInVol_wgtKNN"]   = 50
+    glob.annz["minNobjInVol_wgtKNN"]   = 100
     glob.annz["inAsciiFiles_wgtKNN"]   = "boss_dr10_colorCuts.csv"
     glob.annz["inAsciiVars_wgtKNN"]    = "F:MAG_U;F:MAGERR_U;F:MAG_G;F:MAGERR_G;F:MAG_R;F:MAGERR_R;F:MAG_I;F:MAGERR_I;F:MAG_Z;F:MAGERR_Z;D:Z"
     glob.annz["weightVarNames_wgtKNN"] = "MAG_U;MAG_G;MAG_R;MAG_I;MAG_Z"

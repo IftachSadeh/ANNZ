@@ -95,7 +95,7 @@ void CatFormat::inputToSplitTree_wgtKNN(TString inAsciiFiles, TString inAsciiVar
   // cleanup
   DELNULL(aChainRef);
 
-  // remove the temporary sub-dir and the intermediary trees inside
+  // remove the temporary sub-dir and the intermediate trees inside
   utils->safeRM(outDirNameTMP,inLOG(Log::DEBUG));
 
   treeNames.clear();
@@ -357,7 +357,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
         varNamesScaled[nVarNow] = (TString)"(("+varNames[nVarNow]+") - "+utils->floatToStr(valMin)+") * "+utils->floatToStr( 2/(valMax - valMin) )+" - 1";
 
         aLOG(Log::INFO)<<coutYellow<<" - Transformation to range [-1,1] from "<<coutGreen<<varNames[nVarNow]
-                       <<coutYellow<<" to:  "<<coutRed<<varNamesScaled[nVarNow]<<coutDef<<endl;
+                       <<coutYellow<<" to:  "<<coutBlue<<varNamesScaled[nVarNow]<<coutDef<<endl;
       }
     }
 
@@ -733,7 +733,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
     DELNULL(var_1); DELNULL(outTree); outputs->TreeMap.erase(outTreeName);
     varTypeNameV.clear();
 
-    // remove the temporary sub-dir and the intermediary trees inside
+    // remove the temporary sub-dir and the intermediate trees inside
     utils->safeRM(outDirNameTMP,inLOG(Log::DEBUG));
   }
   // -----------------------------------------------------------------------------------------------------------
@@ -842,7 +842,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
             if(chainWgtV[0] != "") weightNow = (TString)"("+weightNow+")*("+chainWgtV[0]+")";
             if(chainCutV[0] != "") weightNow = (TString)"("+weightNow+")*("+chainCutV[0]+")";
           }
-          
+
           if(nChainNow == 1 && wgtKNNname == weightName) weightNow.ReplaceAll(weightName,"1");
 
           if(varNameNow == wgtKNNname) {
