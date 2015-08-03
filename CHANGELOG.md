@@ -18,7 +18,8 @@
 ```python
 glob.annz["doWidthRescale_errKNN"]  = False
 ```
-Similarly, added the same transformations for the kd-tree during the `glob.annz["useWgtKNN"] = True` and `glob.annz["addInTrainFlag"] = True` setups. These may be turned off using the flags, `doWidthRescale_wgtKNN` and `doWidthRescale_inTrain`, respectively.
+
+- Similarly, added the same transformations for the kd-tree during the `glob.annz["useWgtKNN"] = True` and `glob.annz["addInTrainFlag"] = True` setups. These may be turned off using the flags, `doWidthRescale_wgtKNN` and `doWidthRescale_inTrain`, respectively.
 
 - Added support for ROOT file inputs, which may be used instead of ascii inputs (example given in `scripts/annz_rndReg_advanced.py`).
 
