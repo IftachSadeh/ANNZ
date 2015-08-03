@@ -1,6 +1,7 @@
 # Changelog
 
-## Master version
+<!-- ## Master version -->
+## ANNZ 2.0.6 (03/8/2015)
 
 - Did some code optimization for tree-looping operations.
 
