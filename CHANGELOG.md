@@ -15,11 +15,10 @@
 - Nominally, the `inTrainFlag` quality flag is a binary operator, and may only take values of either `0` or `1`. Have now added the option of setting `maxRelRatioInRef_inTrain < 0`. In this case, the `maxRelRatioInRef_inTrain` parameter is ignored. As a result the `inTrainFlag` may take floating-point values between zero and one.
 
 - Added a transformation of the input parameters used for the kd-tree during the nominal uncertainty calculation in regression. The variables after the transformation span the range `[-1,1]`. The transformations are performed by default, and may be turned off by setting,
-```python
-glob.annz["doWidthRescale_errKNN"]  = False
-```
-
-- Similarly, added the same transformations for the kd-tree during the `glob.annz["useWgtKNN"] = True` and `glob.annz["addInTrainFlag"] = True` setups. These may be turned off using the flags, `doWidthRescale_wgtKNN` and `doWidthRescale_inTrain`, respectively.
+  ```python
+  glob.annz["doWidthRescale_errKNN"]  = False
+  ```
+Similarly, added the same transformations for the kd-tree during the `glob.annz["useWgtKNN"] = True` and `glob.annz["addInTrainFlag"] = True` setups. These may be turned off using the flags, `doWidthRescale_wgtKNN` and `doWidthRescale_inTrain`, respectively.
 
 - Added support for ROOT file inputs, which may be used instead of ascii inputs (example given in `scripts/annz_rndReg_advanced.py`).
 
