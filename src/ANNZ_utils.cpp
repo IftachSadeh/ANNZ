@@ -692,7 +692,7 @@ void  ANNZ::loadOptsMLM() {
   int     nMLMs     = glob->GetOptI("nMLMs");
   TString weightKNN = glob->GetOptC("baseName_wgtKNN");
 
-  inNamesVar.resize(nMLMs); inNamesErr.resize(nMLMs);
+  inNamesVar.resize(nMLMs); inNamesErr.resize(nMLMs); inVarsScaleFunc.resize(nMLMs);
 
   if(glob->GetOptB("doTrain")) {
     int     nMLMnow = glob->GetOptI("nMLMnow");

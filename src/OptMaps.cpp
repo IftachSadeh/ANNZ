@@ -70,21 +70,6 @@ void OptMaps::setColors() {
   coutWhiteOnGreen  = useCoutCol ? "\33[42;37;1m"  : "";
   coutWhiteOnYellow = useCoutCol ? "\33[43;37;1m"  : "";
 
-  // cout <<"\33[37m 37m \033[0m"<<endl;  cout <<"\33[47m 47m \033[0m"<<endl;
-  // cout <<"\33[36m 36m \033[0m"<<endl;  cout <<"\33[46m 46m \033[0m"<<endl;
-  // cout <<"\33[35m 35m \033[0m"<<endl;  cout <<"\33[45m 45m \033[0m"<<endl;
-  // cout <<"\33[34m 34m \033[0m"<<endl;  cout <<"\33[44m 44m \033[0m"<<endl;
-  // cout <<"\33[33m 33m \033[0m"<<endl;  cout <<"\33[43m 43m \033[0m"<<endl;
-  // cout <<"\33[32m 32m \033[0m"<<endl;  cout <<"\33[42m 42m \033[0m"<<endl;
-  // cout <<"\33[31m 31m \033[0m"<<endl;  cout <<"\33[41m 41m \033[0m"<<endl;
-  // cout <<"\33[30m 30m \033[0m"<<endl;  cout <<"\33[40m 40m \033[0m"<<endl;
-  // cout <<"\33[97m 97m \033[0m"<<endl;  cout << "\033[36m     36m      \033[0m"<< endl;
-  // cout <<"\33[96m 96m \033[0m"<<endl;  cout << "\033[4;30m   4;30m    \033[0m"<< endl;
-  // cout <<"\33[95m 95m \033[0m"<<endl;  cout << "\33[40;37;1m 40;37;1m \033[0m"<< endl;
-  // cout <<"\33[94m 94m \033[0m"<<endl;  cout << "\33[41;37;1m 41;37;1m \033[0m"<< endl;
-  // cout <<"\33[93m 93m \033[0m"<<endl;  cout << "\33[42;37;1m 42;37;1m \033[0m"<< endl;
-  // cout <<"\33[92m 92m \033[0m"<<endl;  cout << "\33[43;37;1m 43;37;1m \033[0m"<< endl;
-  // cout <<"\33[91m 91m \033[0m"<<endl;  cout <<"\33[90m 90m \033[0m"<<endl;  
   return;
 }
 

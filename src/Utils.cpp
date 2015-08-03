@@ -641,7 +641,7 @@ TString Utils::regularizeName(TString nameIn, TString newPattern) {
 // ================================================================
   if(nameIn == "") return nameIn;
 
-  TString nameOut(nameIn), regExp(":;$&%|!?*/+-[]=><()^,'` ");
+  TString nameOut(nameIn), regExp(":;$&%|!?*/+-[]=><()^,'.` ");
   if(newPattern != "") {
     for(int nRegExpNow=0; nRegExpNow<(int)regExp.Length(); nRegExpNow++) nameOut.ReplaceAll(regExp[nRegExpNow],newPattern);
   }
@@ -654,6 +654,7 @@ TString Utils::regularizeName(TString nameIn, TString newPattern) {
   nameOut.ReplaceAll( ">", "_GT_" );   nameOut.ReplaceAll( "<", "_LT_" );    nameOut.ReplaceAll( "(", "_" );
   nameOut.ReplaceAll( ")", "_" );      nameOut.ReplaceAll( "^", "_" );       nameOut.ReplaceAll( ",", "_" );
   nameOut.ReplaceAll( "'", "_" );      nameOut.ReplaceAll( "`", "_" );       nameOut.ReplaceAll( " ", "_" );
+  nameOut.ReplaceAll( ".", "_" );
 
   return nameOut;
 }

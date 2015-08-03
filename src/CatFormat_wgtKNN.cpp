@@ -631,7 +631,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
 
         if(foundDist) {
           // -----------------------------------------------------------------------------------------------------------
-          // finally, compute the weight as the relative difference beween the distance between the diatance
+          // finally, compute the weight as the relative difference beween the distance between the distance
           // measures then compute a binary decision, based on the minimal threshold set by maxRelRatioInRef
           // -----------------------------------------------------------------------------------------------------------
           weightKNN = max( ((dist_Ref0_RefNear - dist_Ref_Inp) / dist_Ref0_RefNear) , 0.);

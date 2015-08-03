@@ -168,6 +168,7 @@ private:
   vector < map < TString,TString> >     pdfAvgNames;
   map    < TString,bool >               mlmSkip;
   vector < vector <TString> >           inNamesVar, inNamesErr;
+  vector < vector <TF1*> >              inVarsScaleFunc;
   map    < TString,TCut >               userCutsM;
   map    < TString,TString >            userWgtsM, bestMLMname;
   vector < time_t >                     trainTimeM;

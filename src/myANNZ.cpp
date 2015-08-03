@@ -448,7 +448,8 @@ myANNZ::myANNZ() {
   // the scatter (or 68th percentile scatter) of the distribution
   glob->NewOptB("doGausSigmaRelErr",true);
 
-  glob->NewOptI("nErrKNN",100); // number of near-neighbours to use for the KNN error estimation, see setupKdTreeKNN().
+  glob->NewOptI("nErrKNN",100);                // number of near-neighbours to use for the KNN error estimation, see setupKdTreeKNN().
+  glob->NewOptB("doWidthRescale_errKNN",true); // wether or not to rescale the input parameters of the knn-err search to the range [-1,1]
 
   // if propagating input-errors - nErrINP is the number of randomly generated MLM values used to propagate
   // the uncertainty on the input parameters to the MLM-estimator. See getRegClsErrINP()

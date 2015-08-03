@@ -36,7 +36,7 @@ glob.annz["minValZ"]    = 0.0
 glob.annz["maxValZ"]    = 0.8
 
 # set the number of near-neighbours used to compute the KNN error estimator
-# (should be around 100 - set here to a very low number just to speed the example up... !)
+# (should be around 100 - set here to a low number just to speed the example up... !)
 glob.annz["nErrKNN"]    = 50
 
 # --------------------------------------------------------------------------------------------------

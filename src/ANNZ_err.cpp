@@ -138,7 +138,7 @@ void ANNZ::createTreeErrKNN(int nMLMnow) {
  * @param knnErrFactory  - A pointed to the TMVA::Factory which is created here.
  * @param knnErrModule   - A pointer to the TMVA::kNN::ModulekNN which is created by the TMVA::Factory, and is later
  *                       used to get the near-neighbours in getRegClsErrKNN().
- * @param trgIndexV      - container to kkep track of how MLM indices are arranged in the KNN target list
+ * @param trgIndexV      - container to keep track of how MLM indices are arranged in the KNN target list
  * @param nMLMnow        - The index of the primary MLM.
  * @param cutsAll        - Cuts used on the dataset, which should match the cuts on the primary MLM.
  * @param wgtAll         - Weights for the entire dataset.
@@ -154,6 +154,7 @@ void ANNZ::setupKdTreeKNN(TChain * aChainKnn, TFile *& knnErrOutFile, TMVA::Fact
   TString errKNNname      = getErrKNNname(nMLMnow);
   TString baseTag_errKNN  = glob->GetOptC("baseTag_errKNN");
   int     nErrKNN         = glob->GetOptI("nErrKNN");
+  bool    doWidthRescale  = glob->GetOptB((TString)"doWidthRescale_errKNN");
   bool    debug           = inLOG(Log::DEBUG_2) || glob->OptOrNullB("debugErrANNZ");
 
   if(debug) aCustomLOG("") <<coutWhiteOnBlack<<coutBlue<<" - starting ANNZ::setupKdTreeKNN() ... "<<coutDef<<endl;
@@ -180,8 +181,66 @@ void ANNZ::setupKdTreeKNN(TChain * aChainKnn, TFile *& knnErrOutFile, TMVA::Fact
   knnErrFactory            = new TMVA::Factory(typeANNZ, knnErrOutFile, (TString)verbLvlF+drawProgBarStr+transStr+analysType);    
 
   // since all variables are read-in from TTreeFormula, we define them as floats ("F") in the factory
-  for(int nVarNow=0; nVarNow<(int)inNamesVar[nMLMnow].size(); nVarNow++) {
-    knnErrFactory->AddVariable(inNamesVar[nMLMnow][nVarNow],inNamesVar[nMLMnow][nVarNow],"",'F');
+  int  nInVar = (int)inNamesVar[nMLMnow].size();
+  vector <double> fracV(2,0), quantV(2,0);
+
+  if(doWidthRescale) inVarsScaleFunc[nMLMnow].resize(nInVar,NULL);
+  
+  for(int nVarNow=0; nVarNow<nInVar; nVarNow++) {
+    TString varScaled = inNamesVar[nMLMnow][nVarNow];
+
+    // -----------------------------------------------------------------------------------------------------------
+    // if requested, scale the input variables in the knn tree to the range [-1,1]
+    // -----------------------------------------------------------------------------------------------------------
+    if(doWidthRescale) {
+      // fill a histogram with the distribution of the input variable
+      // -----------------------------------------------------------------------------------------------------------
+      TString hisName   = (TString)aChainKnn->GetName()+utils->regularizeName(inNamesVar[nMLMnow][nVarNow])+"_hisVar";
+      TString drawExprs = (TString)inNamesVar[nMLMnow][nVarNow]+">>"+hisName;
+      TString wgtCut    = (TString)"("+(TString)cutsAll+")*("+wgtAll+")";
+      wgtCut.ReplaceAll("()*()","").ReplaceAll("*()","").ReplaceAll("()*","").ReplaceAll("()","1");
+
+      TCanvas * tmpCnvs = new TCanvas("tmpCnvs","tmpCnvs");
+      aChainKnn->Draw(drawExprs,wgtCut); DELNULL(tmpCnvs);
+
+      TH1 * his_var = (TH1F*)gDirectory->Get(hisName); 
+      VERIFY(LOCATION,(TString)"Could not derive histogram ("+hisName+") from chain ... Something is horribly wrong ?!?!",(dynamic_cast<TH1F*>(his_var)));
+
+      his_var->SetDirectory(0); his_var->BufferEmpty(); outputs->BaseDir->cd();
+
+      aLOG(Log::DEBUG_1)<<coutBlue<<" - "<<coutYellow<<MLMname<<coutBlue<<" - deriving var-range: "<<coutPurple
+                        <<drawExprs<<coutBlue<<" , "<<coutGreen<<wgtCut<<coutDef<<endl;
+
+      // derive the ranges of the distribution
+      // -----------------------------------------------------------------------------------------------------------
+      fracV[0] = 0.0; fracV[1] = 1.0; quantV.resize(2,-1);
+
+      int hasQuant = utils->getQuantileV(fracV,quantV,his_var);
+      VERIFY(LOCATION,(TString)"Got not compute quantiles for histogram ... Something is horribly wrong ?!?! ",hasQuant);
+
+      // transform the input variable
+      // -----------------------------------------------------------------------------------------------------------
+      if(quantV[0] < quantV[1]) {
+        varScaled = (TString)"(("+inNamesVar[nMLMnow][nVarNow]+") - "+utils->floatToStr(quantV[0])
+                                             +") * "+utils->floatToStr( 2/(quantV[1] - quantV[0]) )+" - 1";
+
+        TString varScaledFunc = varScaled; varScaledFunc.ReplaceAll(inNamesVar[nMLMnow][nVarNow],"x");        
+        inVarsScaleFunc[nMLMnow][nVarNow] = new TF1(varScaledFunc,varScaledFunc);  //cout<<"  ---> "<<varScaledFunc<<endl;
+        
+        aLOG(Log::DEBUG_1)<<coutYellow<<"   --> Transformation to range [-1,1] from "<<coutGreen<<inNamesVar[nMLMnow][nVarNow]
+                          <<coutYellow<<" to:  "<<coutBlue<<varScaled<<coutDef<<endl;
+      }
+      else {
+        // identity function in order to avoid seg-fault, if the qualtile calculation failed for some reason (!?!?!)
+        inVarsScaleFunc[nMLMnow][nVarNow] = new TF1("x","x");
+      }
+
+      // his_var->SaveAs((TString)hisName+"_scaled.C");
+      DELNULL(his_var);
+    }
+
+    // set the input variable in the tree
+    knnErrFactory->AddVariable(varScaled,varScaled,"",'F');
   }
 
   // add targets for all available MLMs
@@ -305,11 +364,12 @@ void ANNZ::getRegClsErrKNN(VarMaps * var, TMVA::kNN::ModulekNN * knnErrModule, v
 // ===============================================================================================
   aLOG(Log::DEBUG_3) <<coutWhiteOnBlack<<coutBlue<<" - starting ANNZ::getRegClsErrKNN() ... "<<coutDef<<endl;
   
-  int  nMLMsIn = (int)nMLMv.size();  if(nMLMsIn == 0) return;
-  int  nMLMs   = glob->GetOptI("nMLMs");
-  int  nErrKNN = glob->GetOptI("nErrKNN");
-  int  nMLM_0  = nMLMv[0];
-  int  nInVar  = (int)inNamesVar[nMLM_0].size();
+  int  nMLMsIn        = (int)nMLMv.size();  if(nMLMsIn == 0) return;
+  int  nMLMs          = glob->GetOptI("nMLMs");
+  int  nErrKNN        = glob->GetOptI("nErrKNN");
+  bool doWidthRescale = glob->GetOptB((TString)"doWidthRescale_errKNN");
+  int  nMLM_0         = nMLMv[0];
+  int  nInVar         = (int)inNamesVar[nMLM_0].size();
 
   // sanith check of the initialization of trgIndexV
   VERIFY(LOCATION,(TString)" - trgIndexV is not initialized in ANNZ::getRegClsErrKNN() !!!",((int)trgIndexV.size() == nMLMs));
@@ -331,12 +391,25 @@ void ANNZ::getRegClsErrKNN(VarMaps * var, TMVA::kNN::ModulekNN * knnErrModule, v
   // get the content of readerInptV into a VarVec
   TMVA::kNN::VarVec vvec(nInVar,0);
   for(int nInVarNow=0; nInVarNow<nInVar; nInVarNow++) {
-    int readerInptIndex = readerInptIndexV[nMLM_0][nInVarNow];
-    vvec[nInVarNow]     = readerInptV[readerInptIndex].second;
+    int    readerInptIndex = readerInptIndexV[nMLM_0][nInVarNow];
+    double readerInptVal   = readerInptV[readerInptIndex].second;
 
     VERIFY(LOCATION,(TString)"There's a mixup with input variables and the reader... Something is horribly wrong... ?!?"
                              ,(inNamesVar[nMLM_0][nInVarNow] == readerInptV[readerInptIndex].first));
+    if(doWidthRescale) {
+      bool hasScaleFunf(false);
+      if((int)inVarsScaleFunc[nMLM_0].size() > nInVarNow) hasScaleFunf = dynamic_cast<TF1*>(inVarsScaleFunc[nMLM_0][nInVarNow]);
+      VERIFY(LOCATION,(TString)"Has not defined a scaling function for \""+readerInptV[readerInptIndex].first
+                               +"\"... Something is horribly wrong... ?!?",hasScaleFunf);
+
+      vvec[nInVarNow] = inVarsScaleFunc[nMLM_0][nInVarNow]->Eval(readerInptVal);
+      // cout<<nMLM_0<<CT<<readerInptV[readerInptIndex].first<<CT<<readerInptVal<<CT<<inVarsScaleFunc[nMLM_0][nInVarNow]->GetName()<<CT<<vvec[nInVarNow]<<endl;
+    }
+    else {
+      vvec[nInVarNow] = readerInptVal;
+    }
   }
+  // for(int nMLMinNow=0; nMLMinNow<nMLMsIn; nMLMinNow++) cout <<" ---- "<<nMLMinNow<<CT<<nMLMv[nMLMinNow]<<endl;
 
   const TMVA::kNN::Event evt_orig(vvec,1,0);
   knnErrModule->Find(evt_orig,nErrKNN+2);

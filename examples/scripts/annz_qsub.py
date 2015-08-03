@@ -14,7 +14,7 @@ from helperFuncs import *
 # set here the python file to run, as well as nTrainJobs, which should correspond to [nMLMs] (for
 # regression or classifcation) or to [binCls_nBins] (for binned classification).
 # ---------------------------------------------------------------------------------------------------
-subType = 2
+subType = 0
 if subType == 0:
   cmndBase   = "python examples/scripts/annz_rndReg_quick.py --randomRegression"     ; optimType = "optimize" ; nTrainJobs = 10
 elif subType == 1:

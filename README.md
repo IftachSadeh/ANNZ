@@ -435,6 +435,8 @@ A few notes:
 
   - If ANNZ does not compile, check the definition of `$ROOTSYS` and `$LD_LIBRARY_PATH`. The values used by ANNZ are printed out before compilation starts.
 
+  - Mac users should take make sure to install the `Xcode Command Line Tools` before compiling against ROOT.
+
   - During the `--genInputTrees` phase, a list of input parameters is specified, corresponding to the makeup of the input ascii files; here each column in the input file is registered. Note that the training of MLM does not necessarily need to correspond to the same set of parameters. In fact, any combination of input parameters, including mathematical expressions of the latter, may be used for training. The only constraint is that (for regression problems) the regression target should correspond to exactly one of the input parameters. See the various example scripts for details.
   An example for a set of input parameters is
   ```python
@@ -459,6 +461,10 @@ A few notes:
   This feature is useful, if e.g., the target dataset for evaluation has a different distribution of input parameters, compared to the training dataset. For instance, for photo-z derivation, it is possible for the spectroscopic  training sample to have a different color distribution, compared to the target photometric sample. The derived weights in this case are calculated as the ratio between the number of objects in a given color-box in the reference sample, compared to the training sample. The procedure is implemented in `CatFormat::addWgtKNNtoTree()` (in `src/CatFormat_wgtKNN.cpp`), where a more detailed explanation is also given. See `scripts/annz_rndReg_advanced.py` for a use-example.
 
   - Using the script, `scripts/annz_rndReg_weights.py`, it is possible to generate the weights based on the KNN method (`useWgtKNN`), and/or the `inTrainFlag` quality-flag, without training/evaluating any MLMs. The former are stored to e.g., `output/test_randReg_weights/rootIn/ANNZ_KNN_wANNZ_tree_valid_0000.csv`, and the latter to `output/test_randReg_weights/inTrainFlag/inTrainFlagANNZ_tree_wgtTree_0000.csv`.
+
+  - The KNN error, weight and quality-flag calculations are nominally performed for rescaled variable distributions; each input variable is mapped by a linear transformation to the range `[-1,1]`, so that the distance in the input parameter space is not biased by the scale (units) of the different parameters. It is possible to prevent the rescalling by setting the following flags to `False`: `doWidthRescale_errKNN`, `doWidthRescale_wgtKNN` and `doWidthRescale_inTrain`.
+  These respectively relate to the KNN error calculation, the reference dataset reweighting, and the training quality-flag.
+
 
   - It is possible to train/optimize MLMs using specific cuts and/or weights, based on any mathematical expression which uses the variables defined in the input dataset (not limited to the variables used for the training). The relevant variables are `userCuts_train`, `userCuts_valid`, `userWeights_train` and `userWeights_valid`. See the advanced scripts for use-examples.
 

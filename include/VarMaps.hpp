@@ -164,13 +164,13 @@ public:
   inline TString   GetVarC(TString aName) { return GetVarC_(aName); }
   inline Long64_t  GetVarI(TString aName) {
     Long64_t val (0);
-    if     (HasVarS_ (aName)) val = static_cast<Long64_t> (GetVarS_ (aName)); else if(HasVarI_ (aName)) val = static_cast<Long64_t> (GetVarI_ (aName));
-    else if(HasVarL_ (aName)) val = GetVarL_ (aName);                         else AsrtVar(false,aName+" (GetVarI)");
+    if     (HasVarI_(aName)) val = static_cast<Long64_t> (GetVarI_(aName)); else if(HasVarS_(aName)) val = static_cast<Long64_t> (GetVarS_(aName));
+    else if(HasVarL_(aName)) val = GetVarL_(aName);                         else AsrtVar(false,aName+" (GetVarI)");
     return val;
   };
   inline ULong64_t GetVarU(TString aName) {
     ULong64_t val(0);
-    if     (HasVarUS_(aName)) val = static_cast<ULong64_t>(GetVarUS_(aName)); else if(HasVarUI_(aName)) val = static_cast<ULong64_t>(GetVarUI_(aName));
+    if     (HasVarUI_(aName)) val = static_cast<ULong64_t>(GetVarUI_(aName)); else if(HasVarUS_(aName)) val = static_cast<ULong64_t>(GetVarUS_(aName));
     else if(HasVarUL_(aName)) val = GetVarUL_(aName);                         else AsrtVar(false,aName+" (GetVarU)");
     return val;
   };
@@ -193,31 +193,31 @@ public:
 
   inline bool HasVar  (TString aName) { return (HasVarB(aName)||HasVarC(aName)||HasVarI(aName)||HasVarU(aName)||HasVarF(aName)||HasForm(aName)); }
 
-  // check if a defined vriable has the default value for its type
-  // -----------------------------------------------------------------------------------------------------------
-  inline bool IsDefVarC(TString aName) {
-    bool val(false);
-    if(HasVarC_ (aName)) val = IsDefVarC_ (aName);      else AsrtVar(false,aName+" (IsDefVarC)");
-    return val;
-  }
-  inline bool IsDefVarI(TString aName) {
-    bool val(false);
-    if     (HasVarS_ (aName)) val = IsDefVarS_ (aName); else if(HasVarI_ (aName)) val = IsDefVarI_ (aName);
-    else if(HasVarL_ (aName)) val = IsDefVarL_ (aName); else AsrtVar(false,aName+" (IsDefVarI)");
-    return val;
-  }
-  inline bool IsDefVarU(TString aName) {
-    bool val(false);
-    if     (HasVarUS_(aName)) val = IsDefVarUS_(aName); else if(HasVarUI_(aName)) val = IsDefVarUI_(aName);
-    else if(HasVarUL_(aName)) val = IsDefVarUL_(aName); else AsrtVar(false,aName+" (IsDefVarU)");
-    return val;
-  }
-  inline bool IsDefVarF(TString aName) {
-    bool val(false);
-    if     (HasVarF_ (aName)) val = IsDefVarF_ (aName);
-    else if(HasVarD_ (aName)) val = IsDefVarD_ (aName); else AsrtVar(false,aName+" (IsDefVarD)");
-    return val;
-  }
+  // // check if a defined vriable has the default value for its type
+  // // -----------------------------------------------------------------------------------------------------------
+  // inline bool IsDefVarC(TString aName) {
+  //   bool val(false);
+  //   if(HasVarC_ (aName)) val = IsDefVarC_ (aName);      else AsrtVar(false,aName+" (IsDefVarC)");
+  //   return val;
+  // }
+  // inline bool IsDefVarI(TString aName) {
+  //   bool val(false);
+  //   if     (HasVarS_ (aName)) val = IsDefVarS_ (aName); else if(HasVarI_ (aName)) val = IsDefVarI_ (aName);
+  //   else if(HasVarL_ (aName)) val = IsDefVarL_ (aName); else AsrtVar(false,aName+" (IsDefVarI)");
+  //   return val;
+  // }
+  // inline bool IsDefVarU(TString aName) {
+  //   bool val(false);
+  //   if     (HasVarUS_(aName)) val = IsDefVarUS_(aName); else if(HasVarUI_(aName)) val = IsDefVarUI_(aName);
+  //   else if(HasVarUL_(aName)) val = IsDefVarUL_(aName); else AsrtVar(false,aName+" (IsDefVarU)");
+  //   return val;
+  // }
+  // inline bool IsDefVarF(TString aName) {
+  //   bool val(false);
+  //   if     (HasVarF_ (aName)) val = IsDefVarF_ (aName);
+  //   else if(HasVarD_ (aName)) val = IsDefVarD_ (aName); else AsrtVar(false,aName+" (IsDefVarD)");
+  //   return val;
+  // }
 
   // get the type of a var
   // -----------------------------------------------------------------------------------------------------------
@@ -239,14 +239,14 @@ public:
     SetVarC_(aName, GetVarC_(aName) + input);
   }
   inline void AddVarI(TString aName, Long64_t  input) {
-    if     (HasVarS_ (aName)) SetVarS_ (aName, GetVarS_ (aName) + input);
-    else if(HasVarI_ (aName)) SetVarI_ (aName, GetVarI_ (aName) + input);
+    if     (HasVarI_ (aName)) SetVarI_ (aName, GetVarI_ (aName) + input);
+    else if(HasVarS_ (aName)) SetVarS_ (aName, GetVarS_ (aName) + input);
     else if(HasVarL_ (aName)) SetVarL_ (aName, GetVarL_ (aName) + input);
     else                      AsrtVar(false,aName+" (AddVarI)");
   }
   inline void AddVarU(TString aName, ULong64_t input) {
-    if     (HasVarUS_(aName)) SetVarUS_(aName, GetVarUS_(aName) + input);
-    else if(HasVarUI_(aName)) SetVarUI_(aName, GetVarUI_(aName) + input);
+    if     (HasVarUI_(aName)) SetVarUI_(aName, GetVarUI_(aName) + input);
+    else if(HasVarUS_(aName)) SetVarUS_(aName, GetVarUS_(aName) + input);
     else if(HasVarUL_(aName)) SetVarUL_(aName, GetVarUL_(aName) + input);
     else                      AsrtVar(false,aName+" (AddVarU)");
   }
@@ -257,14 +257,14 @@ public:
   }
   // -----------------------------------------------------------------------------------------------------------
   inline void MultVarI(TString aName, Long64_t  input) {
-    if     (HasVarS_ (aName)) SetVarS_ (aName, GetVarS_ (aName) * input);
-    else if(HasVarI_ (aName)) SetVarI_ (aName, GetVarI_ (aName) * input);
+    if     (HasVarI_ (aName)) SetVarI_ (aName, GetVarI_ (aName) * input);
+    else if(HasVarS_ (aName)) SetVarS_ (aName, GetVarS_ (aName) * input);
     else if(HasVarL_ (aName)) SetVarL_ (aName, GetVarL_ (aName) * input);
     else                      AsrtVar(false,aName+" (MultVarI)");
   }
   inline void MultVarU(TString aName, ULong64_t input) {
-    if     (HasVarUS_(aName)) SetVarUS_(aName, GetVarUS_(aName) * input);
-    else if(HasVarUI_(aName)) SetVarUI_(aName, GetVarUI_(aName) * input);
+    if     (HasVarUI_(aName)) SetVarUI_(aName, GetVarUI_(aName) * input);
+    else if(HasVarUS_(aName)) SetVarUS_(aName, GetVarUS_(aName) * input);
     else if(HasVarUL_(aName)) SetVarUL_(aName, GetVarUL_(aName) * input);
     else                      AsrtVar(false,aName+" (MultVarU)");
   }
@@ -280,16 +280,16 @@ public:
 
   // counter access
   // -----------------------------------------------------------------------------------------------------------
-  inline void     resetCntr()                            { cntrMap->resetCntr();           }
-  inline void     clearCntr()                            { cntrMap->clearCntr();           }
-  inline void     NewCntr(TString  aName, int input = 0) { cntrMap->NewCntr(aName,input);  }
-  inline void     IncCntr(TString  aName, int val   = 1) { cntrMap->IncCntr(aName,val);    }
-  inline void     DecCntr(TString  aName, int val   = 1) { cntrMap->DecCntr(aName,val);    }
-  inline int      GetCntr(TString  aName)                { return cntrMap->GetCntr(aName); }
-  inline bool     HasCntr(TString  aName)                { return cntrMap->HasCntr(aName); }
-  inline void     DelCntr(TString  aName)                { cntrMap->DelCntr(aName);        }
+  inline void resetCntr()                            { cntrMap->resetCntr();           }
+  inline void clearCntr()                            { cntrMap->clearCntr();           }
+  inline void NewCntr(TString  aName, int input = 0) { cntrMap->NewCntr(aName,input);  }
+  inline void IncCntr(TString  aName, int val   = 1) { cntrMap->IncCntr(aName,val);    }
+  inline void DecCntr(TString  aName, int val   = 1) { cntrMap->DecCntr(aName,val);    }
+  inline int  GetCntr(TString  aName)                { return cntrMap->GetCntr(aName); }
+  inline bool HasCntr(TString  aName)                { return cntrMap->HasCntr(aName); }
+  inline void DelCntr(TString  aName)                { cntrMap->DelCntr(aName);        }
   
-  inline void     printCntr(TString nameTag = "", Log::LOGtypes logLevel = Log::INFO) {
+  inline void printCntr(TString nameTag = "", Log::LOGtypes logLevel = Log::INFO) {
     cntrMap->printCntr(nameTag,logLevel); return;
   }
 
@@ -377,16 +377,16 @@ private:
     return;
   }
 
-  // -----------------------------------------------------------------------------------------------------------
-  inline bool IsDefVarC_ (TString aName) { return (          varC [aName]->String() == DefOpts::DefC        ); }
-  inline bool IsDefVarS_ (TString aName) { return (          varS [aName]           == DefOpts::DefS        ); }
-  inline bool IsDefVarI_ (TString aName) { return (          varI [aName]           == DefOpts::DefI        ); }
-  inline bool IsDefVarL_ (TString aName) { return (          varL [aName]           == DefOpts::DefL        ); }
-  inline bool IsDefVarUS_(TString aName) { return (          varUS[aName]           == DefOpts::DefUS       ); }
-  inline bool IsDefVarUI_(TString aName) { return (          varUI[aName]           == DefOpts::DefUI       ); }
-  inline bool IsDefVarUL_(TString aName) { return (          varUL[aName]           == DefOpts::DefUL       ); }
-  inline bool IsDefVarF_ (TString aName) { return (std::fabs(varF [aName]            - DefOpts::DefF ) < EPS); }
-  inline bool IsDefVarD_ (TString aName) { return (std::fabs(varD [aName]            - DefOpts::DefD ) < EPS); }
+  // // -----------------------------------------------------------------------------------------------------------
+  // inline bool IsDefVarC_ (TString aName) { return (          varC [aName]->String() == DefOpts::DefC        ); }
+  // inline bool IsDefVarS_ (TString aName) { return (          varS [aName]           == DefOpts::DefS        ); }
+  // inline bool IsDefVarI_ (TString aName) { return (          varI [aName]           == DefOpts::DefI        ); }
+  // inline bool IsDefVarL_ (TString aName) { return (          varL [aName]           == DefOpts::DefL        ); }
+  // inline bool IsDefVarUS_(TString aName) { return (          varUS[aName]           == DefOpts::DefUS       ); }
+  // inline bool IsDefVarUI_(TString aName) { return (          varUI[aName]           == DefOpts::DefUI       ); }
+  // inline bool IsDefVarUL_(TString aName) { return (          varUL[aName]           == DefOpts::DefUL       ); }
+  // inline bool IsDefVarF_ (TString aName) { return (std::fabs(varF [aName]            - DefOpts::DefF ) < EPS); }
+  // inline bool IsDefVarD_ (TString aName) { return (std::fabs(varD [aName]            - DefOpts::DefD ) < EPS); }
 };
 
 #endif

@@ -113,7 +113,8 @@ void VarMaps::NewVarI(TString aName, Long64_t input, TString type) {
 
   if(input == DefOpts::DefL) { if(isS) input = DefOpts::DefS; else if(isI) input = DefOpts::DefI; }
 
-  if     (isS) NewVarS_(aName,input); else if(isI) NewVarI_(aName,input);
+
+  if     (isI) NewVarI_(aName,input); else if(isS) NewVarS_(aName,input);
   else if(isL) NewVarL_(aName,input); else AsrtVar(false,aName+" (NewVarI - type="+type+")");
 
   return;
@@ -131,7 +132,7 @@ void VarMaps::NewVarU(TString aName, ULong64_t input, TString type) {
 
   if(input == DefOpts::DefUL) { if(isUS) input = DefOpts::DefUS; else if(isUI) input = DefOpts::DefUI; }
 
-  if     (isUS) NewVarUS_(aName,input); else if(isUI) NewVarUI_(aName,input);
+  if     (isUI) NewVarUI_(aName,input); else if(isUS) NewVarUS_(aName,input);
   else if(isUL) NewVarUL_(aName,input); else AsrtVar(false,aName+" (NewVarU - type="+type+")");
 
   return;
@@ -172,12 +173,12 @@ void VarMaps::SetVarB(TString aName, Bool_t    input) { SetVarB_(aName,input); r
 void VarMaps::SetVarC(TString aName, TString   input) { SetVarC_(aName,input); return; }
 // ===========================================================================================================
 void VarMaps::SetVarI(TString aName, Long64_t  input) {
-  if     (HasVarS_ (aName)) varS [aName] = input; else if(HasVarI_ (aName)) varI [aName] = input;
+  if     (HasVarI_ (aName)) varI [aName] = input; else if(HasVarS_ (aName)) varS [aName] = input;
   else if(HasVarL_ (aName)) varL [aName] = input; else AsrtVar(false,aName+" (SetVarI)"); return;
 }
 // ===========================================================================================================
 void VarMaps::SetVarU(TString aName, ULong64_t input) {
-  if     (HasVarUS_(aName)) varUS[aName] = input; else if(HasVarUI_(aName)) varUI[aName] = input;
+  if     (HasVarUI_(aName)) varUI[aName] = input; else if(HasVarUS_(aName)) varUS[aName] = input;
   else if(HasVarUL_(aName)) varUL[aName] = input; else AsrtVar(false,aName+" (SetVarU)"); return;
 }
 // ===========================================================================================================
@@ -209,13 +210,13 @@ void VarMaps::SetVarB(TString aName, TString input) {
 // ===========================================================================================================
 void VarMaps::SetVarI(TString aName, TString input) {
 // ==================================================
-  if     (HasVarS_ (aName)) varS [aName] = utils->strToInt (input); else if(HasVarI_ (aName)) varI [aName] = utils->strToInt(input);
+  if     (HasVarI_ (aName)) varI [aName] = utils->strToInt(input);  else if(HasVarS_ (aName)) varS [aName] = utils->strToInt (input);
   else if(HasVarL_ (aName)) varL [aName] = utils->strToLong(input); else AsrtVar(false,aName+" (SetVarI)"); return;
 }
 // ===========================================================================================================
 void VarMaps::SetVarU(TString aName, TString input) {
 // ==================================================
-  if     (HasVarUS_(aName)) varUS[aName] = utils->strToUint (input); else if(HasVarUI_(aName)) varUI[aName] = utils->strToUint(input);
+  if     (HasVarUI_(aName)) varUI[aName] = utils->strToUint(input);  else if(HasVarUS_(aName)) varUS[aName] = utils->strToUint (input);
   else if(HasVarUL_(aName)) varUL[aName] = utils->strToUlong(input); else AsrtVar(false,aName+" (SetVarU)"); return;
 }
 // ===========================================================================================================
@@ -340,17 +341,17 @@ void VarMaps::copyVarData(VarMaps * inObj, vector < pair<TString,TString> > * va
   if(dynamic_cast<vector< pair<TString,TString> >*>(varTypeNameV)) {
     vector < pair<TString,TString> >::iterator itr, itrEnd;
     for(itr=varTypeNameV->begin(), itrEnd=varTypeNameV->end(); itr!=itrEnd; ++itr) {
-      if     (itr->first == "B" ) { SetVarB_ ( itr->second , inObj->GetVarB(itr->second) ); }
-      else if(itr->first == "C" ) { SetVarC_ ( itr->second , inObj->GetVarC(itr->second) ); }
-      else if(itr->first == "S" ) { SetVarS_ ( itr->second , inObj->GetVarI(itr->second) ); }
+      if     (itr->first == "F" ) { SetVarF_ ( itr->second , inObj->GetVarF(itr->second) ); }
       else if(itr->first == "I" ) { SetVarI_ ( itr->second , inObj->GetVarI(itr->second) ); }
+      else if(itr->first == "B" ) { SetVarB_ ( itr->second , inObj->GetVarB(itr->second) ); }
+      else if(itr->first == "C" ) { SetVarC_ ( itr->second , inObj->GetVarC(itr->second) ); }
+      else if(itr->first == "D" ) { SetVarD_ ( itr->second , inObj->GetVarF(itr->second) ); }
+      else if(itr->first == "FM") { SetForm_ ( itr->second , inObj->GetForm(itr->second) ); }
+      else if(itr->first == "S" ) { SetVarS_ ( itr->second , inObj->GetVarI(itr->second) ); }
       else if(itr->first == "L" ) { SetVarL_ ( itr->second , inObj->GetVarI(itr->second) ); }
       else if(itr->first == "US") { SetVarUS_( itr->second , inObj->GetVarU(itr->second) ); }
       else if(itr->first == "UI") { SetVarUI_( itr->second , inObj->GetVarU(itr->second) ); }
       else if(itr->first == "UL") { SetVarUL_( itr->second , inObj->GetVarU(itr->second) ); }
-      else if(itr->first == "F" ) { SetVarF_ ( itr->second , inObj->GetVarF(itr->second) ); }
-      else if(itr->first == "D" ) { SetVarD_ ( itr->second , inObj->GetVarF(itr->second) ); }
-      else if(itr->first == "FM") { SetForm_ ( itr->second , inObj->GetForm(itr->second) ); }
     }
   }
   else {
@@ -378,16 +379,16 @@ void VarMaps::setDefaultVals(vector < pair<TString,TString> > * varTypeNameV) {
   if(dynamic_cast<vector< pair<TString,TString> >*>(varTypeNameV)) {
     vector < pair<TString,TString> >::iterator itr, itrEnd;
     for(itr=varTypeNameV->begin(), itrEnd=varTypeNameV->end(); itr!=itrEnd; ++itr) {
-      if     (itr->first == "B" ) { SetVarB_ ( itr->second , DefOpts::DefB  ); }
-      else if(itr->first == "C" ) { SetVarC_ ( itr->second , DefOpts::DefC  ); }
-      else if(itr->first == "S" ) { SetVarS_ ( itr->second , DefOpts::DefS  ); }
+      if     (itr->first == "F" ) { SetVarF_ ( itr->second , DefOpts::DefF  ); }
       else if(itr->first == "I" ) { SetVarI_ ( itr->second , DefOpts::DefI  ); }
+      else if(itr->first == "B" ) { SetVarB_ ( itr->second , DefOpts::DefB  ); }
+      else if(itr->first == "C" ) { SetVarC_ ( itr->second , DefOpts::DefC  ); }
+      else if(itr->first == "D" ) { SetVarD_ ( itr->second , DefOpts::DefD  ); }
+      else if(itr->first == "S" ) { SetVarS_ ( itr->second , DefOpts::DefS  ); }
       else if(itr->first == "L" ) { SetVarL_ ( itr->second , DefOpts::DefL  ); }
       else if(itr->first == "US") { SetVarUS_( itr->second , DefOpts::DefUS ); }
       else if(itr->first == "UI") { SetVarUI_( itr->second , DefOpts::DefUI ); }
       else if(itr->first == "UL") { SetVarUL_( itr->second , DefOpts::DefUL ); }
-      else if(itr->first == "F" ) { SetVarF_ ( itr->second , DefOpts::DefF  ); }
-      else if(itr->first == "D" ) { SetVarD_ ( itr->second , DefOpts::DefD  ); }
     }
   }
   else {
@@ -437,29 +438,29 @@ void VarMaps::rmVarPattern(TString pattern, TString type) {
 // ========================================================
   vector <TString> varNames;
 
-  if     (type == "B" ) { for(map <TString,Bool_t>     ::iterator itr=varB .begin(); itr!=varB .end(); ++itr) if((itr->first).Contains(pattern)) varNames.push_back(itr->first); }
-  else if(type == "C" ) { for(map <TString,TObjString*>::iterator itr=varC .begin(); itr!=varC .end(); ++itr) if((itr->first).Contains(pattern)) varNames.push_back(itr->first); }
-  else if(type == "I") {
+  if     (type == "I") {
     for(map <TString,Short_t>    ::iterator itr=varS .begin(); itr!=varS .end(); ++itr) if((itr->first).Contains(pattern)) varNames.push_back(itr->first);
     for(map <TString,Int_t>      ::iterator itr=varI .begin(); itr!=varI .end(); ++itr) if((itr->first).Contains(pattern)) varNames.push_back(itr->first);
     for(map <TString,Long64_t>   ::iterator itr=varL .begin(); itr!=varL .end(); ++itr) if((itr->first).Contains(pattern)) varNames.push_back(itr->first);
-  }
-  else if(type == "U") {
-    for(map <TString,UShort_t>   ::iterator itr=varUS.begin(); itr!=varUS.end(); ++itr) if((itr->first).Contains(pattern)) varNames.push_back(itr->first);
-    for(map <TString,UInt_t>     ::iterator itr=varUI.begin(); itr!=varUI.end(); ++itr) if((itr->first).Contains(pattern)) varNames.push_back(itr->first);
-    for(map <TString,ULong64_t>  ::iterator itr=varUL.begin(); itr!=varUL.end(); ++itr) if((itr->first).Contains(pattern)) varNames.push_back(itr->first);
   }
   else if(type == "F") {
     for(map <TString,Float_t>    ::iterator itr=varF .begin(); itr!=varF .end(); ++itr) if((itr->first).Contains(pattern)) varNames.push_back(itr->first);
     for(map <TString,Double_t>   ::iterator itr=varD .begin(); itr!=varD .end(); ++itr) if((itr->first).Contains(pattern)) varNames.push_back(itr->first);
   }
+  else if(type == "B" ) { for(map <TString,Bool_t>     ::iterator itr=varB .begin(); itr!=varB .end(); ++itr) if((itr->first).Contains(pattern)) varNames.push_back(itr->first); }
+  else if(type == "C" ) { for(map <TString,TObjString*>::iterator itr=varC .begin(); itr!=varC .end(); ++itr) if((itr->first).Contains(pattern)) varNames.push_back(itr->first); }
+  else if(type == "U") {
+    for(map <TString,UShort_t>   ::iterator itr=varUS.begin(); itr!=varUS.end(); ++itr) if((itr->first).Contains(pattern)) varNames.push_back(itr->first);
+    for(map <TString,UInt_t>     ::iterator itr=varUI.begin(); itr!=varUI.end(); ++itr) if((itr->first).Contains(pattern)) varNames.push_back(itr->first);
+    for(map <TString,ULong64_t>  ::iterator itr=varUL.begin(); itr!=varUL.end(); ++itr) if((itr->first).Contains(pattern)) varNames.push_back(itr->first);
+  }
   
   for(int nVarNameNow=0; nVarNameNow<(int)varNames.size(); nVarNameNow++) {
-    if     (type == "B")   DelVarB_ (varNames[nVarNameNow]);
-    else if(type == "C")   DelVarC_ (varNames[nVarNameNow]);
-    else if(type == "I") { DelVarS_ (varNames[nVarNameNow]); DelVarI_ (varNames[nVarNameNow]); DelVarL_ (varNames[nVarNameNow]); }
-    else if(type == "U") { DelVarUS_(varNames[nVarNameNow]); DelVarUI_(varNames[nVarNameNow]); DelVarUL_(varNames[nVarNameNow]); }
+    if     (type == "I") { DelVarS_ (varNames[nVarNameNow]); DelVarI_ (varNames[nVarNameNow]); DelVarL_ (varNames[nVarNameNow]); }
     else if(type == "F") { DelVarF_ (varNames[nVarNameNow]); DelVarD_ (varNames[nVarNameNow]);                                   }
+    else if(type == "B")   DelVarB_ (varNames[nVarNameNow]);
+    else if(type == "C")   DelVarC_ (varNames[nVarNameNow]);
+    else if(type == "U") { DelVarUS_(varNames[nVarNameNow]); DelVarUI_(varNames[nVarNameNow]); DelVarUL_(varNames[nVarNameNow]); }
   }
   
   varNames.clear();
@@ -470,11 +471,11 @@ void VarMaps::rmVarPattern(TString pattern, TString type) {
 void VarMaps::getVarPattern(TString type, vector <TString> & optV, TString pattern, bool ignorCase) {
 // ==================================================================================================
   
-  if     (type == "B" ) glob->getElePattern(varB ,optV,pattern,ignorCase); else if(type == "C" ) glob->getElePattern(varC ,optV,pattern,ignorCase);
-  else if(type == "S" ) glob->getElePattern(varS ,optV,pattern,ignorCase); else if(type == "I" ) glob->getElePattern(varI ,optV,pattern,ignorCase);
+  if     (type == "I" ) glob->getElePattern(varI ,optV,pattern,ignorCase); else if(type == "F" ) glob->getElePattern(varF ,optV,pattern,ignorCase);
+  else if(type == "B" ) glob->getElePattern(varB ,optV,pattern,ignorCase); else if(type == "C" ) glob->getElePattern(varC ,optV,pattern,ignorCase);
+  else if(type == "D" ) glob->getElePattern(varD ,optV,pattern,ignorCase); else if(type == "S" ) glob->getElePattern(varS ,optV,pattern,ignorCase); 
   else if(type == "L" ) glob->getElePattern(varL ,optV,pattern,ignorCase); else if(type == "US") glob->getElePattern(varUS,optV,pattern,ignorCase);
   else if(type == "UI") glob->getElePattern(varUI,optV,pattern,ignorCase); else if(type == "UL") glob->getElePattern(varUL,optV,pattern,ignorCase);  
-  else if(type == "F" ) glob->getElePattern(varF ,optV,pattern,ignorCase); else if(type == "D" ) glob->getElePattern(varD ,optV,pattern,ignorCase);
   else assert(false);
 
   return;
@@ -1013,15 +1014,15 @@ void VarMaps::connectTreeBranches(TTree * tree, vector <TString> * excludedBranc
           assert(false);
         }
 
-        if     (brnchType == "/O") NewVarB_ (brnchName,DefOpts::DefB);
+        if     (brnchType == "/I") NewVarI_ (brnchName,DefOpts::DefI);
+        else if(brnchType == "/F") NewVarF_ (brnchName,DefOpts::DefF);
+        else if(brnchType == "/O") NewVarB_ (brnchName,DefOpts::DefB);
+        else if(brnchType == "/D") NewVarD_ (brnchName,DefOpts::DefD);
         else if(brnchType == "/S") NewVarS_ (brnchName,DefOpts::DefS);
-        else if(brnchType == "/I") NewVarI_ (brnchName,DefOpts::DefI);
         else if(brnchType == "/L") NewVarL_ (brnchName,DefOpts::DefL);
         else if(brnchType == "/s") NewVarUS_(brnchName,DefOpts::DefUS);
         else if(brnchType == "/i") NewVarUI_(brnchName,DefOpts::DefUI);
         else if(brnchType == "/l") NewVarUL_(brnchName,DefOpts::DefUL);
-        else if(brnchType == "/F") NewVarF_ (brnchName,DefOpts::DefF);
-        else if(brnchType == "/D") NewVarD_ (brnchName,DefOpts::DefD);
         else {
           bool isTObjString = ((TString)aBranch->GetClassName() == "TObjString");
           if(!isTObjString) {
@@ -1083,16 +1084,16 @@ void VarMaps::connectTreeBranches(TTree * tree, vector <TString> * excludedBranc
       if(debug) aCustomLOG("connectTreeBranches()") <<coutGreen<<"Now connecting:      "<<coutRed<<std::setw(width)<<brnchName
                                                     <<CT<<coutBlue<<std::setw(width)<<GetVarType(brnchName)<<coutDef<<endl;
 
-      if     (GetVarType(brnchName) == "B" ) { AsrtVar(HasVarB_ (brnchName),brnchName); treeNow->SetBranchAddress(brnchName, &(varB [brnchName])); }
+      if     (GetVarType(brnchName) == "I" ) { AsrtVar(HasVarI_ (brnchName),brnchName); treeNow->SetBranchAddress(brnchName, &(varI [brnchName])); }
+      else if(GetVarType(brnchName) == "F" ) { AsrtVar(HasVarF_ (brnchName),brnchName); treeNow->SetBranchAddress(brnchName, &(varF [brnchName])); }
+      else if(GetVarType(brnchName) == "B" ) { AsrtVar(HasVarB_ (brnchName),brnchName); treeNow->SetBranchAddress(brnchName, &(varB [brnchName])); }
       else if(GetVarType(brnchName) == "C" ) { AsrtVar(HasVarC_ (brnchName),brnchName); treeNow->SetBranchAddress(brnchName, &(varC [brnchName])); }
+      else if(GetVarType(brnchName) == "D" ) { AsrtVar(HasVarD_ (brnchName),brnchName); treeNow->SetBranchAddress(brnchName, &(varD [brnchName])); }
       else if(GetVarType(brnchName) == "S" ) { AsrtVar(HasVarS_ (brnchName),brnchName); treeNow->SetBranchAddress(brnchName, &(varS [brnchName])); }
-      else if(GetVarType(brnchName) == "I" ) { AsrtVar(HasVarI_ (brnchName),brnchName); treeNow->SetBranchAddress(brnchName, &(varI [brnchName])); }
       else if(GetVarType(brnchName) == "L" ) { AsrtVar(HasVarL_ (brnchName),brnchName); treeNow->SetBranchAddress(brnchName, &(varL [brnchName])); }
       else if(GetVarType(brnchName) == "US") { AsrtVar(HasVarUS_(brnchName),brnchName); treeNow->SetBranchAddress(brnchName, &(varUS[brnchName])); }
       else if(GetVarType(brnchName) == "UI") { AsrtVar(HasVarUI_(brnchName),brnchName); treeNow->SetBranchAddress(brnchName, &(varUI[brnchName])); }
       else if(GetVarType(brnchName) == "UL") { AsrtVar(HasVarUL_(brnchName),brnchName); treeNow->SetBranchAddress(brnchName, &(varUL[brnchName])); }
-      else if(GetVarType(brnchName) == "F" ) { AsrtVar(HasVarF_ (brnchName),brnchName); treeNow->SetBranchAddress(brnchName, &(varF [brnchName])); }
-      else if(GetVarType(brnchName) == "D" ) { AsrtVar(HasVarD_ (brnchName),brnchName); treeNow->SetBranchAddress(brnchName, &(varD [brnchName])); }
       else assert(false);
     }
   }
@@ -1390,11 +1391,11 @@ void VarMaps::storeTreeToAscii(TString outFilePrefix, TString outFileDir, int ma
 
       if     (typeNow == "F"  || typeNow == "D"   ) { line += utils->doubleToStr(     GetVarF(nameNow)        ); }
       else if(typeNow == "S"  || typeNow == "I"   ) { line += utils->intToStr   (     GetVarI(nameNow)        ); }
+      else if(typeNow == "B"                      ) { line += (TString)         (     GetVarB(nameNow)?"1":"0"); }
+      else if(typeNow == "C"                      ) { line += (TString)         ("\""+GetVarC(nameNow)+"\""   ); }
       else if(typeNow == "L"                      ) { line += utils->lIntToStr  (     GetVarI(nameNow)        ); }
       else if(typeNow == "US" || typeNow == "UI"  ) { line += utils->uIntToStr  (     GetVarU(nameNow)        ); }
       else if(typeNow == "UL"                     ) { line += utils->ULIntToStr (     GetVarU(nameNow)        ); }
-      else if(typeNow == "B"                      ) { line += (TString)         (     GetVarB(nameNow)?"1":"0"); }
-      else if(typeNow == "C"                      ) { line += (TString)         ("\""+GetVarC(nameNow)+"\""   ); }
       else VERIFY(LOCATION,(TString)"found unsupported variable-type ("+typeNow+")",false);
 
       line += ",";

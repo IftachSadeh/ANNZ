@@ -67,6 +67,14 @@ def generalSettings():
   # number of near-neighbours to use for the KNN error estimation, see setupKdTreeKNN().
   # glob.annz["nErrKNN"] = 70
 
+  # The KNN error and weight calculations are nominally performed for rescaled variable distributions; each input variable is
+  # mapped by a linear transformation to the range `[-1,1]`, so that the distance in the input parameter space is not biased
+  # by the scale (units) of the different parameters. It is possible to prevent the rescalling by setting the following flags;
+  # these respectively relate to the KNN error calculation, the reference dataset reweighting, and the training quality-flag.
+  # glob.annz["doWidthRescale_errKNN"]  = False
+  # glob.annz["doWidthRescale_wgtKNN"]  = False
+  # glob.annz["doWidthRescale_inTrain"] = False
+
   # if propagating input-errors - nErrINP is the number of randomly generated MLM values used to propagate
   # the uncertainty on the input parameters to the MLM-estimator. See getRegClsErrINP()
   # glob.annz["nErrINP"] = -1

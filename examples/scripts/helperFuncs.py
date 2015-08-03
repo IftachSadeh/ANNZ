@@ -276,7 +276,7 @@ def runANNZ():
     if glob.annz["doBinnedCls"]:
       for nRndOptNow in range(glob.annz["binCls_nTries"]): glob.annz.pop("userMLMopts_"+str(nRndOptNow),None)
 
-    nTries = 5
+    nTries = 1
     for nTryNow in range(nTries):
       glob.annz["initSeedRnd"] += 1
       log.warning(whtOnRed(" - runANNZ failed !!! Will try again ("+str(nTryNow+1)+"/"+str(nTries)+") with initSeedRnd = ")+yellowOnRed(str(glob.annz["initSeedRnd"])))
