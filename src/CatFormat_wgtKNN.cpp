@@ -354,7 +354,9 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString 
       }
 
       if(valMin < valMax) {
-        varNamesScaled[nVarNow] = (TString)"(("+varNames[nVarNow]+") - "+utils->floatToStr(valMin)+") * "+utils->floatToStr( 2/(valMax - valMin) )+" - 1";
+        TString shiftStr = (TString)((valMin > 0) ? " - " : " + ") + utils->floatToStr(fabs(valMin));
+
+        varNamesScaled[nVarNow] = (TString)"(("+varNames[nVarNow]+") "+shiftStr+") * "+utils->floatToStr( 2/(valMax - valMin) )+" - 1";
 
         aLOG(Log::INFO)<<coutYellow<<" - Transformation to range [-1,1] from "<<coutGreen<<varNames[nVarNow]
                        <<coutYellow<<" to:  "<<coutBlue<<varNamesScaled[nVarNow]<<coutDef<<endl;

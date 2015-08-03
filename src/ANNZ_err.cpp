@@ -221,10 +221,12 @@ void ANNZ::setupKdTreeKNN(TChain * aChainKnn, TFile *& knnErrOutFile, TMVA::Fact
       // transform the input variable
       // -----------------------------------------------------------------------------------------------------------
       if(quantV[0] < quantV[1]) {
-        varScaled = (TString)"(("+inNamesVar[nMLMnow][nVarNow]+") - "+utils->floatToStr(quantV[0])
-                                             +") * "+utils->floatToStr( 2/(quantV[1] - quantV[0]) )+" - 1";
+        TString shiftStr = (TString)((quantV[0] > 0) ? " - " : " + ") + utils->floatToStr(fabs(quantV[0]));
 
-        TString varScaledFunc = varScaled; varScaledFunc.ReplaceAll(inNamesVar[nMLMnow][nVarNow],"x");        
+        varScaled = (TString)"(("+inNamesVar[nMLMnow][nVarNow]+")"+shiftStr+") * "+utils->floatToStr( 2/(quantV[1] - quantV[0]) )+" - 1";
+
+        TString varScaledFunc(varScaled); varScaledFunc.ReplaceAll(inNamesVar[nMLMnow][nVarNow],"x");        
+        
         inVarsScaleFunc[nMLMnow][nVarNow] = new TF1(varScaledFunc,varScaledFunc);  //cout<<"  ---> "<<varScaledFunc<<endl;
         
         aLOG(Log::DEBUG_1)<<coutYellow<<"   --> Transformation to range [-1,1] from "<<coutGreen<<inNamesVar[nMLMnow][nVarNow]
