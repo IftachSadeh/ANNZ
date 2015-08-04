@@ -33,22 +33,22 @@ public :
   ~VarMaps();
  
 private:
-  map <TString,Bool_t>          varB;
-  map <TString,TObjString*>     varC;
-  map <TString,Short_t>         varS;
-  map <TString,Int_t>           varI;
-  map <TString,Long64_t>        varL;
-  map <TString,UShort_t>        varUS;
-  map <TString,UInt_t>          varUI;
-  map <TString,ULong64_t>       varUL;
-  map <TString,Float_t>         varF;
-  map <TString,Double_t>        varD;
-  map <TString,TString>         varFM;
+  Map <TString,Bool_t>          varB;
+  Map <TString,TObjString*>     varC;
+  Map <TString,Short_t>         varS;
+  Map <TString,Int_t>           varI;
+  Map <TString,Long64_t>        varL;
+  Map <TString,UShort_t>        varUS;
+  Map <TString,UInt_t>          varUI;
+  Map <TString,ULong64_t>       varUL;
+  Map <TString,Float_t>         varF;
+  Map <TString,Double_t>        varD;
+  Map <TString,TString>         varFM;
 
-  map <TString,TString>         treeCutsM;
-  map <TString,TTreeFormula*>   treeCutsFormM, varFormM;
+  Map <TString,TString>         treeCutsM;
+  Map <TString,TTreeFormula*>   treeCutsFormM, varFormM;
 
-  map <TString,bool>            hasB, hasC, hasS, hasI, hasL, hasUS, hasUI, hasUL, hasF, hasD, hasFM;
+  Map <TString,bool>            hasB, hasC, hasS, hasI, hasL, hasUS, hasUI, hasUL, hasF, hasD, hasFM;
 
   TTree                         * treeRead, * treeWrite;
   int                           nTreeInChain;
@@ -117,8 +117,6 @@ public:
 
   bool            excludeThisBranch(TString branchName = "", vector <TString> * excludedBranchNames = NULL);
   bool            treeHasBranch(TTree * tree = NULL, TString branchName = "");
-//bool            hasBranchWithName(TString branchName, TString branchType = "ALL", bool isExactName = true);
-//template <typename T> bool  hasBranchWithName(map <TString,T> & input, TString branchName, bool isExactName = true);
   void            storeTreeToAscii(TString outFilePrefix, TString outFileDir = "", int maxNobj = 0, int nLinesFile = 0,
                                    TString treeCuts = "", vector <TString> * acceptV = NULL, vector <TString> * rejectV = NULL);
 

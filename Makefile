@@ -32,8 +32,6 @@ TUTDIR := $(ROOTSYS)/tutorials
 endif
 -include ../MyConfig.mk
 
-ROOTCINT = rootcint
-
 # ---------------------------------------------------------------------------------------------------
 # search path for included files and files-to-make; included ROOT libraries
 # ---------------------------------------------------------------------------------------------------
@@ -52,21 +50,21 @@ CXXFLAGS += -std=c++0x
 # ---------------------------------------------------------------------------------------------------
 # objects, libraries and shared libraries
 # ---------------------------------------------------------------------------------------------------
-OptMapsO        = OptMaps.$(ObjSuf) 			OptMapsDict.$(ObjSuf)
-UtilsO        	= Utils.$(ObjSuf) 				UtilsDict.$(ObjSuf)
-VarMapsO        = VarMaps.$(ObjSuf) 			VarMapsDict.$(ObjSuf)
-OutMngrO        = OutMngr.$(ObjSuf)       OutMngrDict.$(ObjSuf)
-BaseClassO      = BaseClass.$(ObjSuf) 		BaseClassDict.$(ObjSuf)
-CatFormatO      = CatFormat.$(ObjSuf) 		CatFormatDict.$(ObjSuf)
-ANNZO        		= ANNZ.$(ObjSuf) 					ANNZDict.$(ObjSuf)
+OptMapsO        = OptMaps.$(ObjSuf) 		
+UtilsO        	= Utils.$(ObjSuf) 			
+VarMapsO        = VarMaps.$(ObjSuf) 		
+OutMngrO        = OutMngr.$(ObjSuf)     
+BaseClassO      = BaseClass.$(ObjSuf) 	
+CatFormatO      = CatFormat.$(ObjSuf) 	
+ANNZO        		= ANNZ.$(ObjSuf) 				
 
-OptMapsS        = OptMaps.$(SrcSuf) 			OptMapsDict.$(SrcSuf)
-UtilsS          = Utils.$(SrcSuf) 				UtilsDict.$(SrcSuf)
-VarMapsS        = VarMaps.$(SrcSuf) 			VarMapsDict.$(SrcSuf)
-OutMngrS        = OutMngr.$(SrcSuf)       OutMngrDict.$(SrcSuf)
-BaseClassS      = BaseClass.$(SrcSuf) 		BaseClassDict.$(SrcSuf)
-CatFormatS      = CatFormat.$(SrcSuf) 		CatFormatDict.$(SrcSuf)
-ANNZS        		= ANNZ.$(SrcSuf) 					ANNZDict.$(SrcSuf)
+OptMapsS        = OptMaps.$(SrcSuf) 		
+UtilsS          = Utils.$(SrcSuf) 			
+VarMapsS        = VarMaps.$(SrcSuf) 		
+OutMngrS        = OutMngr.$(SrcSuf)     
+BaseClassS      = BaseClass.$(SrcSuf) 	
+CatFormatS      = CatFormat.$(SrcSuf) 	
+ANNZS        		= ANNZ.$(SrcSuf) 				
 
 OptMapsSO       = libOptMaps.$(DllSuf)
 UtilsSO       	= libUtils.$(DllSuf)
@@ -345,50 +343,20 @@ ANNZ.$(ObjSuf):   				OptMaps.hpp Utils.hpp VarMaps.hpp OutMngr.hpp BaseClass.hp
 myANNZ.$(ObjSuf):  				../include/*.hpp ../src/*.cpp 
 
 # ---------------------------------------------------------------------------------------------------
-# dictionary generation rules
-# ---------------------------------------------------------------------------------------------------
-OptMapsDict.$(SrcSuf): OptMaps.hpp OptMapsLinkDef.hpp
-	@echo "Generating dictionary $@..."
-	$(ROOTCINT) -f $@ -c $^
-
-UtilsDict.$(SrcSuf): Utils.hpp UtilsLinkDef.hpp
-	@echo "Generating dictionary $@..."
-	$(ROOTCINT) -f $@ -c $^
-
-VarMapsDict.$(SrcSuf): VarMaps.hpp VarMapsLinkDef.hpp
-	@echo "Generating dictionary $@..."
-	$(ROOTCINT) -f $@ -c $^
-
-OutMngrDict.$(SrcSuf): OutMngr.hpp OutMngrLinkDef.hpp
-	@echo "Generating dictionary $@..."
-	$(ROOTCINT) -f $@ -c $^
-
-BaseClassDict.$(SrcSuf): BaseClass.hpp BaseClassLinkDef.hpp
-	@echo "Generating dictionary $@..."
-	$(ROOTCINT) -f $@ -c $^
-
-CatFormatDict.$(SrcSuf): CatFormat.hpp CatFormatLinkDef.hpp
-	@echo "Generating dictionary $@..."
-	$(ROOTCINT) -f $@ -c $^
-
-ANNZDict.$(SrcSuf): ANNZ.hpp ANNZLinkDef.hpp
-	@echo "Generating dictionary $@..."
-	$(ROOTCINT) -f $@ -c $^
-
-
-# ---------------------------------------------------------------------------------------------------
 # general stuff
 # ---------------------------------------------------------------------------------------------------
 .$(SrcSuf).$(ObjSuf):
 	$(CXX)  $(CXXFLAGS) -c $<
 
 objclean:
-		@rm -f $(OBJS) $(TRACKMATHSRC) core *Dict.*
+		@rm -f $(OBJS) $(TRACKMATHSRC) core
 clean:      objclean
-		@rm -f $(PROGRAMS) $(OptMapsSO) $(OptMapsLIB) $(UtilsSO) $(UtilsLIB) $(VarMapsSO) $(VarMapsLIB) *Dict.* *.def *.exp \
+		@rm -f $(PROGRAMS) $(OptMapsSO) $(OptMapsLIB) $(UtilsSO) $(UtilsLIB) $(VarMapsSO) $(VarMapsLIB) *.def *.exp \
 		   *.root *.ps *.o *.so *.lib *.dll *.d *.log .def so_locations \
 		   files/* testdb.sqlite
 
 .SUFFIXES: .$(SrcSuf) .$(ObjSuf) .$(DllSuf)
-#.PHONY:    Aclock Hello Tetris
+
+
+
 

@@ -74,6 +74,26 @@ using std::pair;
 using std::min;
 using std::max;
 
+// #include "RVersion.h"
+// #if ROOT_VERSION_CODE >= 393218  // 393218 is for ROOT_RELEASE "6.00/02"
+// #endif // ROOT_VERSION_CODE > 393218
+
+#include <unordered_map>
+using std::unordered_map;
+
+namespace std {
+  template <>
+  struct hash<TString> {
+    std::size_t operator()(const TString & k) const {
+      return std::hash<std::string>()(k.Data());
+      // return std::hash<std::string>()((std::string)k);
+    };
+  };
+}
+
+#define Map unordered_map
+// #define Map map // can use this instead to go back to std::map
+
 
 #endif // __COMMONINCLUDE_H__
 

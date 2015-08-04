@@ -1,6 +1,11 @@
 # Changelog
 
-<!-- ## Master version -->
+## Master version
+
+- Removed unnecessary dictionary generation from Makefile.
+
+- Changed `std::map` to `std::unordered_map` in main containers of the `OptMaps()` and `VarMaps()` classes (constitutes a slight performance boost).
+
 ## ANNZ 2.0.6 (03/8/2015)
 
 - Did some code optimization for tree-looping operations.

@@ -38,9 +38,6 @@ namespace DefOpts {
   extern TString   DefC,  NullC;
 }
 
-// namespace LOG {
-//   enum LOGtypes { CRITICAL, ERROR, WARNING, INFO, DEBUG, DEBUG_1, DEBUG_2, DEBUG_3 };
-// }
 // ===========================================================================================================
 class OptMaps {
 // ============
@@ -54,10 +51,10 @@ public :
   TString name, failSize;
 
 protected:
-  map <TString,bool>    optB;
-  map <TString,int>     optI;
-  map <TString,double>  optF;
-  map <TString,TString> optC;
+  Map <TString,bool>    optB;
+  Map <TString,int>     optI;
+  Map <TString,double>  optF;
+  Map <TString,TString> optC;
 
   bool                  isLocked;
 
@@ -80,7 +77,7 @@ public:
 
   void                        checkName(TString messageTag, TString aName);
   void                        copyOptStruct(OptMaps * inObj);
-  void                        printMap(map <TString,TObjString*> & input, TString message = "", int nPrintRow = 0, int width = 0);
+  void                        printMap(Map <TString,TObjString*> & input, TString message = "", int nPrintRow = 0, int width = 0);
   void                        printOpts(int nPrintRow = 0, int width = 0);
   inline virtual void         printMapAll(int nPrintRow = 0, int width = 0) { printOpts(nPrintRow,width); return; }
   inline void                 clearOpt()      { optB.clear(); optI.clear(); optF.clear(); optC.clear(); return; }
@@ -139,7 +136,7 @@ public:
   // -----------------------------------------------------------------------------------------------------------
   // template functions should be defined completely in the header file, to prevent linker problems
   // ===========================================================================================================
-  template <typename T> void  printMap(map <TString,T> & input, TString message = "", int nPrintRow = 0, int width = 0) {
+  template <typename T> void  printMap(Map <TString,T> & input, TString message = "", int nPrintRow = 0, int width = 0) {
   // ====================================================================================================================
     if(nPrintRow == 0) nPrintRow = 4; if(width == 0) width = 15;
 
@@ -153,7 +150,7 @@ public:
     int nIncPatts = (int)incPatrns.size();
     
     int nItr(0);
-    for(typename map <TString,T>::iterator itr = input.begin(); itr!=input.end(); ++itr) {
+    for(typename Map <TString,T>::iterator itr = input.begin(); itr!=input.end(); ++itr) {
       if(nItr == 0) aCleanLOG()<<endl<<coutYellow<<" - "<<message<<endl<<"  ";
       if(nIncPatts) {
         bool hasIncPatt(false);
@@ -170,9 +167,9 @@ public:
     return ;
   };
   // ===========================================================================================================
-  template <typename T> void  getElePattern(map <TString,T> & input, vector <TString> & optVarV, TString pattern, bool ignorCase = false) {
+  template <typename T> void  getElePattern(Map <TString,T> & input, vector <TString> & optVarV, TString pattern, bool ignorCase = false) {
   // ======================================================================================================================================
-    for(typename map <TString,T>::iterator itr = input.begin(); itr!=input.end(); ++itr) {
+    for(typename Map <TString,T>::iterator itr = input.begin(); itr!=input.end(); ++itr) {
       bool  hasEle = (ignorCase) ? ((TString)itr->first).Contains(pattern,TString::kIgnoreCase)
                                  : ((TString)itr->first).Contains(pattern);
 
@@ -182,5 +179,6 @@ public:
   };
 
 };
+
 
 #endif
