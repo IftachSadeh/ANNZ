@@ -12,9 +12,9 @@
 - Added the option to use an entire input file as signal or background for single/randomized classification, in addition to (or instead of) defining a cut based on one of the input parameters. In order to use this option, one muse define the variables `inpFiles_sig` and `inpFiles_bck`. An example is given in `scripts/annz_rndCls_advanced.py`.
 
 - Added a bias-correction for randomized regression PDFs. This options is now active by default, and may be turned off by setting,
-```python
-glob.annz["doBiasCorPDF"] = False
-```
+  ```python
+  glob.annz["doBiasCorPDF"] = False
+  ```
 
 - Other minor modifications.
 
