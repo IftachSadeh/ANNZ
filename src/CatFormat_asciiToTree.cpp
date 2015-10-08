@@ -56,19 +56,30 @@ void CatFormat::inputToFullTree(TString inAsciiFiles, TString inAsciiVars, TStri
                   <<coutBlue<<") ... "<<coutDef<<endl;
 
   // global to local variables
-  int     maxNobj         = glob->GetOptI("maxNobj");
-  int     nObjectsToPrint = glob->GetOptI("nObjectsToPrint");
-  int     nObjectsToWrite = glob->GetOptI("nObjectsToWrite");
-  TString treeName        = glob->GetOptC("treeName")+treeNamePostfix;
-  TString origFileName    = glob->GetOptC("origFileName");
-  TString indexName       = glob->GetOptC("indexName");
-  TString weightName      = glob->GetOptC("baseName_wgtKNN");
+  int     maxNobj           = glob->GetOptI("maxNobj");
+  int     nObjectsToPrint   = glob->GetOptI("nObjectsToPrint");
+  int     nObjectsToWrite   = glob->GetOptI("nObjectsToWrite");
+  TString treeName          = glob->GetOptC("treeName")+treeNamePostfix;
+  TString origFileName      = glob->GetOptC("origFileName");
+  TString indexName         = glob->GetOptC("indexName");
+  TString weightName        = glob->GetOptC("baseName_wgtKNN");
+  bool    storeOrigFileName = glob->GetOptB("storeOrigFileName");
   
+  TString sigBckInpName     = glob->GetOptC("sigBckInpName");
+  TString inpFiles_sig      = glob->GetOptC("inpFiles_sig");
+  TString inpFiles_bck      = glob->GetOptC("inpFiles_bck");
+  bool    addSigBckInp      = (inpFiles_sig != "" || inpFiles_bck != "");
+
   if(inTreeName == "") inTreeName = glob->GetOptC("inTreeName");
 
   vector <int>      nLineV;
   map <TString,int> intMap;
-  vector <TString>  inFileNameV, inVarNames, inVarTypes;
+  vector <TString>  inFileNameV, inVarNames, inVarTypes, inpFiles_sigV, inpFiles_bckV;
+
+  if(addSigBckInp) {
+    inpFiles_sigV = utils->splitStringByChar(inpFiles_sig.ReplaceAll(" ",""),';');
+    inpFiles_bckV = utils->splitStringByChar(inpFiles_bck.ReplaceAll(" ",""),';');
+  }
 
   // -----------------------------------------------------------------------------------------------------------
   // input files
@@ -98,7 +109,9 @@ void CatFormat::inputToFullTree(TString inAsciiFiles, TString inAsciiVars, TStri
 
   // clear tree objects and reserve variables which are not part of the input file
   VarMaps * var = new VarMaps(glob,utils,"treeVars");  //var->printMapOpt(nPrintRow,width); cout<<endl;
-  var->NewVarI(indexName); var->NewVarC(origFileName); var->NewVarF(weightName);
+  var->NewVarI(indexName); var->NewVarF(weightName);
+  if(storeOrigFileName) var->NewVarC(origFileName);
+  if(addSigBckInp)      var->NewVarI(sigBckInpName);
 
   // create tree variables from the linput ist
   // -----------------------------------------------------------------------------------------------------------
@@ -120,6 +133,28 @@ void CatFormat::inputToFullTree(TString inAsciiFiles, TString inAsciiVars, TStri
     TString  inFileNameNow   = inFileNameV[nInFileNow];
     unsigned posSlash        = ((std::string)inFileNameNow).find_last_of("/");
     TString  reducedFileName = (TString)(((std::string)inFileNameNow).substr(posSlash+1));
+
+    // optional parameter to mark if an object is of type signal (1), background (0) or undefined (-1), based on the name of the input file
+    int sigBckInp(-1);
+    if(addSigBckInp) {
+      int nSigBckFound(0);
+
+      if(find(inpFiles_bckV.begin(),inpFiles_bckV.end(),reducedFileName) != inpFiles_bckV.end()) { nSigBckFound++; sigBckInp = 0; }
+      if(find(inpFiles_sigV.begin(),inpFiles_sigV.end(),reducedFileName) != inpFiles_sigV.end()) { nSigBckFound++; sigBckInp = 1; }
+
+      if(nSigBckFound == 0) {
+        aLOG(Log::WARNING)<<coutBlue<<" - Skipping "<<coutRed<<inFileNameNow<<coutBlue
+                          <<" \"inpFiles_bck\" and \"inpFiles_sig\" are defined, but do not include it ... "<<coutDef<<endl;
+        continue;
+      }
+      else if(nSigBckFound == 1) {
+        aLOG(Log::INFO)<<coutBlue<<" - Will add \"sigBckInpName\" = "<<coutYellow<<sigBckInp<<" ("<<(TString)((sigBckInp == 0)?"background":"signal")
+                       <<")"<<coutBlue<<" for all objects from "<<coutGreen<<reducedFileName<<coutDef<<endl;
+      }
+      else {
+        VERIFY(LOCATION,(TString)"Input file \""+reducedFileName+"\" found in both \"inpFiles_bck\" and \"inpFiles_sig\".",false);
+      }
+    }
 
     // skip input files with no content
     if(!isRootInput) {
@@ -165,10 +200,12 @@ void CatFormat::inputToFullTree(TString inAsciiFiles, TString inAsciiVars, TStri
         var->copyVarData(var_0,&varTypeNameV);
 
         // update variable with input file name
-        var->SetVarC(origFileName,reducedFileName);
+        if(storeOrigFileName) var->SetVarC(origFileName,reducedFileName);
+        // sig/bck tag based on the name of the input file
+        if(addSigBckInp) var->SetVarI(sigBckInpName, sigBckInp);
         // the object index
         var->SetVarI(indexName, var->GetCntr("nObj"));
-        // update the placeholder to KNN weights
+        // update the placeholder of the KNN weights
         var->SetVarF(weightName,1);
         
         // fill the tree with the current variables
@@ -208,7 +245,9 @@ void CatFormat::inputToFullTree(TString inAsciiFiles, TString inAsciiVars, TStri
         }
 
         // update variable with input file name
-        var->SetVarC(origFileName,reducedFileName);
+        if(storeOrigFileName) var->SetVarC(origFileName,reducedFileName);
+        // sig/bck tag based on the name of the input file
+        if(addSigBckInp) var->SetVarI(sigBckInpName, sigBckInp);
         // the object index
         var->SetVarI(indexName, var->GetCntr("nObj"));
         // update the placeholder to KNN weights
@@ -233,7 +272,7 @@ void CatFormat::inputToFullTree(TString inAsciiFiles, TString inAsciiVars, TStri
 
   DELNULL(var);
 
-  inVarNames.clear(); inVarTypes.clear(); inFileNameV.clear(); nLineV.clear();
+  inVarNames.clear(); inVarTypes.clear(); inFileNameV.clear(); nLineV.clear(); inpFiles_sigV.clear(); inpFiles_bckV.clear();
 
   return;
 }
@@ -263,22 +302,28 @@ void CatFormat::inputToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
                   <<coutBlue<<") ... "<<coutDef<<endl;
 
   // global to local variables
-  int     maxNobj         = glob->GetOptI("maxNobj");
-  int     nObjectsToPrint = glob->GetOptI("nObjectsToPrint");
-  int     nObjectsToWrite = glob->GetOptI("nObjectsToWrite");
-  TString treeName        = glob->GetOptC("treeName");
-  TString origFileName    = glob->GetOptC("origFileName");
-  int     nSplit          = glob->GetOptI("nSplit");
-  TString splitType       = glob->GetOptC("splitType");
-  TString indexName       = glob->GetOptC("indexName");
-  TString splitName       = glob->GetOptC("splitName");
-  TString testValidType   = glob->GetOptC("testValidType");
-  TString weightName      = glob->GetOptC("baseName_wgtKNN");
-  bool    doPlots         = glob->GetOptB("doPlots");
-  TString plotExt         = glob->GetOptC("printPlotExtension");
-  TString outDirNameFull  = glob->GetOptC("outDirNameFull");
-  TString inTreeName      = glob->GetOptC("inTreeName");
+  int     maxNobj           = glob->GetOptI("maxNobj");
+  int     nObjectsToPrint   = glob->GetOptI("nObjectsToPrint");
+  int     nObjectsToWrite   = glob->GetOptI("nObjectsToWrite");
+  TString treeName          = glob->GetOptC("treeName");
+  TString origFileName      = glob->GetOptC("origFileName");
+  bool    storeOrigFileName = glob->GetOptB("storeOrigFileName");
+  int     nSplit            = glob->GetOptI("nSplit");
+  TString splitType         = glob->GetOptC("splitType");
+  TString indexName         = glob->GetOptC("indexName");
+  TString splitName         = glob->GetOptC("splitName");
+  TString testValidType     = glob->GetOptC("testValidType");
+  TString weightName        = glob->GetOptC("baseName_wgtKNN");
+  bool    doPlots           = glob->GetOptB("doPlots");
+  TString plotExt           = glob->GetOptC("printPlotExtension");
+  TString outDirNameFull    = glob->GetOptC("outDirNameFull");
+  TString inTreeName        = glob->GetOptC("inTreeName");
 
+  TString sigBckInpName     = glob->GetOptC("sigBckInpName");
+  TString inpFiles_sig      = glob->GetOptC("inpFiles_sig");
+  TString inpFiles_bck      = glob->GetOptC("inpFiles_bck");
+  bool    addSigBckInp      = (inpFiles_sig != "" || inpFiles_bck != "");
+  
   VERIFY(LOCATION,(TString)"found unsupported number of splittings ("+utils->intToStr(nSplit)+"). Allowed values are: 1,2,3"
                   ,(nSplit >= 1 && nSplit <= 3));
 
@@ -289,8 +334,13 @@ void CatFormat::inputToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
   bool              isRootInput(false);
   int               nInFiles(0), inFileTypeChange(0);
   map <TString,int> intMap;
-  vector <TString>  inFileNameV, inVarNames, inVarTypes;
+  vector <TString>  inFileNameV, inVarNames, inVarTypes, inpFiles_sigV, inpFiles_bckV;
   vector <int>      inFileTypeV;
+
+  if(addSigBckInp) {
+    inpFiles_sigV = utils->splitStringByChar(inpFiles_sig.ReplaceAll(" ",""),';');
+    inpFiles_bckV = utils->splitStringByChar(inpFiles_bck.ReplaceAll(" ",""),';');
+  }
 
   // -----------------------------------------------------------------------------------------------------------
   // input files - if diffrent for each type
@@ -376,7 +426,9 @@ void CatFormat::inputToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
   VarMaps * var = new VarMaps(glob,utils,"treeVars");  //var->printMapOpt(nPrintRow,width); cout<<endl;
   
   var->NewVarI(indexName);     var->NewVarI(splitName);
-  var->NewVarI(testValidType); var->NewVarC(origFileName); var->NewVarF(weightName);
+  var->NewVarI(testValidType); var->NewVarF(weightName);
+  if(storeOrigFileName) var->NewVarC(origFileName);
+  if(addSigBckInp)      var->NewVarI(sigBckInpName);
 
   // create tree variables from the linput ist
   // -----------------------------------------------------------------------------------------------------------
@@ -424,6 +476,28 @@ void CatFormat::inputToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
     TString  inFileNameNow   = inFileNameV[nInFileNow];
     unsigned posSlash        = ((std::string)inFileNameNow).find_last_of("/");
     TString  reducedFileName = (TString)(((std::string)inFileNameNow).substr(posSlash+1));
+
+    // optional parameter to mark if an object is of type signal (1), background (0) or undefined (-1), based on the name of the input file
+    int sigBckInp(-1);
+    if(addSigBckInp) {
+      int nSigBckFound(0);
+
+      if(find(inpFiles_bckV.begin(),inpFiles_bckV.end(),reducedFileName) != inpFiles_bckV.end()) { nSigBckFound++; sigBckInp = 0; }
+      if(find(inpFiles_sigV.begin(),inpFiles_sigV.end(),reducedFileName) != inpFiles_sigV.end()) { nSigBckFound++; sigBckInp = 1; }
+
+      if(nSigBckFound == 0) {
+        aLOG(Log::WARNING)<<coutBlue<<" - Skipping "<<coutRed<<inFileNameNow<<coutBlue
+                          <<" \"inpFiles_bck\" and \"inpFiles_sig\" are defined, but do not include it ... "<<coutDef<<endl;
+        continue;
+      }
+      else if(nSigBckFound == 1) {
+        aLOG(Log::INFO)<<coutBlue<<" - Will add \"sigBckInpName\" = "<<coutYellow<<sigBckInp<<" ("<<(TString)((sigBckInp == 0)?"background":"signal")
+                       <<")"<<coutBlue<<" for all objects from "<<coutGreen<<reducedFileName<<coutDef<<endl;
+      }
+      else {
+        VERIFY(LOCATION,(TString)"Input file \""+reducedFileName+"\" found in both \"inpFiles_bck\" and \"inpFiles_sig\".",false);
+      }
+    }
 
     // skip input files with no content
     if(!isRootInput) {
@@ -484,7 +558,9 @@ void CatFormat::inputToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
         var->copyVarData(var_0,&varTypeNameV);
 
         // update variable with input file name
-        var->SetVarC(origFileName,reducedFileName);
+        if(storeOrigFileName) var->SetVarC(origFileName,reducedFileName);
+        // sig/bck tag based on the name of the input file
+        if(addSigBckInp) var->SetVarI(sigBckInpName, sigBckInp);
         // update the placeholder to KNN weights
         var->SetVarF(weightName,1);
 
@@ -528,7 +604,9 @@ void CatFormat::inputToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
         }
 
         // update variable with input file name
-        var->SetVarC(origFileName,reducedFileName);
+        if(storeOrigFileName) var->SetVarC(origFileName,reducedFileName);
+        // sig/bck tag based on the name of the input file
+        if(addSigBckInp) var->SetVarI(sigBckInpName, sigBckInp);
         // update the placeholder to KNN weights
         var->SetVarF(weightName,1);
 
@@ -618,7 +696,7 @@ void CatFormat::inputToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
   }
 
   treeOut.clear(); treeNames.clear();
-  intMap.clear(); inVarNames.clear(); inVarTypes.clear(); inFileNameV.clear(); inFileTypeV.clear();
+  intMap.clear(); inVarNames.clear(); inVarTypes.clear(); inFileNameV.clear(); inFileTypeV.clear(); inpFiles_sigV.clear(); inpFiles_bckV.clear();
 
 
   // -----------------------------------------------------------------------------------------------------------
@@ -631,9 +709,10 @@ void CatFormat::inputToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
   saveName = "treeName";      optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(saveName));
   saveName = "indexName";     optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(saveName));
   saveName = "splitName";     optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(saveName));
-  saveName = "origFileName";  optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(saveName));
   saveName = "testValidType"; optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(saveName));
   saveName = "useWgtKNN";     optNames.push_back(saveName); optMap->NewOptB(saveName, glob->GetOptB(saveName));
+
+  if(storeOrigFileName) { saveName = "origFileName";  optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(saveName)); }
 
   utils->optToFromFile(&optNames,optMap,glob->GetOptC("userOptsFile_genInputTrees"),"WRITE");
 

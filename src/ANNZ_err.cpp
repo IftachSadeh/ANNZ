@@ -29,13 +29,13 @@ void ANNZ::createTreeErrKNN(int nMLMnow) {
   aLOG(Log::DEBUG) <<coutWhiteOnBlack<<coutGreen<<" - starting ANNZ::createTreeErrKNN() - "
                    <<"will create errKNN trees for "<<coutPurple<<getTagName(nMLMnow)<<coutGreen<<" ... "<<coutDef<<endl;
 
-  TString zTrgName   = glob->GetOptC("zTrg");
-  TString indexName  = glob->GetOptC("indexName");
-  TString isSigName  = glob->GetOptC("isSigName");
-  bool    isCls      = glob->GetOptB("doClassification") || glob->GetOptB("doBinnedCls");
-  TString MLMname    = getTagName(nMLMnow);
-  TString errKNNname = getErrKNNname(nMLMnow);
-  TString MLMname_i  = getTagIndex(nMLMnow);
+  TString zTrgName       = glob->GetOptC("zTrg");
+  TString indexName      = glob->GetOptC("indexName");
+  TString sigBckTypeName = glob->GetOptC("sigBckTypeName");
+  bool    isCls          = glob->GetOptB("doClassification") || glob->GetOptB("doBinnedCls");
+  TString MLMname        = getTagName(nMLMnow);
+  TString errKNNname     = getErrKNNname(nMLMnow);
+  TString MLMname_i      = getTagIndex(nMLMnow);
 
   // -----------------------------------------------------------------------------------------------------------  
   // the _train trees are used in all cases:
@@ -56,16 +56,21 @@ void ANNZ::createTreeErrKNN(int nMLMnow) {
 
   // setup cuts for the vars we loop on for sig/bck determination in case of classification
   if(isCls) {
+    // override signal/background cuts, just in case...
     TCut sigCuts = (userCutsM["_sig"] != "") ? userCutsM["_sig"] : userCutsM[MLMname+"_sig"];
+    TCut bckCuts = (userCutsM["_bck"] != "") ? userCutsM["_bck"] : userCutsM[MLMname+"_bck"];
+
     VERIFY(LOCATION,(TString)"Could not determine the signal-cut ... Something is horribly wrong !!!",(sigCuts != ""));
+    VERIFY(LOCATION,(TString)"Could not determine the signal-cut ... Something is horribly wrong !!!",(bckCuts != ""));
 
     var_0->setTreeCuts("_sig",sigCuts);
+    var_0->setTreeCuts("_bck",bckCuts);
   }
 
   var_0->connectTreeBranchesForm(aChain,&readerInptV);
 
   var_1->NewVarF(MLMname); var_1->NewVarF(errKNNname); var_1->NewVarI(MLMname_i);
-  if(isCls) var_1->NewVarB(isSigName); else var_1->NewVarF(zTrgName);
+  if(isCls) var_1->NewVarI(sigBckTypeName); else var_1->NewVarF(zTrgName);
   
   TString outTreeName = getKeyWord("","treeErrKNN","treeErrKNNname");
   TTree   * outTree   = new TTree(outTreeName,outTreeName); outTree->SetDirectory(0); outputs->TreeMap[outTreeName] = outTree;
@@ -91,14 +96,17 @@ void ANNZ::createTreeErrKNN(int nMLMnow) {
 
     // compute the KNN error for this object
     if(isCls) {
-      bool   isSig  = !var_0->hasFailedTreeCuts("_sig");
       double clsPrb = getReader(var_0,ANNZ_readType::PRB,true,nMLMnow);
+
       // expect for background that clsPrb=0, and for signal that clsPrb=1
-      double errKNN = isSig ? 1-clsPrb : clsPrb;
-      
+      int    sigBckType(-1);
+      double errKNN(-1);
+      if     (!var_0->hasFailedTreeCuts("_bck")) { sigBckType = 0; errKNN =   clsPrb; }
+      else if(!var_0->hasFailedTreeCuts("_sig")) { sigBckType = 1; errKNN = 1-clsPrb; }
+
       var_1->SetVarF(MLMname,clsPrb);
       var_1->SetVarF(errKNNname,errKNN);
-      var_1->SetVarB(isSigName,isSig);
+      var_1->SetVarI(sigBckTypeName,sigBckType);
     }
     else {
       double zTrg   = var_0->GetVarF(zTrgName);

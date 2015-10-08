@@ -437,7 +437,7 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
   
   int     maxNobj           = 0;  // maxNobj = glob->GetOptI("maxNobj"); // only allow limits in case of debugging !! 
   TString indexName         = glob->GetOptC("indexName");
-  TString isSigName         = glob->GetOptC("isSigName");
+  TString sigBckTypeName    = glob->GetOptC("sigBckTypeName");
   TString testValidType     = glob->GetOptC("testValidType");
   UInt_t  seed              = glob->GetOptI("initSeedRnd"); if(seed > 0) seed += 58606;
   bool    separateTestValid = glob->GetOptB("separateTestValid");
@@ -565,7 +565,7 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
 
     // create MLM, MLM-eror and MLM-weight variables for the output vars
     var_1->NewVarF(MLMname); var_1->NewVarF(MLMname_w); var_1->NewVarI(MLMname_i);
-    if(isCls)                   { var_1->NewVarF(MLMname_v);  var_1->NewVarB(isSigName);                            }
+    if(isCls)                   { var_1->NewVarF(MLMname_v);  var_1->NewVarI(sigBckTypeName);                       }
     if(!isCls || needBinClsErr) { var_1->NewVarF(MLMname_eN); var_1->NewVarF(MLMname_e); var_1->NewVarF(MLMname_eP);}
 
     // setup cuts for the vars we loop on for sig/bck determination in case of classification
@@ -609,15 +609,17 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
 
       var_0->IncCntr("nObj");
 
-      bool skipObj(false), isBck(false);
+      bool    skipObj(false);
+      int     sigBckType(-1);
+      TString sigBckName("fail sig/bck cuts");
       if(isCls) {
-        isBck = var_0->hasFailedTreeCuts("_sig");
+        if     (!var_0->hasFailedTreeCuts("_bck")) { sigBckType = 0; sigBckName = "nObj_bck"; }
+        else if(!var_0->hasFailedTreeCuts("_sig")) { sigBckType = 1; sigBckName = "nObj_sig"; }
 
-        TString sigBckName = (TString)(isBck ? "nObj_bck" : "nObj_sig");
         if(var_0->GetCntr(sigBckName) > 0 && var_0->GetCntr(sigBckName) == maxNobj) skipObj = true;
-        var_0->IncCntr(sigBckName+"_loop");
+        // if(maxNobj > 0) var_0->IncCntr(sigBckName+"_loop");
 
-        var_1->SetVarB(isSigName,!isBck);
+        var_1->SetVarI(sigBckTypeName,sigBckType);
       }
       if(skipObj) continue; // only relevant for classification
       
@@ -657,7 +659,7 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
       // to increment the loop-counter, at least one method should have passed the cuts
       mayWriteObjects = true;
       if(isCls) {
-        if(isBck) var_0->IncCntr("nObj_bck"); else var_0->IncCntr("nObj_sig");
+        var_0->IncCntr(sigBckName);
         if(var_0->GetCntr("nObj_sig") == maxNobj && var_0->GetCntr("nObj_bck") == maxNobj) breakLoop = true;
       }
       else {
@@ -686,7 +688,7 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
       TH1     * his1_sig(NULL), * his1_bck(NULL), * his_all(NULL);
       for(int nSigBckNow=0; nSigBckNow<2; nSigBckNow++) {
         TString sigBckName = (TString)((nSigBckNow == 0) ? "_sig" : "_bck");
-        TString sigBckCut  = (TString)((nSigBckNow == 0) ? ">0.5" : "<0.5");
+        TString sigBckCut  = (TString)((nSigBckNow == 0) ? "== 1" : "== 0");
 
         // get common limits for the entire sample (net necessarily between zero and one if [useBinClsPrior==true])
         if(nSigBckNow == 0) {
@@ -711,7 +713,7 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
         TString drawExprs  = (TString)MLMname+">>+"+hisName;
 
         TString trainCut   = (TString)var_0->getTreeCuts("_train");
-        TString cutExprs   = (TString)"("+MLMname_w+" > 0) && ("+isSigName+sigBckCut+")";
+        TString cutExprs   = (TString)"("+MLMname_w+" > 0) && ("+sigBckTypeName+sigBckCut+")";
         if(trainCut != "") cutExprs += (TString)" && ("+trainCut+")";
 
         int     nEvtPass   = aChainOut->Draw(drawExprs,cutExprs);
@@ -893,11 +895,15 @@ void ANNZ::deriveHisClsPrb(int nMLMnow) {
   // setup cuts for the vars we loop on for sig/bck determination
   setMethodCuts(var_0,nMLMnow);
 
-  // override signal cuts, just in case...
+  // override signal/background cuts, just in case...
   TCut sigCuts = (userCutsM["_sig"] != "") ? userCutsM["_sig"] : userCutsM[MLMname+"_sig"];
+  TCut bckCuts = (userCutsM["_bck"] != "") ? userCutsM["_bck"] : userCutsM[MLMname+"_bck"];
+
   VERIFY(LOCATION,(TString)"Could not determine the signal-cut ... Something is horribly wrong !!!",(sigCuts != ""));
+  VERIFY(LOCATION,(TString)"Could not determine the signal-cut ... Something is horribly wrong !!!",(bckCuts != ""));
 
   var_0->setTreeCuts("_sig",sigCuts);
+  var_0->setTreeCuts("_bck",bckCuts);
 
   // create MLM-weight formulae for the input variables
   var_0->NewForm(MLMname_w,userWgtsM[MLMname+"_train"]);
@@ -924,15 +930,21 @@ void ANNZ::deriveHisClsPrb(int nMLMnow) {
     if((var_0->GetCntr("nObj") % nObjectsToPrint == 0 && var_0->GetCntr("nObj") > 0) || breakLoop) { var_0->printCntr(inTreeName,Log::DEBUG); }
     if(breakLoop) break;
 
-    bool   passCuts = !var_0->hasFailedTreeCuts(baseCutsName);
-    bool   isSig    = !var_0->hasFailedTreeCuts("_sig");
-    double clsVal   = getReader(var_0,ANNZ_readType::CLS,true,nMLMnow);
-    double clsWgt   = var_0->GetForm(MLMname_w) * (passCuts?1:0);
-
-    if(isSig) hisM["sig_0"]->Fill(clsVal,clsWgt);
-    else      hisM["bck_0"]->Fill(clsVal,clsWgt);
-
     var_0->IncCntr("nObj");
+
+    if(var_0->hasFailedTreeCuts(baseCutsName)) continue;
+
+    bool sigBckType(-1);
+    if     (!var_0->hasFailedTreeCuts("_bck")) sigBckType = 0;
+    else if(!var_0->hasFailedTreeCuts("_sig")) sigBckType = 1;
+    else continue;
+
+    double clsVal = getReader(var_0,ANNZ_readType::CLS,true,nMLMnow);
+    double clsWgt = var_0->GetForm(MLMname_w);
+
+    if(sigBckType == 0) hisM["bck_0"]->Fill(clsVal,clsWgt);
+    else                hisM["sig_0"]->Fill(clsVal,clsWgt);
+
   }
   if(!breakLoop) { var_0->printCntr(inTreeName,Log::DEBUG); }
 

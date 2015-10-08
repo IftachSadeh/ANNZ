@@ -29,9 +29,33 @@ glob.annz["outDirName"]   = "test_randCls_advanced"
 # nMLMs - the number of random MLMs to generate
 glob.annz["nMLMs"]        = 10
 
-# the definition of signal and background classes
-glob.annz["userCuts_sig"] = "type == 3"
-glob.annz["userCuts_bck"] = "type == 6"
+# --------------------------------------------------------------------------------------------------
+# the definition of the signal and background classes - must define at least one of the
+# pairs [userCuts_sig and userCuts_bck] or [inpFiles_sig and inpFiles_bck], though can
+# optionally also use three or all four of the latter together
+# --------------------------------------------------------------------------------------------------
+defSigBckCuts = 0
+if   defSigBckCuts == 0:
+  # --------------------------------------------------------------------------------------------------
+  # define cuts based on existing parameters in the input files (in this example, the parameter 'type')
+  # --------------------------------------------------------------------------------------------------
+  glob.annz["userCuts_sig"] = "type == 3" # in this example, these are galaxies
+  glob.annz["userCuts_bck"] = "type == 6" # in this example, these are stars
+elif defSigBckCuts == 1:
+  # --------------------------------------------------------------------------------------------------
+  # define a given input file as containing only signal or only background objects instead of
+  # explicitly setting userCuts_sig and userCuts_bck.
+  # --------------------------------------------------------------------------------------------------
+  glob.annz["inpFiles_sig"]  = "sgCatalogue_galaxy_0.txt;sgCatalogue_galaxy_1.txt;sgCatalogue_galaxy_2.txt"
+  glob.annz["inpFiles_bck"]  = "sgCatalogue_star_0.txt;sgCatalogue_star_1.txt;sgCatalogue_star_3.txt"
+elif defSigBckCuts == 2:
+  # --------------------------------------------------------------------------------------------------
+  # define a given input file as containing only signal or only background objects and in addition
+  # explicitly set a cut on (in this example) only background objects.
+  # --------------------------------------------------------------------------------------------------
+  glob.annz["inpFiles_sig"]  = "sgCatalogue_galaxy_0.txt;sgCatalogue_galaxy_1.txt;sgCatalogue_galaxy_2.txt"
+  glob.annz["inpFiles_bck"]  = "sgCatalogue_star_0.txt;sgCatalogue_star_1.txt;sgCatalogue_star_3.txt"
+  glob.annz["userCuts_bck"]  = "mE2_r < 0.6" # may also use "inpFiles_sig" instead or in addition
 
 # --------------------------------------------------------------------------------------------------
 # pre-processing of the input dataset
@@ -190,16 +214,17 @@ if glob.annz["doTrain"]:
     #     use normalization by setting (alwaysUseNormalization==false) and not setting NormMode.
     #     it is recomended to always use some kind of normalization, so best to leave this at the default setting.
     # --------------------------------------------------------------------------------------------------
+    
+    # rndOptTypes - generate automatically these randomized MLM types for cases
+    #               where [userMLMopts = ""] (currently "ANN", "BDT" or "ANN_BDT" are supported)
+    # --------------------------------------------------------------------------------------------------
+    glob.annz["rndOptTypes"] = "BDT"
+
     if   nMLMnow == 0: glob.annz["userMLMopts"] = "ANNZ_MLM=BDT:VarTransform=N:NTrees=110:NormMode=NumEvents:BoostType=AdaBoost:"
     elif nMLMnow == 1: glob.annz["userMLMopts"] = "ANNZ_MLM=SVM:MaxIter=700"
     elif nMLMnow == 2: glob.annz["userMLMopts"] = "ANNZ_MLM=BDT:NTrees=190:VarTransform=N,P"
     elif nMLMnow == 3: glob.annz["userMLMopts"] = genRndOpts(nMLMnow)
     else:              glob.annz["userMLMopts"] = ""
-
-    # rndOptTypes - generate automatically these randomized MLM types for cases
-    #               where [userMLMopts = ""] (currently "ANN", "BDT" or "ANN_BDT" are supported)
-    # --------------------------------------------------------------------------------------------------
-    glob.annz["rndOptTypes"] = "BDT"
 
     # --------------------------------------------------------------------------------------------------
     # userCuts_train,userCuts_valid,userWeights_train,userWeights_valid -

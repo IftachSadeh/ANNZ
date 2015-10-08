@@ -148,7 +148,10 @@ private:
                        map < int,vector<double> > & zRegQnt_sigma68, map < int,vector<double> > & zRegQnt_fracSig68,
                        vector < int >             & bestMLMsV,       bool                       onlyInclusiveBin = true);
   void     getRndMethodBestPDF(TTree * aChain, int bestANNZindex, vector<int>  & zRegQnt_nANNZ, vector<double> & zRegQnt_bias, 
-                               vector<double> & zRegQnt_sigma68, vector<double> & zRegQnt_fracSig68, vector < vector<double> > & bestWeightsV);
+                               vector<double> & zRegQnt_sigma68, vector<double> & zRegQnt_fracSig68,
+                               vector < vector<double> > & bestWeightsV, vector <TH2*> & hisPdfBiasCorV);
+  void     setBinClsPdfBinWeights(vector < vector < pair<int,double> > > & pdfBinWgt, vector <int> & nClsBinsIn);
+  void     getBinClsBiasCorPDF(TChain * aChain, vector <TH2*>  & hisPdfBiasCorV);
   void     doEvalReg(TChain * inChain = NULL, TString outDirName = "", vector <TString> * selctVarV = NULL);
   void     doMetricPlots(TChain * inChain = NULL, vector <TString> * selctMLMv = NULL);
 
@@ -180,6 +183,5 @@ private:
   map    < TMVA::Types::EMVA,TString >  typeToNameMLM;
   map    < TString,TMVA::Types::EMVA >  nameToTypeMLM;
   vector < TH1* >                       hisClsPrbV;
-
 };
 #endif  // #define ANNZ_h

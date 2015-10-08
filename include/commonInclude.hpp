@@ -92,7 +92,7 @@ namespace std {
 }
 
 #define Map unordered_map
-// #define Map map // can use this instead to go back to std::map
+// #define Map map // can use this to go back to std::map instead of unordered_map
 
 
 #endif // __COMMONINCLUDE_H__

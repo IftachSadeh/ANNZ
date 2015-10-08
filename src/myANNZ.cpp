@@ -157,10 +157,15 @@ myANNZ::myANNZ() {
   // -----------------------------------------------------------------------------------------------------------
   // variables used by CatFormat
   // -----------------------------------------------------------------------------------------------------------
-  glob->NewOptC("inAsciiFiles" ,""); // list of input files (if no seperate inputs for training,testing,validting)
-  glob->NewOptC("inAsciiVars"  ,""); // list of input variables and variable-types as they appear in inAsciiFiles
-  glob->NewOptC("addOutputVars",""); // list of input variables which will be added to the ascii output
-  
+  glob->NewOptC("inAsciiFiles" ,"");        // list of input files (if no seperate inputs for training,testing,validting)
+  glob->NewOptC("inAsciiVars"  ,"");        // list of input variables and variable-types as they appear in inAsciiFiles
+  glob->NewOptC("addOutputVars","");        // list of input variables which will be added to the ascii output
+  glob->NewOptB("storeOrigFileName",false); // wether to store the name of the original file for each object
+  // inpFiles_sig, inpFiles_bck -
+  //   optional lists of input files defining if an object is of type signal or background
+  glob->NewOptC("inpFiles_sig","");
+  glob->NewOptC("inpFiles_bck","");
+
   // nSplit - how to split into training/testing(/validation) - 
   //   nSplit = [2,3] -> split into 2 (training,testing) or 3 (training,testing,validting) sub-sets - for trainig/optimization
   //   nSplit = 1     -> no splitting - for evaluation
@@ -404,6 +409,8 @@ myANNZ::myANNZ() {
   // a lower acceptance bound to check if too few MLMs are trained or if something went wrong with the optimization procedure
   // (e.g., not enough trained MLMs have 'good' combinations of scatter, bias and outlier-fraction metrics).
   glob->NewOptI("minAcptMLMsForPDFs",5);
+  // wether or not to perform a bias-correction on PDFs
+  glob->NewOptB("doBiasCorPDF"      ,true);
 
   // if max_sigma68_PDF,max_bias_PDF are positive, they put thresholds on the maximal value of the
   // scatter/bias/outlier-fraction of an MLM which may be included in the PDF created in randomized regression
@@ -540,7 +547,7 @@ void myANNZ::Init() {
   glob->NewOptC("hisName"             ,"ANNZ_his");       // internal name prefix for histograms
   glob->NewOptC("indexName"           ,"ANNZ_index");     // original index from input file
   glob->NewOptC("splitName"           ,"ANNZ_split");     // continous index for a given sub-sample (training,testing,validting)
-  glob->NewOptC("origFileName"        ,"ANNZ_inFile");    // within the _valid file, this is 0 for testing and 1 for validation
+  glob->NewOptC("origFileName"        ,"ANNZ_inFile");    // name of original source file
   glob->NewOptC("testValidType"       ,"ANNZ_tvType");    // index to keep track of testing/validation sub-sample withn the _valid trees
   glob->NewOptC("baseName_regBest"    ,"ANNZ_best");      // the "best"-performing MLM in randomized regression
   glob->NewOptC("baseName_regMLM_avg" ,"ANNZ_MLM_avg_");  // base-name for the average MLM solution (and its error) in randomized regression
@@ -549,6 +556,8 @@ void myANNZ::Init() {
   glob->NewOptC("baseName_knnErr"     ,"_knnErr");        // name-postfix of error variable derived with the KNN estimator 
   // name of an optional output parameter in evaluation (is it "safe" to use the result for an evaluated object)
   glob->NewOptC("baseName_inTrain"    ,"inTrainFlag");
+  // optional parameter to mark if an object is of type signal (1), background (0) or undefined (-1), based on the name of the original input file
+  glob->NewOptC("sigBckInpName","sigBckInp");
 
   // -----------------------------------------------------------------------------------------------------------
   // working directory names
@@ -686,6 +695,40 @@ void myANNZ::Init() {
 
   if(glob->GetOptI("initSeedRnd") < 0) glob->SetOptI("initSeedRnd",0);
   if(glob->GetOptI("maxNobj")     < 0) glob->SetOptI("maxNobj"    ,0);
+
+  if(glob->GetOptB("doClassification")) {
+    // -----------------------------------------------------------------------------------------------------------
+    // make sure that at least one of the two pairs, either "userCuts_sig" and "userCuts_bck", or
+    // "inpFiles_sig" and "inpFiles_bck" is defined if "inpFiles_sig" or "inpFiles_bck" are defined, parse
+    // the corresoinding cut and add it to "userCuts_sig" and "userCuts_bck".
+    // -----------------------------------------------------------------------------------------------------------
+    bool has_userCuts_sig(glob->GetOptC("userCuts_sig") != ""), has_userCuts_bck(glob->GetOptC("userCuts_bck") != "");
+    bool has_inpFiles_sig(glob->GetOptC("inpFiles_sig") != ""), has_inpFiles_bck(glob->GetOptC("inpFiles_bck") != "");
+
+    if(!has_inpFiles_sig || !has_inpFiles_bck) {
+      VERIFY(LOCATION,(TString)"Signal/background definitions are not complete - must define both [\"userCuts_sig\" and \"userCuts_bck\"]"
+                      +" or use [\"has_inpFiles_sig\" and \"has_inpFiles_bck\"] instead ...",(has_userCuts_sig && has_userCuts_bck));
+    }
+
+    if(!has_userCuts_sig || !has_userCuts_bck) {
+      VERIFY(LOCATION,(TString)"Signal/background definitions are not complete - if [\"userCuts_sig\" and \"userCuts_bck\"] are not used,"
+                      +"  must define both [\"has_inpFiles_sig\" and \"has_inpFiles_bck\"] ...",(has_inpFiles_sig && has_inpFiles_bck));
+    }
+
+    if(has_inpFiles_sig) {
+      TString userCuts_sig = (TString)+"("+glob->GetOptC("sigBckInpName")+" == 1)";
+      if(has_userCuts_sig) userCuts_sig = (TString)"("+glob->GetOptC("userCuts_sig")+") && "+userCuts_sig;
+
+      glob->SetOptC("userCuts_sig",userCuts_sig);
+    }
+
+    if(has_inpFiles_bck) {
+      TString userCuts_bck = (TString)+"("+glob->GetOptC("sigBckInpName")+" == 0)";
+      if(has_userCuts_bck) userCuts_bck = (TString)"("+glob->GetOptC("userCuts_bck")+") && "+userCuts_bck;
+
+      glob->SetOptC("userCuts_bck",userCuts_bck);
+    }
+  }
 
   // print out final init parameters
   if(inLOG(Log::DEBUG)) { glob->printOpts(2,30); cout<<endl; }

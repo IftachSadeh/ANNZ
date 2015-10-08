@@ -30,7 +30,7 @@ void ANNZ::optimCls() {
   int     nSbFracs(0), nSbFracPlots(5), nCompPureMgs(1);
   
   int     nMLMs             = glob->GetOptI("nMLMs");
-  TString isSigName         = glob->GetOptC("isSigName");
+  TString sigBckTypeName    = glob->GetOptC("sigBckTypeName");
   bool    separateTestValid = glob->GetOptB("separateTestValid");
   int     nANNZtypes        = (int)allANNZtypes.size();
 
@@ -89,19 +89,19 @@ void ANNZ::optimCls() {
 
     // MLM response histograms
     hisRange0 = 1; hisRange1 = -1; numBins0 = 10000;
-    hisName  = (TString)MLMname+"_clasOptimize"+"_SIG";            his1M["SIG"][nMLMnow] = new TH1F(hisName,hisName,numBins0,hisRange0,hisRange1);
+    hisName  = (TString)MLMname+"_clsOptim"+"_SIG";                his1M["SIG"][nMLMnow] = new TH1F(hisName,hisName,numBins0,hisRange0,hisRange1);
     his1M["SIG"][nMLMnow]->SetDirectory(0);                        his1M["SIG"][nMLMnow]->SetDefaultBufferSize(bufSize);
     
-    hisName  = (TString)MLMname+"_clasOptimize"+"_BCK";            his1M["BCK"][nMLMnow] = (TH1*)his1M["SIG"][nMLMnow]->Clone(hisName);
+    hisName  = (TString)MLMname+"_clsOptim"+"_BCK";                his1M["BCK"][nMLMnow] = (TH1*)his1M["SIG"][nMLMnow]->Clone(hisName);
     his1M["BCK"][nMLMnow]->SetDirectory(0);                        his1M["BCK"][nMLMnow]->SetDefaultBufferSize(bufSize);
 
     // MLM probability histograms
     hisRange0 = 0; hisRange1 = 1; numBins0 = compPureN;
-    hisName  = (TString)MLMname+"_clasOptimize"+"_prbSig";         his1M["prbSig"][nMLMnow] = new TH1F(hisName,hisName,numBins0,hisRange0,hisRange1);
+    hisName  = (TString)MLMname+"_clsOptim"+"_prbSig";             his1M["prbSig"][nMLMnow] = new TH1F(hisName,hisName,numBins0,hisRange0,hisRange1);
     his1M["prbSig"][nMLMnow]->SetTitle(hisName);                   his1M["prbSig"][nMLMnow]->SetDirectory(0);
     his1M["prbSig"][nMLMnow]->GetXaxis()->SetTitle((TString)"p");  his1M["prbSig"][nMLMnow]->GetYaxis()->SetTitle("1/n #times dn/dp");
     
-    hisName  = (TString)MLMname+"_clasOptimize"+"_prbBck";         his1M["prbBck"][nMLMnow] = (TH1*)his1M["prbSig"][nMLMnow]->Clone(hisName);
+    hisName  = (TString)MLMname+"_clsOptim"+"_prbBck";             his1M["prbBck"][nMLMnow] = (TH1*)his1M["prbSig"][nMLMnow]->Clone(hisName);
     his1M["prbBck"][nMLMnow]->SetTitle(hisName);                   his1M["prbBck"][nMLMnow]->SetDirectory(0);
     his1M["prbBck"][nMLMnow]->GetXaxis()->SetTitle((TString)"p");  his1M["prbBck"][nMLMnow]->GetYaxis()->SetTitle("1/n #times dn/dp");
   }
@@ -110,7 +110,7 @@ void ANNZ::optimCls() {
   for(int nANNZtypeNow=0; nANNZtypeNow<nANNZtypes; nANNZtypeNow++) {
     double hisRange0(0), hisRange1(1); int numBins0(100);
 
-    hisName  = TString::Format((TString)"nANNZtype_%d"+"_clasOptimize"+"CLS"+"_sepDist",nANNZtypeNow);
+    hisName  = TString::Format((TString)"nANNZtype_%d"+"_clsOptim"+"CLS"+"_sepDist",nANNZtypeNow);
 
     TH1 * his1 = new TH1F(hisName,hisName,numBins0,hisRange0,hisRange1);
     his1->SetTitle(typeToNameMLM[allANNZtypes[nANNZtypeNow]]); his1->SetDirectory(0); his1->SetDefaultBufferSize(bufSize);
@@ -137,9 +137,14 @@ void ANNZ::optimCls() {
 
     if(separateTestValid) { if(var->hasFailedTreeCuts("_train")) continue; }
 
+    int sigBckType = var->GetVarI(sigBckTypeName);
+    if(sigBckType == -1) {
+      var->IncCntr("fail sig/bck cuts"); continue;
+    }
     var->IncCntr("nObj"); // if passed cuts, increment the object counter
+    
+    bool isBck = (sigBckType == 0);
 
-    bool isBck = !var->GetVarB(isSigName);
     if(maxNobj > 0) {
       if(isBck) { var->IncCntr("nObj_bck all looped"); if(var->GetCntr("nObj_bck") == maxNobj) continue; }
       else      { var->IncCntr("nObj_sig all looped"); if(var->GetCntr("nObj_sig") == maxNobj) continue; }
@@ -195,11 +200,11 @@ void ANNZ::optimCls() {
     }
 
     // define and fill the nice-looking histograms
-    hisName  = (TString)MLMname+"_clasOptimize"+"_sig";            his1M["sig"][nMLMnow] = new TH1F(hisName,hisName,hisBins,hisRange0,hisRange1);
+    hisName  = (TString)MLMname+"_clsOptim"+"_sig";                his1M["sig"][nMLMnow] = new TH1F(hisName,hisName,hisBins,hisRange0,hisRange1);
     his1M["sig"][nMLMnow]->SetTitle(hisName);                      his1M["sig"][nMLMnow]->SetDirectory(0);
     his1M["sig"][nMLMnow]->GetXaxis()->SetTitle((TString)"#eta");  his1M["sig"][nMLMnow]->GetYaxis()->SetTitle("1/n #times dn/d#eta");
 
-    hisName  = (TString)MLMname+"_clasOptimize"+"_bck";            his1M["bck"][nMLMnow] = (TH1*)his1M["sig"][nMLMnow]->Clone(hisName);
+    hisName  = (TString)MLMname+"_clsOptim"+"_bck";                his1M["bck"][nMLMnow] = (TH1*)his1M["sig"][nMLMnow]->Clone(hisName);
     his1M["bck"][nMLMnow]->SetTitle(hisName);                      his1M["bck"][nMLMnow]->SetDirectory(0);
     his1M["bck"][nMLMnow]->GetXaxis()->SetTitle((TString)"#eta");  his1M["bck"][nMLMnow]->GetYaxis()->SetTitle("1/n #times dn/d#eta");
 
@@ -295,7 +300,7 @@ void ANNZ::optimCls() {
 
         TGraphErrors * grph = new TGraphErrors(int(graph_X.size()),&graph_X[0], &graph_Y[0],&graph_Xerr[0], &graph_Yerr[0]);
         
-        grph->SetName(TString::Format((TString)"compPure_%d"+"_clasOptimize"+typeName+"_%d",nCompPureMgNow,nPlotSbSepNow));
+        grph->SetName(TString::Format((TString)"compPure_%d"+"_clsOptim"+typeName+"_%d",nCompPureMgNow,nPlotSbSepNow));
         grph->SetTitle(TString::Format((TString)"ranked as #%d, S_{s/b} ("+getTagName(nMLMnow)+","+typeToNameMLM[typeMLM[nMLMnow]]+") = %1.2e",nSbSepIndexNow+1,sbSepFrac));
         grph->GetXaxis()->SetTitle("Completeness");  grph->GetYaxis()->SetTitle("Purity");
         compPureMgV[typeName][nCompPureMgNow]->Add(grph);

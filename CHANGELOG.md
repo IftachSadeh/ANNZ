@@ -1,10 +1,22 @@
 # Changelog
 
-## Master version
+<!-- ## Master version -->
+## ANNZ 2.1.0 (08/10/2015)
 
 - Removed unnecessary dictionary generation from Makefile.
 
 - Changed `std::map` to `std::unordered_map` in main containers of the `OptMaps()` and `VarMaps()` classes (constitutes a slight performance boost).
+
+- Nominally, no longer keeping track of the name of the original input file (stored in the ROOT trees with the name defined in `origFileName` in `myANNZ::Init()`). This may be switched back on by setting `glob.annz["storeOrigFileName"]  = True`.
+
+- Added the option to use an entire input file as signal or background for single/randomized classification, in addition to (or instead of) defining a cut based on one of the input parameters. In order to use this option, one muse define the variables `inpFiles_sig` and `inpFiles_bck`. An example is given in `scripts/annz_rndCls_advanced.py`.
+
+- Added a bias-correction for randomized regression PDFs. This options is now active by default, and may be turned off by setting,
+```python
+glob.annz["doBiasCorPDF"] = False
+```
+
+- Other minor modifications.
 
 ## ANNZ 2.0.6 (03/8/2015)
 
@@ -22,7 +34,7 @@
 
 - Added a transformation of the input parameters used for the kd-tree during the nominal uncertainty calculation in regression. The variables after the transformation span the range `[-1,1]`. The transformations are performed by default, and may be turned off by setting,
   ```python
-  glob.annz["doWidthRescale_errKNN"]  = False
+  glob.annz["doWidthRescale_errKNN"] = False
   ```
 Similarly, added the same transformations for the kd-tree during the `glob.annz["useWgtKNN"] = True` and `glob.annz["addInTrainFlag"] = True` setups. These may be turned off using the flags, `doWidthRescale_wgtKNN` and `doWidthRescale_inTrain`, respectively.
 

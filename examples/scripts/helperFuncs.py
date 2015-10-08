@@ -58,7 +58,7 @@ def initParse():
   hasMake = (glob.pars["make"] or glob.pars["clean"])
   nModes = 0 ; nSetups = 0
 
-  if glob.pars["genInputTrees"]:        nSetups += 1
+  # if glob.pars["genInputTrees"]:        nSetups += 1
   if glob.pars["singleClassification"]: nSetups += 1
   if glob.pars["randomClassification"]: nSetups += 1
   if glob.pars["singleRegression"]:     nSetups += 1
@@ -276,7 +276,7 @@ def runANNZ():
     if glob.annz["doBinnedCls"]:
       for nRndOptNow in range(glob.annz["binCls_nTries"]): glob.annz.pop("userMLMopts_"+str(nRndOptNow),None)
 
-    nTries = 1
+    nTries = 0
     for nTryNow in range(nTries):
       glob.annz["initSeedRnd"] += 1
       log.warning(whtOnRed(" - runANNZ failed !!! Will try again ("+str(nTryNow+1)+"/"+str(nTries)+") with initSeedRnd = ")+yellowOnRed(str(glob.annz["initSeedRnd"])))

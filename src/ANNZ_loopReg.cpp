@@ -45,6 +45,7 @@ void ANNZ::optimReg() {
   TString indexName         = glob->GetOptC("indexName");
   TString zTrg              = glob->GetOptC("zTrg");
   bool    isBinCls          = glob->GetOptB("doBinnedCls");
+  bool    doBiasCorPDF      = glob->GetOptB("doBiasCorPDF");
 
   TString outDirNameOrig(outputs->GetOutDirName()), outDirName(""), inTreeName(""), inFileName("");
 
@@ -59,7 +60,7 @@ void ANNZ::optimReg() {
       treeNamePostfix = (TString)((nTrainValidNow == 0) ? "_train"                     : "_valid");
     }
 
-    if(isBinCls && nTrainValidNow == 0) continue;
+    if(isBinCls && nTrainValidNow == 0 && !doBiasCorPDF) continue;
 
     // create the chain for the loop
     // -----------------------------------------------------------------------------------------------------------
@@ -112,83 +113,114 @@ void ANNZ::optimReg() {
     // _train 
     // ----------------------------------------------------------------------------------------------------------- 
     if(nTrainValidNow == 0) {
-      vector<int>                bestMLMsV;
-      map < int,vector<int> >    zRegQnt_nANNZ;
-      map < int,vector<double> > zRegQnt_bias, zRegQnt_sigma68, zRegQnt_fracSig68;
+      vector <TH2*> hisPdfBiasCorV;
 
-      // ----------------------------------------------------------------------------------------------------------- 
-      // calculate the optimization metrics from the training trees 
-      // ----------------------------------------------------------------------------------------------------------- 
-      fillColosureV(zRegQnt_nANNZ, zRegQnt_bias, zRegQnt_sigma68, zRegQnt_fracSig68, aChainMerged);
+      if(isBinCls) {
 
-      // ----------------------------------------------------------------------------------------------------------- 
-      // find the "best" MLMs, given the three metrics: bias, sig68 and fracSig68,
-      // where for optimCondReg (one of the three) the best several methods within the top fracLim
-      // percentile are chosen, so long as for the other two metrics, the MLMs are within
-      // the top (fracLim + 1_sigma) of the distribution of MLMs ---> This selects the solution
-      // which gives the "best" of the selected metric, which is also not the "worst" of the other two.
-      // If not enough methods are chosen (at least minNoptimMLMs), try again with a higher percentage of the dist
-      // ----------------------------------------------------------------------------------------------------------- 
-      getBestANNZ(zRegQnt_nANNZ,zRegQnt_bias,zRegQnt_sigma68,zRegQnt_fracSig68,bestMLMsV);
 
-      VERIFY(LOCATION,(TString)"Could not find any accepted MLMs which pass minimal metric-cuts ... Something is horribly wrong !!!",((int)bestMLMsV.size() > 0));
+        getBinClsBiasCorPDF(aChainMerged,hisPdfBiasCorV);
 
-      // -----------------------------------------------------------------------------------------------------------
-      // find the collection of methods with optimal error and store it in bestWeightsV
-      // -----------------------------------------------------------------------------------------------------------
-      int bestANNZindex = bestMLMsV[0];
-      aLOG(Log::INFO) <<coutBlue<<" - The \"best\" MLM is: "<<coutRed<<getTagName(bestANNZindex)<<coutDef<<endl;
+      } 
+      else {
+        vector <int>               bestMLMsV;
+        map < int,vector<int> >    zRegQnt_nANNZ;
+        map < int,vector<double> > zRegQnt_bias, zRegQnt_sigma68, zRegQnt_fracSig68;
 
-      vector < vector<double> > bestWeightsV;
-      getRndMethodBestPDF(aChainMerged,bestANNZindex,zRegQnt_nANNZ[-1],zRegQnt_bias[-1],zRegQnt_sigma68[-1],zRegQnt_fracSig68[-1],bestWeightsV);
+        // ----------------------------------------------------------------------------------------------------------- 
+        // calculate the optimization metrics from the training trees 
+        // ----------------------------------------------------------------------------------------------------------- 
+        fillColosureV(zRegQnt_nANNZ, zRegQnt_bias, zRegQnt_sigma68, zRegQnt_fracSig68, aChainMerged);
 
-      VERIFY(LOCATION,(TString)"After getRndMethodBestPDF(), found [bestWeightsV.size() = "+utils->intToStr((int)bestWeightsV.size())+"] - but expected "
-                               +"this to be [= "+utils->intToStr(nPDFs)+"] ... Something is horribly wrong !!!",((int)bestWeightsV.size() == nPDFs));
+        // ----------------------------------------------------------------------------------------------------------- 
+        // find the "best" MLMs, given the three metrics: bias, sig68 and fracSig68,
+        // where for optimCondReg (one of the three) the best several methods within the top fracLim
+        // percentile are chosen, so long as for the other two metrics, the MLMs are within
+        // the top (fracLim + 1_sigma) of the distribution of MLMs ---> This selects the solution
+        // which gives the "best" of the selected metric, which is also not the "worst" of the other two.
+        // If not enough methods are chosen (at least minNoptimMLMs), try again with a higher percentage of the dist
+        // ----------------------------------------------------------------------------------------------------------- 
+        getBestANNZ(zRegQnt_nANNZ,zRegQnt_bias,zRegQnt_sigma68,zRegQnt_fracSig68,bestMLMsV);
 
-      for(int nPDFnow=0; nPDFnow<nPDFs; nPDFnow++) {
-        VERIFY(LOCATION,(TString)"After getRndMethodBestPDF(), found [bestWeightsV[0,1].size() = "+utils->intToStr((int)bestWeightsV.size())
-                                 +"] - but expected this to be [= nMLMs = "+utils->intToStr(nMLMs)
-                                 +"] ... Something is horribly wrong !!!",((int)bestWeightsV[nPDFnow].size() == nMLMs));
-      }
+        VERIFY(LOCATION,(TString)"Could not find any accepted MLMs which pass minimal metric-cuts ... Something is horribly wrong !!!",
+                                 ((int)bestMLMsV.size() > 0));
 
-      // parse the weight vectors of the two pdfs into strings
-      vector <TString> pdfWeightList(nPDFs,"");
-      for(int nPDFnow=0; nPDFnow<nPDFs; nPDFnow++) {
-        TString pdfWeightListPrint("");
-        for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) {
-          pdfWeightList[nPDFnow] += (TString)utils->floatToStr(bestWeightsV[nPDFnow][nMLMnow])+";";
+        // -----------------------------------------------------------------------------------------------------------
+        // find the collection of methods with optimal error and store it in bestWeightsV
+        // -----------------------------------------------------------------------------------------------------------
+        int bestANNZindex = bestMLMsV[0];
+        aLOG(Log::INFO) <<coutBlue<<" - The \"best\" MLM is: "<<coutRed<<getTagName(bestANNZindex)<<coutDef<<endl;
 
-          pdfWeightListPrint     += (TString)coutGreen+getTagName(nMLMnow)+":"+coutPurple
-                                            +utils->floatToStr(bestWeightsV[nPDFnow][nMLMnow])+coutGreen+", ";
+        vector < vector<double> > bestWeightsV;
+        getRndMethodBestPDF(aChainMerged,bestANNZindex,zRegQnt_nANNZ[-1],zRegQnt_bias[-1],zRegQnt_sigma68[-1],zRegQnt_fracSig68[-1],
+                            bestWeightsV,hisPdfBiasCorV);
+
+        VERIFY(LOCATION,(TString)"After getRndMethodBestPDF(), found [bestWeightsV.size() = "+utils->intToStr((int)bestWeightsV.size())+"] - but expected "
+                                 +"this to be [= "+utils->intToStr(nPDFs)+"] ... Something is horribly wrong !!!",((int)bestWeightsV.size() == nPDFs));
+
+        for(int nPDFnow=0; nPDFnow<nPDFs; nPDFnow++) {
+          VERIFY(LOCATION,(TString)"After getRndMethodBestPDF(), found [bestWeightsV[0,1].size() = "+utils->intToStr((int)bestWeightsV.size())
+                                   +"] - but expected this to be [= nMLMs = "+utils->intToStr(nMLMs)
+                                   +"] ... Something is horribly wrong !!!",((int)bestWeightsV[nPDFnow].size() == nMLMs));
         }
-        // remove trailing ";"
-        pdfWeightList[nPDFnow] = pdfWeightList[nPDFnow](0,pdfWeightList[nPDFnow].Length()-1);
 
-        aLOG(Log::INFO) <<coutBlue<<" - Derived the following PDF("<<nPDFnow<<") weights: "<<pdfWeightListPrint<<coutDef<<endl;
+        // parse the weight vectors of the two pdfs into strings
+        vector <TString> pdfWeightList(nPDFs,"");
+        for(int nPDFnow=0; nPDFnow<nPDFs; nPDFnow++) {
+          TString pdfWeightListPrint("");
+          for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) {
+            pdfWeightList[nPDFnow] += (TString)utils->floatToStr(bestWeightsV[nPDFnow][nMLMnow])+";";
+
+            pdfWeightListPrint     += (TString)coutGreen+getTagName(nMLMnow)+":"+coutPurple
+                                              +utils->floatToStr(bestWeightsV[nPDFnow][nMLMnow])+coutGreen+", ";
+          }
+          // remove trailing ";"
+          pdfWeightList[nPDFnow] = pdfWeightList[nPDFnow](0,pdfWeightList[nPDFnow].Length()-1);
+
+          aLOG(Log::INFO) <<coutBlue<<" - Derived the following PDF("<<nPDFnow<<") weights: "<<pdfWeightListPrint<<coutDef<<endl;
+        }
+
+        // save the optimization results to file
+        // -----------------------------------------------------------------------------------------------------------
+        TString saveFileName = getKeyWord("","optimResults","configSaveFileName");
+        aLOG(Log::INFO)<<coutYellow<<" - Saving optimization results in "<<coutGreen<<saveFileName<<coutYellow<<" ..."<<coutDef<<endl;
+
+        OptMaps * optMap = new OptMaps("localOptMap");
+        TString          saveName("");
+        vector <TString> optNames;
+        
+        saveName = "bestMLM";     optNames.push_back(saveName); optMap->NewOptI(saveName, bestANNZindex);
+        saveName = "userPdfBins"; optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC("userPdfBins"));
+        
+        for(int nPDFnow=0; nPDFnow<nPDFs; nPDFnow++) {
+          saveName = TString::Format("weightsPDF_%d",nPDFnow); optNames.push_back(saveName); optMap->NewOptC(saveName, pdfWeightList[nPDFnow]);
+        }
+        
+        utils->optToFromFile(&optNames,optMap,saveFileName,"WRITE");
+
+        optNames.clear(); DELNULL(optMap);
+
+        bestMLMsV.clear(); zRegQnt_nANNZ.clear(); zRegQnt_bias.clear();
+        zRegQnt_sigma68.clear(); zRegQnt_fracSig68.clear(); pdfWeightList.clear();
+        bestWeightsV.clear();
       }
 
-      // save the optimization results to file
-      // -----------------------------------------------------------------------------------------------------------
-      TString saveFileName = getKeyWord("","optimResults","configSaveFileName");
-      aLOG(Log::INFO)<<coutYellow<<" - Saving optimization results in "<<coutGreen<<saveFileName<<coutYellow<<" ..."<<coutDef<<endl;
+      // save the histograms of the pdf bias-correction in a root file
+      // ----------------------------------------------------------------------------------------------------------- 
+      if(doBiasCorPDF) {
+        TString optimVerifName = (TString)(isBinCls ? "verifResults" : "optimResults");
+        TString rootFileName   = getKeyWord("",optimVerifName,"rootSaveFileName");
+        TString biasCorHisTag  = getKeyWord("",optimVerifName,"biasCorHisTag");
 
-      OptMaps * optMap = new OptMaps("localOptMap");
-      TString          saveName("");
-      vector <TString> optNames;
-      
-      saveName = "bestMLM";     optNames.push_back(saveName); optMap->NewOptI(saveName, bestANNZindex);
-      saveName = "userPdfBins"; optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC("userPdfBins"));
-      
-      for(int nPDFnow=0; nPDFnow<nPDFs; nPDFnow++) {
-        saveName = TString::Format("weightsPDF_%d",nPDFnow); optNames.push_back(saveName); optMap->NewOptC(saveName, pdfWeightList[nPDFnow]);
+        aLOG(Log::INFO)<<coutYellow<<" - Saving bias-correction results in "<<coutGreen<<rootFileName<<coutYellow<<" ..."<<coutDef<<endl;
+
+        TFile * rootSaveFile = new TFile(rootFileName,"RECREATE");
+
+        for(int nPDFnow=0; nPDFnow<nPDFs; nPDFnow++) { hisPdfBiasCorV[nPDFnow]->Write((TString)biasCorHisTag+utils->intToStr(nPDFnow)); }
+
+        rootSaveFile->Close();  DELNULL(rootSaveFile);
       }
-      
-      utils->optToFromFile(&optNames,optMap,saveFileName,"WRITE");
+      hisPdfBiasCorV.clear();
 
-      optNames.clear(); DELNULL(optMap);
-
-      bestMLMsV.clear(); zRegQnt_nANNZ.clear(); zRegQnt_bias.clear();
-      zRegQnt_sigma68.clear(); zRegQnt_fracSig68.clear(); pdfWeightList.clear();
     }
 
     // ----------------------------------------------------------------------------------------------------------- 
@@ -383,6 +415,7 @@ void  ANNZ::fillColosureV( map < int,vector<int> >    & zRegQnt_nANNZ,   map < i
     for(int nBinNow=0; nBinNow<nBinsZ; nBinNow++) DELNULL(closH[nMLMnow][nBinNow]);
   }
   closH.clear(); sumWeightsBin.clear();
+  DELNULL(var);
 
   return;
 }
@@ -632,12 +665,13 @@ void  ANNZ::getBestANNZ( map < int,vector<int> >    & zRegQnt_nANNZ,   map < int
  * @param zRegQnt_fracSig68  - Map of vector, which is filled with the claculated combined outlier-fraction metric.
  * @param bestWeightsV       - Vector into which the results of the PDF derivation are stored (as weights for
  *                           each MLM).
+ * @param hisPdfBiasCorV     - Vector for bias correction histograms for pdfs.
  */
 // ===========================================================================================================
 void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int            bestANNZindex,     vector<int>    & zRegQnt_nANNZ, 
                                 vector<double>            & zRegQnt_bias, vector<double> & zRegQnt_sigma68, vector<double> & zRegQnt_fracSig68, 
-                                vector < vector<double> > & bestWeightsV) {
-// ========================================================================
+                                vector < vector<double> > & bestWeightsV, vector <TH2*>  & hisPdfBiasCorV) {
+// =========================================================================================================
   aLOG(Log::INFO) <<coutWhiteOnBlack<<coutYellow<<" - starting ANNZ::getRndMethodBestPDF() ... "<<coutDef<<endl;
   VERIFY(LOCATION,(TString)"Memory leak ?! ",(dynamic_cast<TChain*>(aChain)));
 
@@ -648,6 +682,7 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
   int     nTryPDFs           = glob->GetOptI("nRndPdfWeightTries"); // number of variations of pdf to test
   int     nSmearsRnd         = glob->GetOptI("nSmearsRnd");
   int     nMLMs              = glob->GetOptI("nMLMs");
+  int     nPDFbins           = glob->GetOptI("nPDFbins");
   TString zTrgTitle          = glob->GetOptC("zTrgTitle");
   TString _typeANNZ          = glob->GetOptC("_typeANNZ");
   TString zRegTitle          = glob->GetOptC("zRegTitle");
@@ -661,6 +696,8 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
   double  max_sigma68_PDF    = glob->GetOptF("max_sigma68_PDF");
   double  max_bias_PDF       = glob->GetOptF("max_bias_PDF");
   double  max_frac68_PDF     = glob->GetOptF("max_frac68_PDF");
+  bool    doBiasCorPDF       = glob->GetOptB("doBiasCorPDF");
+  bool    doPlots            = glob->GetOptB("doPlots");
 
   TString MLMnameBest        = getTagName(bestANNZindex);
   TString MLMnameBest_e      = getTagError(bestANNZindex);
@@ -722,6 +759,20 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
       hisIntgrZtrgSimV[nPDFnow][nModelNow]->GetXaxis()->SetTitle((TString)"C("+zTrgTitle+")");
       hisIntgrZtrgSimV[nPDFnow][nModelNow]->GetYaxis()->SetTitle((TString)"1/N dN/dC("+zTrgTitle+")");
       hisIntgrZtrgSimV[nPDFnow][nModelNow]->SetTitle("");
+    }
+  }
+
+  // -----------------------------------------------------------------------------------------------------------
+  // define bias-correction histograms for the pdfs
+  // -----------------------------------------------------------------------------------------------------------
+  TH2F           * hisPdfBiasV_Ztrg(NULL), * hisPdfBiasV_Zreg(NULL);
+  vector <TH2F*> hisPdfTryBiasCorV(nTryPDFs,NULL);
+
+  if(doBiasCorPDF) {
+    for(int nPDFnow=0; nPDFnow<nTryPDFs; nPDFnow++) {
+      TString nPDFname           = TString::Format("_nPdf%d",nPDFnow);
+      TString hisName            = (TString)"pdfBias"+_typeANNZ+nPDFname;
+      hisPdfTryBiasCorV[nPDFnow] = new TH2F(hisName,hisName,nPDFbins,&(zPDF_binE[0]),nPDFbins,&(zPDF_binE[0]));
     }
   }
 
@@ -915,8 +966,8 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
     // for each method derive the weight by the sigma68 and the fracSig68
     // -----------------------------------------------------------------------------------------------------------
     for(int nAcptMLMnow=0; nAcptMLMnow<nAcptMLMs; nAcptMLMnow++) {
-      int     nANNZ_sigm = sigm68V[nAcptMLMnow].first;
-      int     nANNZ_bias = biasV[nAcptMLMnow].first;
+      int     nANNZ_sigm  = sigm68V[nAcptMLMnow].first;
+      int     nANNZ_bias  = biasV[nAcptMLMnow].first;
 
       // derive weights for the methods according to the current PDF variation
       double  weight_sigm = max(pdfWeight_sigm->Eval(nAcptMLMnow),0.);
@@ -1093,6 +1144,8 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
 
           zPdfAvg += weightFull * zReg;
           zPdfWgt += weightFull;
+
+          if(doBiasCorPDF) hisPdfTryBiasCorV[nPDFnow]->Fill(zReg,zTrg,weightFull);
         }
       }
       if(zPdfWgt < EPS) break; // no need to go on with all PDFs - this object must has zero weights
@@ -1104,6 +1157,7 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
       hisIntgrZtrgV[nPDFnow]->Fill(min(max(intgrZtrg,EPS),1-EPS));
       hisIntgrZregV[nPDFnow]->Fill(min(max(intgrZreg,EPS),1-EPS));
       his2_N       [nPDFnow]->Fill(zPdfAvg-zTrg,zTrg);
+      // if(doBiasCorPDF) hisPdfTryBiasCorV[nPDFnow]->Fill(zPdfAvg,zTrg,zPdfWgt);
     }
 
   }
@@ -1127,7 +1181,7 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
                     <<coutBlue<<nPDFnow+1<<coutPurple<<"/"<<coutBlue<<nTryPDFs<<coutPurple<<" ..."<<coutDef<<endl;
 
     his1_N[nPDFnow] = ((TH2*)his2_N[nPDFnow])->ProjectionY((TString)his2_N[nPDFnow]->GetName()+"_proj");
-    
+
     vector <TH1*> his1_NzV;
     utils->his2d_to_his1dV(NULL,his2_N[nPDFnow],his1_NzV);
 
@@ -1182,7 +1236,7 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
       }
 
       // generate random values and fill the simulated PDF objects in hisIntgrZtrgSimV
-      double  zTrg = his1_N[nPDFnow]->GetRandom();
+      double  zTrg  = his1_N[nPDFnow]->GetRandom();
       double  delta = spline_delta->Eval(zTrg);
       double  sigma = spline_sigma->Eval(zTrg);  if(sigma < EPS) { nContinue++; nSimObjNow--; continue; }
 
@@ -1315,7 +1369,10 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
       hisIntgrZregFirstFewV. push_back( (TH1*)hisVtmp[nPDFnow]->Clone((TString)hisVtmp[nPDFnow]->GetName()+"_firstFew") );
     }
 
-    if(nSortedPdfNow == 0) bestWeightsV_Zreg = weightsM[nPDFnow];
+    if(nSortedPdfNow == 0) {
+      bestWeightsV_Zreg = weightsM[nPDFnow];
+      hisPdfBiasV_Zreg  = hisPdfTryBiasCorV[nPDFnow];
+    }
 
     aLOG(Log::DEBUG) <<coutGreen<<" -- Sorted minimization-metric of PDF int' weights ["
                      <<coutBlue<<funcName<<coutGreen<<"] -> "<<coutYellow<< fitMetricNow <<coutDef<<endl;
@@ -1393,7 +1450,7 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
 
     if(nSortedPdfNow < 5) {
       hisIntgrZtrgFirstFewV. push_back( (TH1*)         hisVtmp    [nPDFnow]->Clone((TString)hisVtmp    [nPDFnow]->GetName()+"_firstFew") );
-      weightsMgrphFirstFew  ->Add      ( (TGraphErrors*)weightGrphV[nPDFnow]->Clone((TString)weightGrphV[nPDFnow]->GetName()+"_firstFew") );
+      weightsMgrphFirstFew  ->Add     ( (TGraphErrors*)weightGrphV[nPDFnow]->Clone((TString)weightGrphV[nPDFnow]->GetName()+"_firstFew") );
     }
 
     if(nSortedPdfNow % plotBinFreq == 0) {
@@ -1403,8 +1460,9 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
     }
 
     if(nSortedPdfNow == 0) {
-      nPdfBestModel      = nPDFnow;
+      nPdfBestModel     = nPDFnow;
       bestWeightsV_Ztrg = weightsM[nPDFnow];
+      hisPdfBiasV_Ztrg  = hisPdfTryBiasCorV[nPDFnow];
     }
 
     aLOG(Log::DEBUG) <<coutGreen<<" -- Sorted minimization-metric of PDF int' weights ["
@@ -1421,7 +1479,7 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
   // -----------------------------------------------------------------------------------------------------------
   // plots
   // -----------------------------------------------------------------------------------------------------------
-  if(glob->GetOptB("doPlots")) {
+  if(doPlots) {
     aLOG(Log::INFO) <<coutGreen<<" - Creating some plots ..."<<coutDef<<endl;
     
     // draw the integrated zTrg,zReg histograms
@@ -1559,9 +1617,9 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
   // -----------------------------------------------------------------------------------------------------------
   // store the results in the vector accosible by the outside world
   // -----------------------------------------------------------------------------------------------------------
-  bestWeightsV.clear();
-  if(nPDFs > 0) bestWeightsV.push_back(bestWeightsV_Ztrg); // combination of models -> PDF_0
-  if(nPDFs > 1) bestWeightsV.push_back(bestWeightsV_Zreg); // constant fit          -> PDF_1
+  bestWeightsV.clear(); hisPdfBiasCorV.clear();
+  if(nPDFs > 0) { bestWeightsV.push_back(bestWeightsV_Ztrg); hisPdfBiasCorV.push_back(hisPdfBiasV_Ztrg); } // combination of models -> PDF_0
+  if(nPDFs > 1) { bestWeightsV.push_back(bestWeightsV_Zreg); hisPdfBiasCorV.push_back(hisPdfBiasV_Zreg); } // constant fit          -> PDF_1
 
   // -----------------------------------------------------------------------------------------------------------
   // cleanup
@@ -1582,7 +1640,173 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
   his1PlotV.clear(); his1PlotVV.clear(); bestWeightsV_Ztrg.clear(); bestWeightsV_Zreg.clear();
   fitMetric_nPDF.clear(); fitMetric.clear(); scaleFactorModel.clear(); fitTitleV.clear();
 
+  for(int nPDFnow=0; nPDFnow<nTryPDFs; nPDFnow++) {
+    if(hisPdfTryBiasCorV[nPDFnow] == hisPdfBiasV_Ztrg || hisPdfTryBiasCorV[nPDFnow] == hisPdfBiasV_Zreg) continue;
+    DELNULL(hisPdfTryBiasCorV[nPDFnow]);
+  }
+  hisPdfTryBiasCorV.clear();
+
   // aLOG(Log::INFO) <<coutWhiteOnBlack<<coutCyan<<" - ending   getRndMethodBestPDF(). "<<coutDef<<endl;
+  return;
+}
+
+
+// ===========================================================================================================
+/**
+ * @brief             - Derive bin-weights, based on the difference betwen the width of
+ *                    classification- and pdf-bins
+ * 
+ * @details           - We define dp as the probability density of a given classifier: For each classification bin, we compute dp as the 
+ *                    classification-probability of the corresponding MLM, divided by the width of the classification bin. Then, 
+ *                    binWgt is the weight required to compute the average of dp for a given PDF bin. the average is defined
+ *                    over all of the classification bins which overlap the PDF bin.
+ *                    in actually:
+ *                      double areaOfOverlap = (min(clsBinE_1,pdfBinE_1) - max(clsBinE_0,pdfBinE_0)) / (clsBinE_1 - clsBinE_0);
+ *                      double avgWeight     = (min(clsBinE_1,pdfBinE_1) - max(clsBinE_0,pdfBinE_0)) / (pdfBinE_1 - pdfBinE_0);
+ *                      double binWgt        = areaOfOverlap * avgWeight;
+ *                    so we can just compute the epxression:
+ * 
+ * @param pdfBinWgt   - Will hold the weights
+ * @param nClsBinsIn  - Will hold the number of derived weights
+ */
+// ===========================================================================================================
+void ANNZ::setBinClsPdfBinWeights(vector < vector < pair<int,double> > > & pdfBinWgt, vector <int> & nClsBinsIn) {
+// ===============================================================================================================
+
+  int nPDFbins = glob->GetOptI("nPDFbins");
+  int nClsBins = (int)zBinCls_binC.size();
+
+  pdfBinWgt.resize(nPDFbins); nClsBinsIn.resize(nPDFbins,0);
+
+  aLOG(Log::DEBUG) <<coutCyan<<LINE_FILL('-',112)<<coutDef<<endl;
+  aLOG(Log::DEBUG) <<coutGreen<< " - pdf bin, pdfBin-edges, "<<coutBlue
+                   <<"classification-bin, clsBin-edges, "<<coutYellow<<" clsBin-weights -"<<coutDef<<endl;
+  aLOG(Log::DEBUG) <<coutCyan<<LINE_FILL('-',112)<<coutDef<<endl;
+
+  for(int nPdfBinNow=0; nPdfBinNow<nPDFbins; nPdfBinNow++) {
+    double  pdfBinE_0 = zPDF_binE[nPdfBinNow];
+    double  pdfBinE_1 = zPDF_binE[nPdfBinNow+1];
+
+    for(int nClsBinNow=0; nClsBinNow<nClsBins; nClsBinNow++) {
+      double  clsBinE_0 = zBinCls_binE[nClsBinNow];
+      double  clsBinE_1 = zBinCls_binE[nClsBinNow+1];
+
+      if(clsBinE_0 > pdfBinE_1 || clsBinE_1 < pdfBinE_0) continue;
+
+      double binWgt = pow((min(clsBinE_1,pdfBinE_1) - max(clsBinE_0,pdfBinE_0)),2) / ((clsBinE_1 - clsBinE_0) * (pdfBinE_1 - pdfBinE_0));
+
+      if(binWgt < EPS) continue;
+
+      pdfBinWgt[nPdfBinNow].push_back( pair<int,double>(nClsBinNow,binWgt) );
+
+      aLOG(Log::DEBUG) <<std::left<<coutGreen<<" - "<<std::setw(6)<<nPdfBinNow<<" "<<std::setw(14)<<pdfBinE_0<<" "<<std::setw(14)<<pdfBinE_1
+                       <<" "<<coutBlue<<std::setw(6)<<nClsBinNow<<" "<<std::setw(14)<<clsBinE_0<<" "<<std::setw(14)<<clsBinE_1<<" "
+                       <<coutYellow<<std::setw(14)<<binWgt<<coutDef<<endl;
+    }
+    nClsBinsIn[nPdfBinNow] = (int)pdfBinWgt[nPdfBinNow].size();
+  }
+
+  aLOG(Log::DEBUG) <<coutCyan<<LINE_FILL('-',112)<<coutDef<<endl;
+
+  return;
+}
+
+
+// ===========================================================================================================
+/**
+ * @brief                 - Derive the pdf bias-correction histograms for binned classification pdfs
+ * 
+ * @param aChain          - Input chain, with titch to do the claculation.
+ * @param hisPdfBiasCorV  - Will hold the derived histograms
+ */
+// ===========================================================================================================
+void  ANNZ::getBinClsBiasCorPDF(TChain * aChain, vector <TH2*>  & hisPdfBiasCorV) {
+// ================================================================================
+  aLOG(Log::INFO) <<coutWhiteOnBlack<<coutPurple<<" - starting ANNZ::getBinClsBiasCorPDF() ... "<<coutDef<<endl;
+
+  int     maxNobj         = glob->GetOptI("maxNobj");
+  int     nObjectsToWrite = glob->GetOptI("nObjectsToWrite");
+  TString zTrgName        = glob->GetOptC("zTrg");
+  TString aChainName      = (TString)aChain->GetName();
+  int     nPDFs           = glob->GetOptI("nPDFs");
+  int     nPDFbins        = glob->GetOptI("nPDFbins");
+  TString _typeANNZ       = glob->GetOptC("_typeANNZ");
+  int     nSmearsRnd      = glob->GetOptI("nSmearsRnd");
+  int     nSmearsRndHalf  = static_cast<int>(floor(0.01 + nSmearsRnd/2.));
+  UInt_t  seed            = glob->GetOptI("initSeedRnd"); if(seed > 0) seed += 15229;
+  TRandom * rnd           = new TRandom(seed);
+
+  vector < vector < pair<int,double> > > pdfBinWgt;
+  vector < int >                         nClsBinsIn;
+  setBinClsPdfBinWeights(pdfBinWgt,nClsBinsIn);
+
+  hisPdfBiasCorV.resize(nPDFs,NULL);
+  for(int nPDFnow=0; nPDFnow<nPDFs; nPDFnow++) {
+    TString nPDFname        = TString::Format("_nPdf%d",nPDFnow);
+    TString hisName         = (TString)"pdfBias"+_typeANNZ+nPDFname;
+    hisPdfBiasCorV[nPDFnow] = new TH2F(hisName,hisName,nPDFbins,&(zPDF_binE[0]),nPDFbins,&(zPDF_binE[0]));
+  }
+
+  VarMaps * var = new VarMaps(glob,utils,"treeRegVar");
+  var->connectTreeBranches(aChain);
+
+  // -----------------------------------------------------------------------------------------------------------
+  // loop on the tree
+  // -----------------------------------------------------------------------------------------------------------
+  bool breakLoop(false);
+  var->clearCntr();
+  for(Long64_t loopEntry=0; true; loopEntry++) {
+    if(!var->getTreeEntry(loopEntry)) breakLoop = true;
+
+    if((var->GetCntr("nObj")+1 % nObjectsToWrite == 0) || breakLoop) var->printCntr(aChainName,Log::DEBUG);
+    if(breakLoop) break;
+
+    double zTrg = var->GetVarF(zTrgName);
+
+    for(int nPDFnow=0; nPDFnow<nPDFs; nPDFnow++) {
+      // go over all pdf bins
+      for(int nPdfBinNow=0; nPdfBinNow<nPDFbins; nPdfBinNow++) {
+        // in each pdf-bin, use the overlapping cls-bins
+        for(int nClsBinNow=0; nClsBinNow<nClsBinsIn[nPdfBinNow]; nClsBinNow++) {
+          int    clsIndex   = pdfBinWgt[nPdfBinNow][nClsBinNow].first;
+          double binWgt     = pdfBinWgt[nPdfBinNow][nClsBinNow].second;
+
+          TString MLMname   = getTagName(clsIndex);
+          TString MLMname_e = getTagError(clsIndex); TString MLMname_w = getTagWeight(clsIndex);
+
+          double  binVal    = max(min(var->GetVarF(MLMname),1.),0.);
+          double  clsWgt    = var->GetVarF(MLMname_w);
+          double  totWgt    = binVal * binWgt * clsWgt;
+
+          hisPdfBiasCorV[nPDFnow]->Fill(zPDF_binC[nPdfBinNow],zTrg,totWgt);
+
+          // generate random smearing factors for one of the PDFs
+          // -----------------------------------------------------------------------------------------------------------
+          if(nPDFnow == 1) {
+            double clsErr = var->GetVarF(MLMname_e);
+
+            if(clsErr > EPS) {
+              for(int nSmearRndNow=0; nSmearRndNow<nSmearsRnd; nSmearRndNow++) {
+                double sfNow     = fabs(rnd->Gaus(0,clsErr));        if(nSmearRndNow < nSmearsRndHalf) sfNow *= -1;
+                double binSmr    = max(min((binVal + sfNow),1.),0.);
+                double totWgtSmr = binSmr * binWgt * clsWgt;
+
+                hisPdfBiasCorV[nPDFnow]->Fill(zPDF_binC[nPdfBinNow],zTrg,totWgtSmr);
+              }
+            }
+          }
+
+        }
+      }
+    }
+
+    var->IncCntr("nObj"); if(var->GetCntr("nObj") == maxNobj) breakLoop = true;
+  }
+  if(!breakLoop) { var->printCntr(aChainName,Log::DEBUG); }
+
+  DELNULL(var); DELNULL(rnd);
+  pdfBinWgt.clear(); nClsBinsIn.clear();
+
   return;
 }
 
@@ -1638,6 +1862,8 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
   bool    isBinCls          = glob->GetOptB("doBinnedCls");
   bool    needBinClsErr     = glob->GetOptB("needBinClsErr");
   bool    writePosNegErrs   = glob->GetOptB("writePosNegErrs");
+  bool    doBiasCorPDF      = glob->GetOptB("doBiasCorPDF");
+  double  minWeight         = 0.001;
 
   TRandom * rnd             = new TRandom(seed);
   TString regBestNameVal    = getTagBestMLMname(baseTag_v);
@@ -1648,7 +1874,6 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
   bool    noInChain         = !(dynamic_cast<TChain*>(inChain));
   int     nSmearsRndHalf    = static_cast<int>(floor(0.01 + nSmearsRnd/2.));
   int     bestANNZindex     = 0;
-  int     nClsBins          = (int)zBinCls_binC.size();
 
   vector < int >              addMLMv;
   vector < vector<TString> >  outTreeNameV(2,vector<TString>(nDivLoops,"")), outFileNameV(2,vector<TString>(nDivLoops,""));
@@ -1705,51 +1930,77 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
     hisPDF_w[nPDFnow] = new TH1F(hisName,hisName,nPDFbins,&(zPDF_binE[0]));
   }
 
+
+  // -----------------------------------------------------------------------------------------------------------
+  // load histograms for bias-correction of PDFs and create local 1d projections
+  // -----------------------------------------------------------------------------------------------------------
+  vector < vector <TH1*> > hisBiasCorV(nPDFs,vector<TH1*>(nPDFbins,NULL));
+
+  if(doBiasCorPDF) {
+    vector <TH2*> hisPdfBiasCorV(nPDFs,NULL);
+
+    // load the histograms from the root file
+    // ----------------------------------------------------------------------------------------------------------- 
+    TString optimVerifName = (TString)(isBinCls ? "verifResults" : "optimResults");
+    TString rootFileName   = getKeyWord("",optimVerifName,"rootSaveFileName");
+    TString biasCorHisTag  = getKeyWord("",optimVerifName,"biasCorHisTag");
+
+    aLOG(Log::INFO)<<coutYellow<<" - Reading bias-correction results from "<<coutGreen<<rootFileName<<coutYellow<<" ..."<<coutDef<<endl;
+
+    TFile * rootSaveFile = new TFile(rootFileName,"READ");
+
+    for(int nPDFnow=0; nPDFnow<nPDFs; nPDFnow++) {
+      hisName = (TString)biasCorHisTag+utils->intToStr(nPDFnow);
+
+      hisPdfBiasCorV[nPDFnow] = dynamic_cast<TH2*>(rootSaveFile->Get(hisName));
+      VERIFY(LOCATION,(TString)"Could not find "+hisName+" in "+rootFileName+" Can try to run with [\"doBiasCorPDF\" = False]?!",
+                      (dynamic_cast<TH2*>(hisPdfBiasCorV[nPDFnow])));
+
+      hisPdfBiasCorV[nPDFnow] = (TH2*)hisPdfBiasCorV[nPDFnow]->Clone((TString)hisName+"_cln");
+      hisPdfBiasCorV[nPDFnow]->SetDirectory(0);
+    }
+
+    rootSaveFile->Close();  DELNULL(rootSaveFile);
+
+    // create the 1d projections - one histogram per zReg-bin
+    // ----------------------------------------------------------------------------------------------------------- 
+    for(int nPDFnow=0; nPDFnow<nPDFs; nPDFnow++) {
+      for(int nBinXnow=1; nBinXnow<nPDFbins+1; nBinXnow++) {
+        hisName = (TString)hisPdfBiasCorV[nPDFnow]->GetName()+"_"+utils->intToStr(nBinXnow);
+
+        double intgr = hisPdfBiasCorV[nPDFnow]->Integral(nBinXnow,nBinXnow);  if(intgr < EPS) continue;
+
+        TH1 * his1 = (TH1*)hisPdfBiasCorV[nPDFnow]->ProjectionY(hisName,nBinXnow,nBinXnow,"e");
+        his1->Scale(1/intgr);
+
+        for(int nBinYnow=1; nBinYnow<his1->GetNbinsX()+1; nBinYnow++) {
+          double val = his1->GetBinContent(nBinYnow);
+          if(val < minWeight) his1->SetBinContent(nBinYnow,0);
+        }
+
+        intgr = his1->Integral();
+        if(intgr < EPS) {
+          DELNULL(his1);
+        }
+        else {
+          his1->Scale(1/intgr);
+          hisBiasCorV[nPDFnow][nBinXnow-1] = his1;
+        }
+
+        // // may draw the 1d projections for debugging...
+        // outputs->optClear(); outputs->draw->NewOptC("drawOpt","e1p"); outputs->drawHis1dV(hisBiasCorV[nPDFnow][nBinXnow-1]);
+      }
+      DELNULL(hisPdfBiasCorV[nPDFnow]);
+    }
+    hisPdfBiasCorV.clear();
+  }
+
   // -----------------------------------------------------------------------------------------------------------
   // calculate the overlap factors between the classifications bins (one for eack MLM) and the pdf bins
   // -----------------------------------------------------------------------------------------------------------
-  vector < int >                         nClsBinsIn(nPDFbins,0);
-  vector < vector < pair<int,double> > > pdfBinWgt(nPDFbins);
-  if(isBinCls) {
-    aLOG(Log::DEBUG) <<coutCyan<<LINE_FILL('-',112)<<coutDef<<endl;
-    aLOG(Log::DEBUG) <<coutGreen<< " - pdf bin, pdfBin-edges, "<<coutBlue
-                     <<"classification-bin, clsBin-edges, "<<coutYellow<<" clsBin-weights -"<<coutDef<<endl;
-    aLOG(Log::DEBUG) <<coutCyan<<LINE_FILL('-',112)<<coutDef<<endl;
-
-    for(int nPdfBinNow=0; nPdfBinNow<nPDFbins; nPdfBinNow++) {
-      double  pdfBinE_0 = zPDF_binE[nPdfBinNow];
-      double  pdfBinE_1 = zPDF_binE[nPdfBinNow+1];
-
-      for(int nClsBinNow=0; nClsBinNow<nClsBins; nClsBinNow++) {
-        double  clsBinE_0 = zBinCls_binE[nClsBinNow];
-        double  clsBinE_1 = zBinCls_binE[nClsBinNow+1];
-
-        if(clsBinE_0 > pdfBinE_1 || clsBinE_1 < pdfBinE_0) continue;
-
-        // we define dp as the probability density of a given classifier: For each classification bin, we compute dp as the 
-        // classification-probability of the corresponding MLM, divided by the width of the vlassification bin. Then, 
-        // binWgt is the weight required to compute the average of dp for a given PDF bin. the average is defined over all of the classification
-        // bins which overlap the PDF bin.
-        // in actually:
-        //   double areaOfOverlap = (min(clsBinE_1,pdfBinE_1) - max(clsBinE_0,pdfBinE_0)) / (clsBinE_1 - clsBinE_0);
-        //   double avgWeight     = (min(clsBinE_1,pdfBinE_1) - max(clsBinE_0,pdfBinE_0)) / (pdfBinE_1 - pdfBinE_0);
-        //   double binWgt        = areaOfOverlap * avgWeight;
-        // so we can just compute the epxression:
-        double binWgt = pow((min(clsBinE_1,pdfBinE_1) - max(clsBinE_0,pdfBinE_0)),2) / ((clsBinE_1 - clsBinE_0) * (pdfBinE_1 - pdfBinE_0));
-
-        if(binWgt < EPS) continue;
-
-        pdfBinWgt[nPdfBinNow].push_back( pair<int,double>(nClsBinNow,binWgt) );
-
-        aLOG(Log::DEBUG) <<std::left<<coutGreen<<" - "<<std::setw(6)<<nPdfBinNow<<" "<<std::setw(14)<<pdfBinE_0<<" "<<std::setw(14)<<pdfBinE_1
-                         <<" "<<coutBlue<<std::setw(6)<<nClsBinNow<<" "<<std::setw(14)<<clsBinE_0<<" "<<std::setw(14)<<clsBinE_1<<" "
-                         <<coutYellow<<std::setw(14)<<binWgt<<coutDef<<endl;
-      }
-      nClsBinsIn[nPdfBinNow] = (int)pdfBinWgt[nPdfBinNow].size();
-    }
-
-    aLOG(Log::DEBUG) <<coutCyan<<LINE_FILL('-',112)<<coutDef<<endl;
-  }
+  vector < vector < pair<int,double> > > pdfBinWgt;
+  vector < int >                         nClsBinsIn;
+  if(isBinCls) setBinClsPdfBinWeights(pdfBinWgt,nClsBinsIn);
 
   // -----------------------------------------------------------------------------------------------------------
   // create the chain for the loop, or assign the input chain
@@ -2341,14 +2592,47 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
           }
         }
 
+        // -----------------------------------------------------------------------------------------------------------
         // fill the pdf tree branches
         // -----------------------------------------------------------------------------------------------------------
         if(nLoopTypeNow == 1) {
           for(int nPDFnow=0; nPDFnow<nPDFs; nPDFnow++) {
             double intgrPDF_w = hisPDF_w[nPDFnow]->Integral();
 
+            if(intgrPDF_w > EPS) {
+              // rescale the weighted probability distribution
+              hisPDF_w[nPDFnow]->Scale(1/intgrPDF_w);
+
+              // apply the bias-correction to the pdf
+              // -----------------------------------------------------------------------------------------------------------
+              if(doBiasCorPDF) {
+                double nSmearUnf = nSmearsRnd * 2;
+                TH1 * hisPDF_w_TMP = (TH1*)hisPDF_w[nPDFnow]->Clone((TString)hisPDF_w[nPDFnow]->GetName()+"_TMP");
+
+                for(int nBinXnow=1; nBinXnow<nPDFbins+1; nBinXnow++) {
+                  double val = hisPDF_w_TMP->GetBinContent(nBinXnow);
+
+                  if(val < minWeight)                   continue;
+                  if(!hisBiasCorV[nPDFnow][nBinXnow-1]) continue;
+
+                  val /= nSmearUnf;
+                  for(int nSmearUnfNow=0; nSmearUnfNow<nSmearUnf; nSmearUnfNow++) {
+                    double rndVal = hisBiasCorV[nPDFnow][nBinXnow-1]->GetRandom();
+                    rndVal = min(max(rndVal,minValZ+EPS),maxValZ-EPS);
+                    
+                    hisPDF_w[nPDFnow]->Fill(rndVal,val);
+                  }
+                }
+                DELNULL(hisPDF_w_TMP);
+
+                intgrPDF_w = hisPDF_w[nPDFnow]->Integral();
+                if(intgrPDF_w > EPS) hisPDF_w[nPDFnow]->Scale(1/intgrPDF_w);
+              }
+            }
+
             // if the objects was skipped (zero weight), the average value will have the
             // default (std::numeric_limits<float>::max()), but to avoid very big meaningless output, set the pdf-bins to zero
+            // -----------------------------------------------------------------------------------------------------------
             if(intgrPDF_w < EPS) {
               for(int nPdfBinNow=0; nPdfBinNow<nPDFbins; nPdfBinNow++) {
                 TString pdfBinName = getTagPdfBinName(nPDFnow,nPdfBinNow);
@@ -2366,10 +2650,8 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
               continue;
             }
 
-            // rescale the weighted probability distribution
-            hisPDF_w[nPDFnow]->Scale(1/intgrPDF_w);
-
             // the value of the pdf in the different bins
+            // -----------------------------------------------------------------------------------------------------------
             for(int nPdfBinNow=0; nPdfBinNow<nPDFbins; nPdfBinNow++) {
               TString pdfBinName = getTagPdfBinName(nPDFnow,nPdfBinNow);
               double  pdfValNow  = hisPDF_w[nPDFnow]->GetBinContent(nPdfBinNow+1);
@@ -2401,7 +2683,7 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
               }
               else if(nPdfTypeNow == 1) {
                 utils->param->clearAll();
-                utils->param->NewOptF("meanWithoutOutliers",2);
+                utils->param->NewOptF("meanWithoutOutliers",5);
                 if(utils->getInterQuantileStats(hisPDF_w[nPDFnow])) {
                   double  regAvgPdfVal  = utils->param->GetOptF("quant_mean_Nsig68");
                   double  regAvgPdfErr  = defErrBySigma68 ? utils->param->GetOptF("quant_sigma_68") : utils->param->GetOptF("quant_sigma");
@@ -2552,6 +2834,13 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
   outTreeNameV.clear(); outFileNameV.clear(); isErrKNNv.clear(); isErrINPv.clear();
   pdfBinWgt.clear(); nClsBinsIn.clear();
 
+  for(int nPDFnow=0; nPDFnow<nPDFs; nPDFnow++) {
+    for(int nPDFbinNow=0; nPDFbinNow<nPDFbins; nPDFbinNow++) { DELNULL(hisBiasCorV[nPDFnow][nPDFbinNow]); }
+  }
+  hisBiasCorV.clear();
+
+  DELNULL(rnd);
+  
   aLOG(Log::INFO) <<coutWhiteOnBlack<<coutGreen<<" - ending doEvalReg() ... "<<coutDef<<endl;
 
   return;
@@ -2919,7 +3208,9 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
           }
         }
       }
-      VERIFY(LOCATION,(TString)"Sum(PDF weights) = "+utils->floatToStr(pdfSum/pdfWgt)+" , but should be 1 ?!?!",(fabs(pdfSum/pdfWgt - 1) < 1e-5));
+      if(fabs(pdfSum/pdfWgt - 1) > 1e-5) {
+        aLOG(Log::WARNING) <<coutRed<<(TString)"Sum(PDF weights) = "+utils->floatToStr(pdfSum/pdfWgt)+" , but should be 1 ?!?!"<<coutDef<<endl;
+      }
     }
 
     var->IncCntr("nObj"); if(var->GetCntr("nObj") == maxNobj) breakLoop = true;

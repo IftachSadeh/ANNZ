@@ -45,7 +45,7 @@ void ANNZ::Init() {
   // -----------------------------------------------------------------------------------------------------------
   // internal names
   // -----------------------------------------------------------------------------------------------------------
-  glob->NewOptC("isSigName","ANNZ_isSig"); // internal flag name for truth information
+  glob->NewOptC("sigBckTypeName","ANNZ_sigBckType"); // internal flag name for truth information
   glob->NewOptC("aTimeName","ANNZ_aTime"); // internal flag name for time operations
   glob->NewOptB("hasTruth",!glob->GetOptB("doEval")); // internal flag for adding a cut on the range of values of zTrg
 
@@ -98,9 +98,10 @@ void ANNZ::Init() {
                            "Must run GenerateInputTrees() first ...",(utils->isDirFile(glob->GetOptC("inputTreeDirName"))));
 
   vector <TString> optNames;
-  optNames.push_back("nSplit");        optNames.push_back("treeName");     optNames.push_back("indexName"); 
-  optNames.push_back("splitName");     optNames.push_back("origFileName"); optNames.push_back("testValidType");
-  optNames.push_back("useWgtKNN");
+  optNames.push_back("nSplit");        optNames.push_back("treeName");      optNames.push_back("indexName"); 
+  optNames.push_back("splitName");     optNames.push_back("testValidType"); optNames.push_back("useWgtKNN");
+  
+  if(glob->GetOptB("storeOrigFileName")) optNames.push_back("origFileName");
 
   utils->optToFromFile(&optNames,glob,glob->GetOptC("userOptsFile_genInputTrees"),"READ","WARNING_KeepFile",inLOG(Log::DEBUG));
 
@@ -185,11 +186,6 @@ void ANNZ::Init() {
   bool isGoodRegClsType = ( (glob->GetOptB("doClassification")?1:0) + (glob->GetOptB("doRegression")?1:0) == 1 );
   VERIFY(LOCATION,(TString)"Configuration problem... Need exactly one of \"doClassification\", \"doRegression\" options ...",isGoodRegClsType);
 
-  if(glob->GetOptB("doClassification")) {
-    VERIFY(LOCATION,(TString)"Signal/background definitions have not been supplied (\"userCuts_sig\", \"userCuts_bck\")",
-                                    (glob->GetOptC("userCuts_sig") != "" && glob->GetOptC("userCuts_bck") != ""));
-  }
-
   if(glob->GetOptB("doRegression")) {
     int nOpts(0);
     if(glob->GetOptB("doSingleReg")) nOpts++; if(glob->GetOptB("doRandomReg")) nOpts++; if(glob->GetOptB("doBinnedCls")) nOpts++;
@@ -204,6 +200,8 @@ void ANNZ::Init() {
     
     if(glob->GetOptC("MLMsToStore") == "") glob->SetOptC("MLMsToStore","BEST");
   }
+
+  if(!glob->GetOptB("doRegression")) glob->SetOptB("doBiasCorPDF",false);
 
   // number of PDF types - either generate no PDF, or choose up to two types
   // -----------------------------------------------------------------------------------------------------------
@@ -663,11 +661,16 @@ TString ANNZ::getKeyWord(TString MLMname, TString sequence, TString key) {
     else                                 VERIFY(LOCATION,(TString)"Unknown key (\""+key+"\") in ketKeyWord()",false);
   }
   // -----------------------------------------------------------------------------------------------------------
-  else if(sequence == "optimResults") {
+  else if(sequence == "optimResults" || sequence == "verifResults") {
     // -----------------------------------------------------------------------------------------------------------
-    TString configSaveFileName  = glob->GetOptC("optimDirNameFull")+"saveOptimOpt.txt";
+    TString baseName            = (TString)((sequence == "optimResults") ? glob->GetOptC("optimDirNameFull") : glob->GetOptC("verifDirNameFull"));
+    TString configSaveFileName  = (TString)baseName+"saveOptimOpt.txt";
+    TString rootSaveFileName    = (TString)baseName+"saveOptimObj.root";
+    TString biasCorHisTag       = (TString)"biasCorHis_";
 
     if     (key == "configSaveFileName") return configSaveFileName;
+    else if(key == "rootSaveFileName")   return rootSaveFileName;
+    else if(key == "biasCorHisTag")      return biasCorHisTag;
     else                                 VERIFY(LOCATION,(TString)"Unknown key (\""+key+"\") in ketKeyWord()",false);
   }
   

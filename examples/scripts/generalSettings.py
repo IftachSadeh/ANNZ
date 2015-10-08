@@ -64,8 +64,8 @@ def generalSettings():
   # reduce output (especially progress bar) for batch running
   # glob.annz["isBatch"] = True
 
-  # number of near-neighbours to use for the KNN error estimation, see setupKdTreeKNN().
-  # glob.annz["nErrKNN"] = 70
+  # number of near-neighbours to use for the KNN error estimation, see setupKdTreeKNN() - should be around ~100
+  # glob.annz["nErrKNN"] = 150
 
   # The KNN error and weight calculations are nominally performed for rescaled variable distributions; each input variable is
   # mapped by a linear transformation to the range `[-1,1]`, so that the distance in the input parameter space is not biased
@@ -74,6 +74,9 @@ def generalSettings():
   # glob.annz["doWidthRescale_errKNN"]  = False
   # glob.annz["doWidthRescale_wgtKNN"]  = False
   # glob.annz["doWidthRescale_inTrain"] = False
+
+  # wether or not to perform a bias-correction on PDFs (by default set to True)
+  # glob.annz["doBiasCorPDF"] = False
 
   # if propagating input-errors - nErrINP is the number of randomly generated MLM values used to propagate
   # the uncertainty on the input parameters to the MLM-estimator. See getRegClsErrINP()
@@ -90,6 +93,8 @@ def generalSettings():
 def genRndOpts(aSeed):
   rnd.seed(1982516+aSeed)
   rndAr = [rnd.random() for i in range(15)]
+
+  if not "rndOptTypes" in glob.annz: glob.annz["rndOptTypes"] = "BDT"
 
   rndOptTypes = glob.annz["rndOptTypes"]
   isReg       = glob.annz["doRegression"] and (not glob.annz["doBinnedCls"])

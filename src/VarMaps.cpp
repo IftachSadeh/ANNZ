@@ -975,6 +975,13 @@ void VarMaps::connectTreeBranches(TTree * tree, vector <TString> * excludedBranc
       TString brnchType  = (brnchTitle.Length() > 2) ? brnchTitle(brnchTitle.Length()-2,brnchTitle.Length()) : (TString)"";
 
       bool skipBranch(false);
+
+      // test for array variables, which e.g., have the format "varName[4]/D"
+      if(brnchTitle.Length() > 3) {
+        TString brnchPref = brnchTitle(brnchTitle.Length()-3,brnchTitle.Length());
+        if(brnchTitle.Contains("[") && brnchPref(0,1) == "]") skipBranch = true;
+      }
+
       // go over exclusion list and search for skipped branches
       // -----------------------------------------------------------------------------------------------------------
       for(int nExlBranches=0; nExlBranches<nExludeBranches; nExlBranches++) {

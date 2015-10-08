@@ -29,9 +29,11 @@ glob.annz["outDirName"]   = "test_randCls_quick"
 # nMLMs - the number of random MLMs to generate
 glob.annz["nMLMs"]        = 10
 
-# the definition of signal and background classes
-glob.annz["userCuts_sig"] = "type == 3"
-glob.annz["userCuts_bck"] = "type == 6"
+# --------------------------------------------------------------------------------------------------
+# the definition of the signal and background classes
+# --------------------------------------------------------------------------------------------------
+glob.annz["userCuts_sig"] = "type == 3" # in this example, these are galaxies
+glob.annz["userCuts_bck"] = "type == 6" # in this example, these are stars
 
 # --------------------------------------------------------------------------------------------------
 # pre-processing of the input dataset

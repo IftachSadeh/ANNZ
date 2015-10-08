@@ -1,4 +1,4 @@
-# ANNZ 2.0.6
+# ANNZ 2.1.0
 
 ## Introduction
 ANNZ uses both regression and classification techniques for estimation of single-value photo-z (or any regression problem) solutions and PDFs. In addition it is suitable for classification problems, such as star/galaxy classification.
@@ -296,10 +296,35 @@ Here are a couple of examples:
 
 See the advanced scripts for additional details.
 
+#### Definition of signal and background objects in single/randomized classification
+
+Signal and background objects may be defined by using at least one pair of variables, either `userCuts_sig` and `userCuts_bck` or `inpFiles_sig` and `inpFiles_bck`. Alternatively, it is also possible to use three of the latter or all four in tandem. For example:
+
+  - Using existing parameters from the input files (e.g., the variable `type`) to define logical expressions, such as
+    ```python
+    glob.annz["userCuts_sig"] = "type == 3" # all objects which pass this condition are signal objects
+    glob.annz["userCuts_bck"] = "type == 6" # all objects which pass this condition are background objects
+    ```
+
+  - Using an entire input file for signal or for background objects, as e.g.,
+    ```python
+    glob.annz["inpFiles_sig"] = "sgCatalogue_galaxy_0.txt;sgCatalogue_galaxy_1.txt" # all objects from these files are signal objects
+    glob.annz["inpFiles_bck"] = "sgCatalogue_star_0.txt" # all objects from this file are background objects
+    ```
+  
+  - A combination of variables - input file selection together with additional cuts, as e.g.,
+    ```python
+    # all objects from this file which pass this cut are signal objects
+    glob.annz["inpFiles_sig"] = "sgCatalogue_galaxy_0.txt"
+    glob.annz["userCuts_sig"] = "mE2_r < 0.5"
+
+    # all objects from this file are background objects
+    glob.annz["inpFiles_bck"] = "sgCatalogue_star_0.txt"
+    ```
+
 #### Running on a batch farm
 
 It is advisable to run ANNZ on a batch farm, especially during the training phase. An example of how this may be done is given in `scripts/annz_qsub.py`. Please note that this only serves as a guideline, and should probably be customized for a particular cluster.
-
 
 #### FITS format support
 
