@@ -954,7 +954,7 @@ void Utils::doPolyFit(TNamed * inputObject, map < TString , double > * fitParMap
   int      fitStatus(-1);
   TString  fitOpt     = "+rQ";   //fitOpt += "MEV";
 
-  TF1 * fitFunc1 = new TF1(theFunc, theFunc, (*fitParMap)["fitBottom"], (*fitParMap)["fitTop"]);
+  TF1 * fitFunc1 = new TF1(regularizeName(theFunc), theFunc, (*fitParMap)["fitBottom"], (*fitParMap)["fitTop"]);
   
   if(fitFunc1 == NULL){
     cout << endl;

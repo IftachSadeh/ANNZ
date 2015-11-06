@@ -1,6 +1,9 @@
 # Changelog
 
-<!-- ## Master version -->
+## Master version
+
+- Fixed bug in generating a name for an internal `TF1` function in `ANNZ::setupKdTreeKNN()`.
+
 ## ANNZ 2.1.0 (08/10/2015)
 
 - Removed unnecessary dictionary generation from Makefile.
