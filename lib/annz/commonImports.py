@@ -13,7 +13,7 @@ qsub         = dict()
 annz         = dict()
 
 log          = logging.getLogger('annzLog')
-annzDir      = os.getcwd()+"/"
+annzDir      = os.getcwd()+"/" if not "ANNZSYS" in os.environ else os.environ["ANNZSYS"]
 libDirName   = annzDir+"lib/"
 exeName      = libDirName+"myANNZ"
 

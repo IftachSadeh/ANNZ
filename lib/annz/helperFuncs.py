@@ -1,9 +1,9 @@
 import  sys,os,time,logging,argparse,subprocess
-from    math            import floor
-from    generalSettings import *
-import  commonImports   as     glob
-from    commonImports   import Assert, log, blue, red, green, lBlue, yellow, purple, cyan, whtOnBlck, redOnBlck
-from    commonImports   import bluOnBlck, yellOnBlck, whtOnRed, yellowOnRed, whtOnYellow, whtOnGreen
+from    math                 import floor
+from    annz.generalSettings import *
+import  annz.commonImports   as     glob
+from    annz.commonImports   import Assert, log, blue, red, green, lBlue, yellow, purple, cyan, whtOnBlck, redOnBlck
+from    annz.commonImports   import bluOnBlck, yellOnBlck, whtOnRed, yellowOnRed, whtOnYellow, whtOnGreen
 
 # --------------------------------------------------------------------------------------------------
 # command line arguments and basic settings
