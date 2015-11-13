@@ -221,7 +221,8 @@ def doMake():
     resetDir(glob.libDirName,isClean)
   if isMake:
     log.info(blue(" - Moving to ")+red(glob.libDirName)+blue(" and compiling ANNZ... "))
-    cmnd = "cd "+glob.libDirName+" ; make -f "+glob.annzDir+"Makefile"
+    mkfl = os.path.join(glob.annzDir,'Makefile')
+    cmnd = "cd "+glob.libDirName+" ; make -f "+mkfl
     cmkdStatus = os.system(cmnd) ; Assert("compilation failed",(cmkdStatus == 0))
 
     if os.path.isfile(glob.exeName): log.info(blue(" - Found ")+red(glob.exeName)+blue(" - compilation seems to have succeded... "))
