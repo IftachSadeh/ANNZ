@@ -25,7 +25,7 @@
 # --------------------------------------------------------------------------------------------------
 
 
-from helperFuncs import *
+from annz.helperFuncs import *
 
 # command line arguments and basic settings
 # --------------------------------------------------------------------------------------------------
@@ -64,7 +64,7 @@ if glob.annz["doGenInputTrees"]:
   # glob.annz["inAsciiVars"]    = "F:MAG_U;F:MAGERR_U;F:MAG_G;F:MAGERR_G;F:MAG_R;F:MAGERR_R;F:MAG_I;F:MAGERR_I;F:MAG_Z;F:MAGERR_Z;D:Z"
 
   # input dataset
-  # glob.annz["inAsciiFiles"]   = "boss_dr10_0.csv;boss_dr10_1.csv;boss_dr10_2.csv;boss_dr10_3.csv" 
+  # glob.annz["inAsciiFiles"]   = "boss_dr10_0.csv;boss_dr10_1.csv;boss_dr10_2.csv;boss_dr10_3.csv"
 
   glob.annz["inAsciiVars"]  = "F:MAG_U;F:MAGERR_U;F:MAG_G;F:MAGERR_G;F:MAG_R;F:MAGERR_R;F:MAG_I;F:MAGERR_I;F:MAG_Z;F:MAGERR_Z"
   glob.annz["inAsciiFiles"] = "boss_dr10_0_large_magCut_noZ.csv"
@@ -78,7 +78,7 @@ if glob.annz["doGenInputTrees"]:
   #   - an input file (or file list) is required (inAsciiFiles_wgtKNN), which has the reference
   #     sample from which the weights are derived. The ref' sample has the same variable
   #     structure defined in inAsciiVars_wgtKNN (similar rules as for inAsciiVars), but does not
-  #     have to be equal to inAsciiVars. However, both inAsciiVars for the main sample (used for training etc.) 
+  #     have to be equal to inAsciiVars. However, both inAsciiVars for the main sample (used for training etc.)
   #     and inAsciiVars_wgtKNN used for the reference sample must include all variables needed to the weight calculation!
   #     The latter variables are defined in weightVarNames_wgtKNN, these do not necessarily need to correspond to the
   #     variables which are later used for the training (defined in inputVariables).
@@ -162,7 +162,7 @@ if glob.annz["doInTrainFlag"]:
   glob.annz["minNobjInVol_inTrain"]     = 100
   glob.annz["maxRelRatioInRef_inTrain"] = 0.1
   glob.annz["weightVarNames_inTrain"]   = "MAG_U;MAG_G;MAG_R;MAG_I;MAG_Z"
-  glob.annz["outAsciiVars_inTrain"]     = "MAG_G;MAG_R" 
+  glob.annz["outAsciiVars_inTrain"]     = "MAG_G;MAG_R"
   glob.annz["doWidthRescale_inTrain"]   = True
 
   # run ANNZ with the current settings

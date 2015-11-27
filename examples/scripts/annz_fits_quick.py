@@ -1,5 +1,5 @@
-from helperFuncs import *
-from fitsFuncs   import fitsToAscii,asciiToFits
+from annz.helperFuncs import *
+from annz.fitsFuncs   import fitsToAscii,asciiToFits
 
 # command line arguments and basic settings
 # --------------------------------------------------------------------------------------------------
@@ -54,7 +54,7 @@ if glob.annz["doAsciiToFits"]:
 
   # semicolon-separated list of input files
   glob.annz["inAsciiFiles"] = "boss_dr10_0_large.csv;boss_dr10_1_large.csv"
-  
+
   # semicolon-separated list of parameter types and parameter names, corresponding to columns in the input
   # file, e.g., [TYPE:NAME] may be [F:MAG_U], with 'F' standing for float. (see advanced example for detailed explanation)
   glob.annz["inAsciiVars"]  = "F:MAG_U;F:MAGERR_U;F:MAG_G;F:MAGERR_G;F:MAG_R;F:MAGERR_R;F:MAG_I;F:MAGERR_I;F:MAG_Z;F:MAGERR_Z;D:Z"

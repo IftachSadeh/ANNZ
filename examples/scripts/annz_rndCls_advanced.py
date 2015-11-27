@@ -1,4 +1,4 @@
-from helperFuncs import *
+from annz.helperFuncs import *
 
 # command line arguments and basic settings
 # --------------------------------------------------------------------------------------------------
@@ -97,7 +97,7 @@ if glob.annz["doGenInputTrees"]:
   #   set inFileOpt and choose one of the following options for input file configuration:
   # --------------------------------------------------------------------------------------------------
   inFileOpt = 1
-  
+
   # splitTypeTrain - list of files for training. splitTypeTest - list of files for testing and validation
   if   inFileOpt == 0:
     glob.annz["nSplit"]         = 2
@@ -126,12 +126,12 @@ if glob.annz["doGenInputTrees"]:
 # --------------------------------------------------------------------------------------------------
 if glob.annz["doTrain"]:
   # for each MLM, run ANNZ
-  for nMLMnow in range(glob.annz["nMLMs"]): 
+  for nMLMnow in range(glob.annz["nMLMs"]):
     glob.annz["nMLMnow"] = nMLMnow
     if glob.annz["trainIndex"] >= 0 and glob.annz["trainIndex"] != nMLMnow: continue
 
     # --------------------------------------------------------------------------------------------------
-    # inputVariables - 
+    # inputVariables -
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #   - semicolon-separated list of input variables for the MLMs. Can include math expressions of the variables
     #     given in inAsciiVars (see https://root.cern.ch/root/html520/TFormula.html for examples of valid math expressions).
@@ -188,7 +188,7 @@ if glob.annz["doTrain"]:
     #       the type of MLM [ANNZ_MLM=???]. Also, it is allowed to specify a global normalization, which normaly in
     #       TMVA is given as part of the TMVA::Factory options.
     #     - for example one may set:
-    #         glob.annz["userMLMopts"] = "ANNZ_MLM=BDT:VarTransform=Norm:NTrees=110:NormMode=NumEvents:BoostType=AdaBoost:" 
+    #         glob.annz["userMLMopts"] = "ANNZ_MLM=BDT:VarTransform=Norm:NTrees=110:NormMode=NumEvents:BoostType=AdaBoost:"
     #       where "ANNZ_MLM=BDT" and "NormMode=NumEvents" are the two options which are not nominally part of TMVA
     # --------------------------------------------------------------------------------------------------
     #   - transformations (numerical value of inputs to training):
@@ -214,7 +214,7 @@ if glob.annz["doTrain"]:
     #     use normalization by setting (alwaysUseNormalization==false) and not setting NormMode.
     #     it is recomended to always use some kind of normalization, so best to leave this at the default setting.
     # --------------------------------------------------------------------------------------------------
-    
+
     # rndOptTypes - generate automatically these randomized MLM types for cases
     #               where [userMLMopts = ""] (currently "ANN", "BDT" or "ANN_BDT" are supported)
     # --------------------------------------------------------------------------------------------------
@@ -232,7 +232,7 @@ if glob.annz["doTrain"]:
     #   - define cuts and weights for training and/or validation for any given nMLMnow.
     #     - cuts are logical expressions that define acceptance criterial (e.g., objects which fail
     #       userCuts_train are excluded from the training).
-    #       For instance, 
+    #       For instance,
     #         glob.annz["userCuts_train"] = "modelMag_r < 22"
     #       means that only objects which have R-band model-magnitude lower than 22 are accepted for training.
     #     - weights are used to enhance or reduce the significance of objects by some numerical value.
@@ -312,7 +312,7 @@ if glob.annz["doOptim"] or glob.annz["doEval"]:
     glob.annz["evalDirPostfix"] = ""
 
     # ==================================================================================================
-    # MLMsToStore - 
+    # MLMsToStore -
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #   - which MLMs to write to output.
     #     - "ALL"           - write all trained MLMs
@@ -320,8 +320,8 @@ if glob.annz["doOptim"] or glob.annz["doEval"]:
     #     - "BEST;x"        - write only the x best performing MLMs (x = integer number)
     #     - "LIST;0;1;3;55" - specific list of MLM indices (sepaated by ';';) to write out
     # --------------------------------------------------------------------------------------------------
-    glob.annz["MLMsToStore"] = "BEST;2" 
-    
+    glob.annz["MLMsToStore"] = "BEST;2"
+
     # --------------------------------------------------------------------------------------------------
     # addOutputVars
     #   - add the following variables (extracted from the input file) to the output
