@@ -173,7 +173,7 @@ myANNZ::myANNZ() {
   glob->NewOptI("nSplit"        ,3);
   glob->NewOptC("splitType"     ,"byInFiles"); // [serial,blocks,random,byInFiles] - methods for splitting the input dataset
   glob->NewOptC("splitTypeTrain","");          // in case of seperate input files - this is the list of training  input files
-  glob->NewOptC("splitTypeTest" ,"");          // in case of seperate input files - this is the list of testinh   input files
+  glob->NewOptC("splitTypeTest" ,"");          // in case of seperate input files - this is the list of testing   input files
   glob->NewOptC("splitTypeValid","");          // in case of seperate input files - this is the list of validating input files
   glob->NewOptI("splitSeed"     ,19888687);    // seed for random number generator for one of the splitting methods
   glob->NewOptC("inputVariables","");          // list of input variables as they appear in the input ascii files
@@ -434,7 +434,7 @@ myANNZ::myANNZ() {
   glob->NewOptC("zTrgTitle"       ,"Z_{trg}"); // title of regression target   (for plots)
   glob->NewOptC("zRegTitle"       ,"Z_{reg}"); // title of regression variable (for plots)
   glob->NewOptF("zPlotBinWidth"   ,-1);        // width of bins to perform the plotting
-  glob->NewOptI("nDrawBins_zTrg"  ,30);        // number of bins in zTrg for plotting
+  glob->NewOptI("nDrawBins_zTrg"  ,-1);        // number of bins in zTrg for plotting
   // typical width in the regression variable for plotting, e.g., for 10 plotting bins, set zClosBinWidth = (maxValZ-minValZ)/10.
   glob->NewOptF("zClosBinWidth"   ,-1);
 

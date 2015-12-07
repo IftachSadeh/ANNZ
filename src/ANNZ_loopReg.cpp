@@ -3039,7 +3039,27 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
   if(allMLMsIn != "") aLOG(Log::INFO)<<coutYellow<<" - Will use ("<<nMLMsIn-2*nPDFsIn<<") MLMs from the input chain: "<<allMLMsIn<<coutDef<<endl;
   if(allPDFsIn != "") aLOG(Log::INFO)<<coutYellow<<" - Will use ("<<nPDFsIn          <<") PDFs from the input chain: "<<allPDFsIn<<coutDef<<endl;
 
-  vector <TString> plotVars = utils->splitStringByChar(addOutputVars,';');
+  
+  // -----------------------------------------------------------------------------------------------------------
+  // create the vars to read chain and validate the requested added plotting variables
+  // -----------------------------------------------------------------------------------------------------------
+  VarMaps * var = new VarMaps(glob,utils,"treePlotVar");
+  var->connectTreeBranches(aChain);
+
+  vector <TString> plotVars, plotVarNames;
+  plotVarNames = utils->splitStringByChar(addOutputVars,';');
+  
+  for(int nNameNow=0; nNameNow<(int)plotVarNames.size(); nNameNow++) {
+    TString plotVarNameNow = plotVarNames[nNameNow];
+
+    if(var->HasVarF(plotVarNameNow)) { plotVars.push_back(plotVarNameNow); }
+    else {
+      aLOG(Log::INFO)<<coutRed<<" - Requested variable ("<<coutYellow<<plotVarNameNow<<coutRed
+                     <<") is not a float, and will not be plotted against..."<<coutDef<<endl;
+    }
+  }
+  plotVarNames.clear();
+
   int nTypeBins = 2 + (int)plotVars.size();
 
   vector < vector<double> > varPlot_binE, varPlot_binC;
@@ -3120,11 +3140,6 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
   }
 
   // -----------------------------------------------------------------------------------------------------------
-  // create the vars to read trees and do the loop
-  // -----------------------------------------------------------------------------------------------------------
-  VarMaps * var = new VarMaps(glob,utils,"treePlotVar");
-  var->connectTreeBranches(aChain);
-
   // loop on the tree
   // -----------------------------------------------------------------------------------------------------------
   bool  breakLoop(false);

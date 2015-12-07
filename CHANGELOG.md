@@ -4,6 +4,10 @@
 
 - Fixed bug in generating a name for an internal `TF1` function in `ANNZ::setupKdTreeKNN()`.
 
+- Fixed bug in plotting routine from `ANNZ::doMetricPlots()`, when adding user-requested variables which are not floats.
+
+- Other minor modifications.
+
 ## ANNZ 2.1.0 (08/10/2015)
 
 - Removed unnecessary dictionary generation from Makefile.

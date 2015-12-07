@@ -230,6 +230,9 @@ void ANNZ::Init() {
     if(glob->GetOptF("zPlotBinWidth") < EPS) {
       glob->SetOptF("zPlotBinWidth", glob->GetOptF("zClosBinWidth"));
     }
+    if(glob->GetOptI("nDrawBins_zTrg") < 2) {
+      glob->SetOptI("nDrawBins_zTrg", static_cast<int>(floor(0.00001+(glob->GetOptF("maxValZ")-glob->GetOptF("minValZ"))/0.05)));
+    }
 
     double zDiff            = glob->GetOptF("maxValZ")-glob->GetOptF("minValZ");
     bool   hasGoodBinWidthZ = (    (glob->GetOptF("zClosBinWidth") > 0 && glob->GetOptF("zClosBinWidth") <= zDiff/5.)
