@@ -3069,6 +3069,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
 
     hisName = (TString)"his1_TMP";
 
+    // get the cuts (assume here that this function is used for "_valid" only, otherwise, would need to add a flag...)
     setMethodCuts(var,0,false);
     TString treeCuts = (TString)((TCut)(var->getTreeCuts("_comn") + var->getTreeCuts(getTagName(0)+"_valid")));
 
