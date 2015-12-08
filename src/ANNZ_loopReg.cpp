@@ -3046,19 +3046,38 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
   VarMaps * var = new VarMaps(glob,utils,"treePlotVar");
   var->connectTreeBranches(aChain);
 
-  vector <TString> plotVars, plotVarNames;
+  vector <TString> plotVars, plotVarForms, plotVarNames;
   plotVarNames = utils->splitStringByChar(addOutputVars,';');
   
   for(int nNameNow=0; nNameNow<(int)plotVarNames.size(); nNameNow++) {
-    TString plotVarNameNow = plotVarNames[nNameNow];
+    TString plotVarNameNow     = (TString)plotVarNames[nNameNow];
+    TString plotVarFormNameNow = (TString)"form_"+plotVarNameNow;
 
-    if(var->HasVarF(plotVarNameNow)) { plotVars.push_back(plotVarNameNow); }
+    if(var->HasVarF(plotVarNameNow) || var->HasVarI(plotVarNameNow)) {
+      plotVars    .push_back(plotVarNameNow);
+      plotVarForms.push_back(plotVarFormNameNow);
+    }
     else {
       aLOG(Log::INFO)<<coutRed<<" - Requested variable ("<<coutYellow<<plotVarNameNow<<coutRed
                      <<") is not a float, and will not be plotted against..."<<coutDef<<endl;
     }
   }
   plotVarNames.clear();
+
+
+  // recreate the var with the requested plotting variables as NewForm()
+  DELNULL(var);
+  var = new VarMaps(glob,utils,"treePlotVar");
+
+  for(int nVarNow=0; nVarNow<(int)plotVars.size(); nVarNow++) {
+    TString plotVarNameNow     = plotVars[nVarNow];
+    TString plotVarFormNameNow = plotVarForms[nVarNow];
+
+    var->NewForm(plotVarFormNameNow,plotVarNameNow);
+  }
+
+  var->connectTreeBranches(aChain);
+
 
   int nTypeBins = 2 + (int)plotVars.size();
 
@@ -3101,8 +3120,8 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
 
       double binW   = (maxVal - minVal)/double(nBinsZ);
 
-      aLOG(Log::DEBUG) <<coutGreen<<" - adding plotting variable "<<coutRed<<plotVars[nTypeBinNow]<<coutGreen<<" with "<<coutPurple<<nBinsZ<<coutGreen
-                       <<" bins with width ("<<binW<<") within ["<<minVal<<","<<maxVal<<"]"<<coutDef<<endl;
+      aLOG(Log::DEBUG) <<coutGreen<<" - adding plotting variable "<<coutRed<<plotVars[nTypeBinNow]<<coutGreen<<" with "<<coutPurple
+                       <<nBinsZ<<coutGreen<<" bins with width ("<<binW<<") within ["<<minVal<<","<<maxVal<<"]"<<coutDef<<endl;
       
       for(int nBinZnow=0; nBinZnow<nBinsZ; nBinZnow++) {
         double  binEdgeL  = minVal   + binW * nBinZnow;
@@ -3202,9 +3221,9 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
       for(int nTypeBinNow=0; nTypeBinNow<nTypeBins; nTypeBinNow++) {
         // (nTypeBinNow == 1): bins of the regression value, (nTypeBinNow == 0): bins of the target value
         int nBinZnow(0);
-        if     (nTypeBinNow == 0) nBinZnow = getBinZ(zTrg                                 ,zPlot_binE);
-        else if(nTypeBinNow == 1) nBinZnow = getBinZ(zRegV                                ,zPlot_binE);
-        else                      nBinZnow = getBinZ(var->GetVarF(plotVars[nTypeBinNow-2]),varPlot_binE[nTypeBinNow-2]);
+        if     (nTypeBinNow == 0) nBinZnow = getBinZ(zTrg                                     ,zPlot_binE);
+        else if(nTypeBinNow == 1) nBinZnow = getBinZ(zRegV                                    ,zPlot_binE);
+        else                      nBinZnow = getBinZ(var->GetForm(plotVarForms[nTypeBinNow-2]),varPlot_binE[nTypeBinNow-2]);
         if(nBinZnow < 0) continue;
 
         his_clos[typeName][nTypeBinNow][nBinZnow]->Fill(zRegV-zTrg , zRegW);
@@ -3237,9 +3256,9 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
         for(int nTypeBinNow=0; nTypeBinNow<nTypeBins; nTypeBinNow++) {
           // (nTypeBinNow == 0): bins of the regression value, (nTypeBinNow == 1): bins of the target value
           int nBinZnow(0);
-          if     (nTypeBinNow == 0) nBinZnow = getBinZ(zTrg                                 ,zPlot_binE);
-          else if(nTypeBinNow == 1) nBinZnow = getBinZ(pdfBinCtr                            ,zPlot_binE);
-          else                      nBinZnow = getBinZ(var->GetVarF(plotVars[nTypeBinNow-2]),varPlot_binE[nTypeBinNow-2]);
+          if     (nTypeBinNow == 0) nBinZnow = getBinZ(zTrg                                     ,zPlot_binE);
+          else if(nTypeBinNow == 1) nBinZnow = getBinZ(pdfBinCtr                                ,zPlot_binE);
+          else                      nBinZnow = getBinZ(var->GetForm(plotVarForms[nTypeBinNow-2]),varPlot_binE[nTypeBinNow-2]);
           if(nBinZnow < 0) continue;
 
           his_clos[typeName][nTypeBinNow][nBinZnow]->Fill(pdfBinCtr-zTrg , pdfBinValW);
@@ -3328,7 +3347,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
         mltGrphM[tagNow1] = new TMultiGraph(); mltGrphV[tagNow0].push_back(mltGrphM[tagNow1]);
         
         for(int nTypeBinNow=0; nTypeBinNow<nTypeBins-2; nTypeBinNow++) {
-          TString plotVarName = (TString)typeName+" , "+plotVars[nTypeBinNow];
+          TString plotVarName =(TString)typeName+" , "+ utils->regularizeName(plotVars[nTypeBinNow]);
 
           TString tagNow0(""), tagNow1("");
           tagNow0 = (TString)plotVarName+"plotVars"; tagNow1 = (TString)tagNow0+"_mean"; tagNow1.ReplaceAll(" , ","");
@@ -3741,7 +3760,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
   nameV_MLM_v.clear(); nameV_MLM_e.clear(); nameV_MLM_w.clear();
   titleV_MLM.clear(); titleV_PDF.clear(); nameV_PDF.clear(); nameV_PDF_b.clear();
   tagNameV.clear(); pdfTagWgtV.clear(); pdfTagErrV.clear();
-  plotVars.clear(); varPlot_binE.clear(); varPlot_binC.clear();
+  plotVars.clear(); plotVarForms.clear(); varPlot_binE.clear(); varPlot_binC.clear();
   typeTitleV.clear(); metricNameV.clear(); metricTitleV.clear();
   graphAvg_Xv.clear(); graphAvg_Xe.clear(); graphAvg_Yv.clear(); graphAvg_Ye.clear();
   mltGrphAvgV.clear(); his_regTrgZ.clear(); his_corRegTrgZ.clear(); his_clos.clear(); his_relErr.clear();
