@@ -3067,10 +3067,36 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
     varPlot_binE.resize(nTypeBins-2,vector<double>(nBinsZ+1,0));
     varPlot_binC.resize(nTypeBins-2,vector<double>(nBinsZ  ,0));
 
+    hisName = (TString)"his1_TMP";
+
+    setMethodCuts(var,0,false);
+    TString treeCuts = (TString)((TCut)(var->getTreeCuts("_comn") + var->getTreeCuts(getTagName(0)+"_valid")));
+
     for(int nTypeBinNow=0; nTypeBinNow<nTypeBins-2; nTypeBinNow++) {
-      double minVal = aChain->GetMinimum(plotVars[nTypeBinNow]);
-      double maxVal = aChain->GetMaximum(plotVars[nTypeBinNow]);
-      VERIFY(LOCATION,(TString)"Something is horribly wrong ?!?! ",(maxVal > minVal));
+      TString drawExprs = (TString)plotVars[nTypeBinNow]+">>"+hisName;
+
+      TCanvas * tmpCnvs = new TCanvas("tmpCnvs","tmpCnvs");
+      int     nEvtPass  = aChain->Draw(drawExprs,treeCuts);
+      
+      double minVal(1), maxVal(-1);
+      if(nEvtPass > 0) {
+        TH1 * his1 = (TH1F*)gDirectory->Get(hisName);
+        if(dynamic_cast<TH1*>(his1)) {
+          his1->BufferEmpty();
+
+          minVal  = his1->GetXaxis()->GetBinLowEdge(his1->GetXaxis()->GetFirst());
+          maxVal  = his1->GetXaxis()->GetBinUpEdge (his1->GetXaxis()->GetLast() );
+
+          DELNULL(his1);
+        }
+      }
+      if(maxVal <= minVal) { minVal = 0; maxVal = 1; }
+
+      DELNULL(tmpCnvs);
+
+      // double minVal = aChain->GetMinimum(plotVars[nTypeBinNow]);
+      // double maxVal = aChain->GetMaximum(plotVars[nTypeBinNow]);
+      // VERIFY(LOCATION,(TString)"Something is horribly wrong ?!?! ",(maxVal > minVal));
 
       double binW   = (maxVal - minVal)/double(nBinsZ);
 
