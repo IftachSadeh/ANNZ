@@ -370,6 +370,12 @@ myANNZ::myANNZ() {
   // -----------------------------------------------------------------------------------------------------------
   glob->NewOptC("optimCondReg","sig68");
 
+  // use MAD (median absolute deviation) instead of sigma_86 for randomized regression optimization
+  glob->NewOptB("optimWithMAD",false); 
+
+  // use scaled bias ((zReg-zTrg)/(1+zTrg)) instead of delta for randomized regression optimization
+  glob->NewOptB("optimWithScaledBias",false);
+
   // -----------------------------------------------------------------------------------------------------------
   // evaluation (regression, binned-classification and classification)
   // -----------------------------------------------------------------------------------------------------------
@@ -402,6 +408,8 @@ myANNZ::myANNZ() {
   glob->NewOptF("minPdfWeight"      ,0.01); // weights smaller than minPdfWeight will be discarded
   // number of PDF bins (equal distance bins in the range [minValZ,maxValZ]). If userPdfBins is defined, this value is ignored
   glob->NewOptI("nPDFbins"          ,0);
+  // instead of nPDFbins, it is possibleto define the width of a pdf bin, using pdfBinWidth
+  glob->NewOptF("pdfBinWidth"       ,0);
   // number of random MLM weighting schemes to generate as part of getRndMethodBestPDF()
   glob->NewOptI("nRndPdfWeightTries",30);
   // number of random smearing to perform when folding uncertainty estimates into MLM solutions for PDF generation
@@ -444,6 +452,9 @@ myANNZ::myANNZ() {
   // see: http://root.cern.ch/root/html/TPad.html#TPad:SaveAs
   // -----------------------------------------------------------------------------------------------------------
   glob->NewOptC("printPlotExtension","pdf");
+
+  // use scaled bias (delta/(1+zTrg)) instead of delta for plotting in ANNZ::doMetricPlots()
+  glob->NewOptB("plotWithSclBias"  ,false); 
 
   // -----------------------------------------------------------------------------------------------------------
   // uncertainty estimators - either KNN (K-near-neighbours) entimation (used by default), or input-error propagation.

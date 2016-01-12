@@ -319,15 +319,20 @@ if glob.annz["doOptim"] or glob.annz["doEval"]:
   #   - in evaluation:   the PDF bins are used to generate the final PDF in the output ascii file for the
   #                      evaluation dataset.
   # - example use:
-  #   set hasUserPdfBins as [True] or [False] to choose fixed- or user-defined- PDF bins.
+  #   set pdfBinsType as [1,2] or [0] to choose fixed- or user-defined- PDF bins, respectively.
+  #   For fixed-width bins, it is possible to define either the number of bins (nPDFbins) or the
+  #   width of each bin (pdfBinWidth). (Only one of [nPDFbins,pdfBinWidth] can be defined at a time.)
   # --------------------------------------------------------------------------------------------------
-  hasUserPdfBins = False
-  if hasUserPdfBins:
+  pdfBinsType = 1
+  if pdfBinsType == 0:
     # use a pre-defined set of PDF bins
     glob.annz["userPdfBins"] = "0.0;0.1;0.2;0.24;0.3;0.52;0.6;0.7;0.8"
-  else:
-    # nPDFbins - number of PDF bins (equal width bins between minValZ and maxValZ)
+  elif pdfBinsType == 1:
+    # nPDFbins - number of PDF bins (equal width bins between minValZ and maxValZ- automatically derive pdfBinWidth)
     glob.annz["nPDFbins"]    = 90
+  elif pdfBinsType == 2:
+    # pdfBinWidth - width of each PDF bin (equal width bins between minValZ and maxValZ - automatically derive nPDFbins)
+    glob.annz["pdfBinWidth"] = 0.1 
 
   # --------------------------------------------------------------------------------------------------
   # modify_userCuts_valid,modify_userWeights_valid -

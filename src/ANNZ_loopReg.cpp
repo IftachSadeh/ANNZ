@@ -116,10 +116,7 @@ void ANNZ::optimReg() {
       vector <TH2*> hisPdfBiasCorV;
 
       if(isBinCls) {
-
-
         getBinClsBiasCorPDF(aChainMerged,hisPdfBiasCorV);
-
       } 
       else {
         vector <int>               bestMLMsV;
@@ -139,7 +136,7 @@ void ANNZ::optimReg() {
         // which gives the "best" of the selected metric, which is also not the "worst" of the other two.
         // If not enough methods are chosen (at least minNoptimMLMs), try again with a higher percentage of the dist
         // ----------------------------------------------------------------------------------------------------------- 
-        getBestANNZ(zRegQnt_nANNZ,zRegQnt_bias,zRegQnt_sigma68,zRegQnt_fracSig68,bestMLMsV);
+        getBestANNZ(zRegQnt_nANNZ, zRegQnt_bias, zRegQnt_sigma68, zRegQnt_fracSig68, bestMLMsV);
 
         VERIFY(LOCATION,(TString)"Could not find any accepted MLMs which pass minimal metric-cuts ... Something is horribly wrong !!!",
                                  ((int)bestMLMsV.size() > 0));
@@ -151,11 +148,12 @@ void ANNZ::optimReg() {
         aLOG(Log::INFO) <<coutBlue<<" - The \"best\" MLM is: "<<coutRed<<getTagName(bestANNZindex)<<coutDef<<endl;
 
         vector < vector<double> > bestWeightsV;
-        getRndMethodBestPDF(aChainMerged,bestANNZindex,zRegQnt_nANNZ[-1],zRegQnt_bias[-1],zRegQnt_sigma68[-1],zRegQnt_fracSig68[-1],
-                            bestWeightsV,hisPdfBiasCorV);
+        getRndMethodBestPDF(aChainMerged, bestANNZindex, zRegQnt_nANNZ[-1], zRegQnt_bias[-1], zRegQnt_sigma68[-1],
+                            zRegQnt_fracSig68[-1], bestWeightsV, hisPdfBiasCorV);
 
-        VERIFY(LOCATION,(TString)"After getRndMethodBestPDF(), found [bestWeightsV.size() = "+utils->intToStr((int)bestWeightsV.size())+"] - but expected "
-                                 +"this to be [= "+utils->intToStr(nPDFs)+"] ... Something is horribly wrong !!!",((int)bestWeightsV.size() == nPDFs));
+        VERIFY(LOCATION,(TString)"After getRndMethodBestPDF(), found [bestWeightsV.size() = "+utils->intToStr((int)bestWeightsV.size())
+                                 +"] - but expected "+"this to be [= "+utils->intToStr(nPDFs)+"] ... Something is horribly wrong !!!"
+                                 , ((int)bestWeightsV.size() == nPDFs));
 
         for(int nPDFnow=0; nPDFnow<nPDFs; nPDFnow++) {
           VERIFY(LOCATION,(TString)"After getRndMethodBestPDF(), found [bestWeightsV[0,1].size() = "+utils->intToStr((int)bestWeightsV.size())
@@ -295,12 +293,21 @@ void  ANNZ::fillColosureV( map < int,vector<int> >    & zRegQnt_nANNZ,   map < i
   TString hisName(""), zAxisTitle(""), drawExprs("");
   bool    breakLoop(false);
 
-  int     nMLMs           = glob->GetOptI("nMLMs");
-  int     maxNobj         = glob->GetOptI("maxNobj");
-  int     nObjectsToWrite = glob->GetOptI("nObjectsToWrite");
-  TString zTrgName        = glob->GetOptC("zTrg");
-  int     nBinsZ          = (int)zClos_binC.size();  VERIFY(LOCATION,(TString)"zClos_binC not properly initialized ?!? ",(nBinsZ > 0)); //sanity check
-  TString aChainName      = (TString)aChain->GetName();
+  int     nMLMs             = glob->GetOptI("nMLMs");
+  int     maxNobj           = glob->GetOptI("maxNobj");
+  int     nObjectsToWrite   = glob->GetOptI("nObjectsToWrite");
+  TString zTrgName          = glob->GetOptC("zTrg");
+  TString aChainName        = (TString)aChain->GetName();
+
+  bool    optimWithMAD      = glob->GetOptB("optimWithMAD");
+  TString quantScatterName  = optimWithMAD ? (TString)"quant_MAD" : (TString)"quant_sigma_68";
+  TString sig68Title        = optimWithMAD ? (TString)"MAD"       : (TString)"sig68";
+
+  bool    optimWithSclBias  = glob->GetOptB("optimWithScaledBias");
+  TString biasTitle         = optimWithSclBias ? (TString)"bias/(1+"+glob->GetOptC("zTrgTitle")+")" : (TString)"bias";
+
+  int     nBinsZ            = (int)zClos_binC.size();
+  VERIFY(LOCATION,(TString)"zClos_binC not properly initialized ?!? ",(nBinsZ > 0)); //sanity check
 
   vector < double >        sumWeightsBin(nBinsZ,0);
   vector < vector <TH1*> > closH(nMLMs);
@@ -336,11 +343,18 @@ void  ANNZ::fillColosureV( map < int,vector<int> >    & zRegQnt_nANNZ,   map < i
 
       double  weightNow = var->GetVarF(MLMname_w);  if(weightNow < EPS)  continue;
       double  regValNow = var->GetVarF(MLMname);
-      double  closure   = regValNow - var->GetVarF(zTrgName);
       int     zRegBinN  = getBinZ(regValNow,zClos_binE);  if(zRegBinN < 0) continue;
+      double  zTrg      = var->GetVarF(zTrgName);
+
+      double sclBias(regValNow-zTrg);
+      if(optimWithSclBias) {
+        double denom = 1 + zTrg;
+        if(fabs(denom) < EPS) sclBias  = DefOpts::DefF;
+        else                  sclBias /= denom;
+      }
 
       sumWeightsBin[zRegBinN] += weightNow;
-      closH[nMLMnow][zRegBinN]->Fill(closure,weightNow);
+      closH[nMLMnow][zRegBinN]->Fill(sclBias,weightNow);
     }
 
     var->IncCntr("nObj"); if(var->GetCntr("nObj") == maxNobj) breakLoop = true;
@@ -369,12 +383,13 @@ void  ANNZ::fillColosureV( map < int,vector<int> >    & zRegQnt_nANNZ,   map < i
 
       utils->param->clearAll();
       utils->param->NewOptB("doFracLargerSigma" , true);
+      utils->param->NewOptB("getMAD"            , optimWithMAD);
       int hasQuantStats = utils->getInterQuantileStats(closH[nMLMnow][nBinNow]);
 
       // if the calculation disnt go through (no entries) then the currect metrics are all negative
       if(hasQuantStats) {
         quant_mean          = fabs(utils->param->GetOptF("quant_mean"));  // all values must be positive for the optimization to work
-        quant_sigma_68      = utils->param->GetOptF("quant_sigma_68");
+        quant_sigma_68      = utils->param->GetOptF(quantScatterName);
         quant_fracSig68_2   = utils->param->GetOptF("quant_fracSig68_2");
         quant_fracSig68_3   = utils->param->GetOptF("quant_fracSig68_3");
         quant_fracSig68_23  = 0.5 * (quant_fracSig68_2 + quant_fracSig68_3);
@@ -385,6 +400,9 @@ void  ANNZ::fillColosureV( map < int,vector<int> >    & zRegQnt_nANNZ,   map < i
         mean_sigma68     += sumWeightsBin[nBinNow] * quant_sigma_68;
         mean_fracSig68_2 += sumWeightsBin[nBinNow] * quant_fracSig68_2;  
         mean_fracSig68_3 += sumWeightsBin[nBinNow] * quant_fracSig68_3;
+
+        // cout << closH[nMLMnow][nBinNow]->GetName()<<CT<< optimWithMAD <<CT<<quantScatterName <<CT
+        //      <<utils->param->GetOptF(quantScatterName) <<CT<<utils->param->GetOptF("quant_sigma_68")<<endl;
       }
       // store the metrics in each Zbin
       zRegQnt_nANNZ    [nBinNow].push_back(nMLMnow);
@@ -403,8 +421,8 @@ void  ANNZ::fillColosureV( map < int,vector<int> >    & zRegQnt_nANNZ,   map < i
     zRegQnt_sigma68  [-1].push_back(mean_sigma68);
     zRegQnt_fracSig68[-1].push_back(avgFracSig68);
 
-    aLOG(Log::INFO) <<coutCyan<<" - nMLMnow,<bias>,<sig68>,<fracSig68_2,3>:  "<<coutYellow<<nMLMnow<<CT<<coutPurple<<mean_bias
-                    <<CT<<coutGreen<<mean_sigma68<<coutBlue<<CT<<avgFracSig68<<coutDef<<endl;
+    aLOG(Log::INFO) <<coutCyan<<" - nMLMnow,<"<<biasTitle<<">,<"<<sig68Title<<">,<fracSig68_2,3>:  "<<coutYellow<<nMLMnow
+                    <<CT<<coutPurple<<mean_bias<<CT<<coutGreen<<mean_sigma68<<coutBlue<<CT<<avgFracSig68<<coutDef<<endl;
   }
   aLOG(Log::INFO) <<coutCyan<<" ------------------------------------------------------------------------------------------------- "<<coutDef<<endl;
 
@@ -449,8 +467,10 @@ void  ANNZ::getBestANNZ( map < int,vector<int> >    & zRegQnt_nANNZ,   map < int
 
   bestMLMsV.clear(); // before anything, clear the ouput vector
 
-  TString optimCondReg = glob->GetOptC("optimCondReg");
-  int     minAcptANNZs = glob->GetOptI("minAcptMLMsForPDFs");;
+  int     minAcptANNZs   = glob->GetOptI("minAcptMLMsForPDFs");;
+  TString optimCondReg   = glob->GetOptC("optimCondReg");
+  TString optimCondTitle = glob->GetOptB("optimWithMAD")        ? (TString)"MAD"                                     : (TString)optimCondReg;
+  TString biasTitle      = glob->GetOptB("optimWithScaledBias") ? (TString)"bias/(1+"+glob->GetOptC("zTrgTitle")+")" : (TString)"bias";
 
   // -----------------------------------------------------------------------------------------------------------
   // if too few MLMs are available, do a simple ordering by the nominal metric
@@ -498,7 +518,7 @@ void  ANNZ::getBestANNZ( map < int,vector<int> >    & zRegQnt_nANNZ,   map < int
     double  fracLimNow = 0.1 + nfracLimNow*0.025;
 
     aLOG(Log::INFO) <<coutRed<<" - Now trying to find best methods with a limit of "<<coutYellow<<fracLimNow*100<<coutRed
-                    <<"\% of the ["<<optimCondReg<<"] dist (iteration "<<coutYellow<<nfracLimNow<<coutRed<<") ..."<<coutDef<<endl;
+                    <<"\% of the ["<<optimCondTitle<<"] dist (iteration "<<coutYellow<<nfracLimNow<<coutRed<<") ..."<<coutDef<<endl;
 
     nANNZv.clear(); biasV.clear(); sigma68V.clear(); fracSig68V.clear();
 
@@ -593,9 +613,11 @@ void  ANNZ::getBestANNZ( map < int,vector<int> >    & zRegQnt_nANNZ,   map < int
 
         if(nBinNow == -1) { if(hasMetric[optimCondReg]) nAcptBestMLMs++; }
 
-        TString hasAll = TString(hasMetric["bias"]?"bias ":"")+TString(hasMetric["sig68"]?"sig68 ":"")+TString(hasMetric["fracSig68"]?"fracSig68 ":"");
-        if(hasAll != "") aLOG(Log::DEBUG) <<coutGreen<<" - Success for nBinZ,nMLMnow = "<<nBinNow<<","<<nMLMnow<<" -> bias,sig68,fracSig68 = "
-                                          <<coutPurple<<mean_bias<<CT<<mean_sigma68<<CT<<mean_fracSig68<<coutYellow<<"\t -> "<<hasAll<<coutDef<<endl;
+        TString hasAll = TString(hasMetric["bias"]?(TString)biasTitle+" ":"")+TString(hasMetric["sig68"]?(TString)optimCondTitle+" ":"")
+                        +TString(hasMetric["fracSig68"]?"fracSig68 ":"");
+        if(hasAll != "") aLOG(Log::DEBUG) <<coutGreen<<" - Success for nBinZ,nMLMnow = "<<nBinNow<<","
+                                          <<nMLMnow<<" -> "<<biasTitle<<","<<optimCondTitle<<",fracSig68 = "<<coutPurple
+                                          <<mean_bias<<CT<<mean_sigma68<<CT<<mean_fracSig68<<coutYellow<<"\t -> "<<hasAll<<coutDef<<endl;
         hasMetric.clear();
       }
       metricLowQuants.clear();
@@ -626,7 +648,7 @@ void  ANNZ::getBestANNZ( map < int,vector<int> >    & zRegQnt_nANNZ,   map < int
     // check the number of chosen 'best' methods and stop if there are enough
     if(nAcptBestMLMs >= minNoptimMLMs || nfracLimNow == nfracLims-1) {
       aLOG(Log::INFO) <<coutGreen<<" - Found "<<nAcptBestMLMs<<" \"best\" methods (min-threshold was "
-                      <<minNoptimMLMs<<") from the bottom "<<fracLimNow*100<<"\% of the ["<<optimCondReg<<"] dist."<<coutDef<<endl;
+                      <<minNoptimMLMs<<") from the bottom "<<fracLimNow*100<<"\% of the ["<<optimCondTitle<<"] dist."<<coutDef<<endl;
       break;
     }
   }
@@ -699,6 +721,13 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
   bool    doBiasCorPDF       = glob->GetOptB("doBiasCorPDF");
   bool    doPlots            = glob->GetOptB("doPlots");
 
+  bool    optimWithMAD       = glob->GetOptB("optimWithMAD");
+  TString quantScatterName   = optimWithMAD ? (TString)"quant_MAD" : (TString)"quant_sigma_68";
+  TString sig68Title         = optimWithMAD ? (TString)"MAD"       : (TString)"#sigma_{68}";
+  
+  bool    optimWithSclBias   = glob->GetOptB("optimWithScaledBias");
+  TString biasTitle          = optimWithSclBias ? (TString)"#delta/(1+"+zTrgTitle+")" : (TString)"#delta";
+
   TString MLMnameBest        = getTagName(bestANNZindex);
   TString MLMnameBest_e      = getTagError(bestANNZindex);
   int     nModels            = 7;
@@ -750,8 +779,8 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
     
     hisName = (TString)"modelPdf_DELTA"+nPdfName+_typeANNZ;     his1_d[nPDFnow] = new TH1F(hisName,hisName,nBinsZ,&(zClos_binE[0]));
     hisName = (TString)"modelPdf_SIGMA"+nPdfName+_typeANNZ;     his1_s[nPDFnow] = new TH1F(hisName,hisName,nBinsZ,&(zClos_binE[0]));
-    his1_d[nPDFnow]->GetXaxis()->SetTitle((TString)zTrgTitle);  his1_d[nPDFnow]->GetYaxis()->SetTitle((TString)"#delta");
-    his1_s[nPDFnow]->GetXaxis()->SetTitle((TString)zTrgTitle);  his1_s[nPDFnow]->GetYaxis()->SetTitle((TString)"#sigma_{68}");  
+    his1_d[nPDFnow]->GetXaxis()->SetTitle((TString)zTrgTitle);  his1_d[nPDFnow]->GetYaxis()->SetTitle((TString)biasTitle);
+    his1_s[nPDFnow]->GetXaxis()->SetTitle((TString)zTrgTitle);  his1_s[nPDFnow]->GetYaxis()->SetTitle((TString)sig68Title);  
     
     for(int nModelNow=0; nModelNow<nModels; nModelNow++) {
       hisName = TString::Format((TString)"pdfIngrWeightHis"+nPdfName+"_nModel_%d"+_typeANNZ,nModelNow);
@@ -1156,8 +1185,15 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
       // fill the histograms
       hisIntgrZtrgV[nPDFnow]->Fill(min(max(intgrZtrg,EPS),1-EPS));
       hisIntgrZregV[nPDFnow]->Fill(min(max(intgrZreg,EPS),1-EPS));
-      his2_N       [nPDFnow]->Fill(zPdfAvg-zTrg,zTrg);
-      // if(doBiasCorPDF) hisPdfTryBiasCorV[nPDFnow]->Fill(zPdfAvg,zTrg,zPdfWgt);
+      
+      double sclBias(zPdfAvg-zTrg);
+      if(optimWithSclBias) {
+        double denom = 1 + zTrg;
+        if(fabs(denom) < EPS) sclBias  = DefOpts::DefF;
+        else                  sclBias /= denom;
+      }
+
+      his2_N[nPDFnow]->Fill(sclBias,zTrg);      
     }
 
   }
@@ -1189,10 +1225,14 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
     his1_d[nPDFnow]->Reset(); his1_s[nPDFnow]->Reset();
     for(int nHisNow=0; nHisNow<(int)his1_NzV.size(); nHisNow++) {
       utils->param->clearAll();
+      utils->param->NewOptB("getMAD",optimWithMAD);
       if(!utils->getInterQuantileStats(his1_NzV[nHisNow])) continue;
 
       double  delta = utils->param->GetOptF("quant_mean");
-      double  sigma = utils->param->GetOptF("quant_sigma_68");
+      double  sigma = utils->param->GetOptF(quantScatterName);
+
+      // cout << his1_NzV[nHisNow]->GetName()<<CT<< optimWithMAD <<CT<<quantScatterName <<CT<<sigma
+      //      <<CT<<utils->param->GetOptF("quant_sigma_68")<<endl;
 
       his1_d[nPDFnow]->SetBinContent(nHisNow+1,delta); his1_d[nPDFnow]->SetBinError(nHisNow+1,EPS);
       his1_s[nPDFnow]->SetBinContent(nHisNow+1,sigma); his1_s[nPDFnow]->SetBinError(nHisNow+1,EPS);
@@ -1389,7 +1429,7 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
   fitMetric_nPDF.clear(); fitMetric_nPDF.resize(nTryPDFs); fitMetric.clear(); fitMetric.resize(nTryPDFs); scaleFactorModel.clear();
 
   aLOG(Log::DEBUG) <<coutLightBlue<<"------------------------------------------------------------------------------------------------------"<<coutDef<<endl;
-  aLOG(Log::DEBUG) <<coutYellow   <<" - Fitting a combination of models to the zTrg integrated-weights histogram (optimal is chi^2/ndf=1)" <<coutDef<<endl;
+  aLOG(Log::DEBUG) <<coutYellow   <<" - Fitting a combination of models to the zTrg integrated-weights histogram (optimal is chi^2/ndf=1)"  <<coutDef<<endl;
   aLOG(Log::DEBUG) <<coutLightBlue<<"------------------------------------------------------------------------------------------------------"<<coutDef<<endl;
 
   for(int nPDFnow=0; nPDFnow<nTryPDFs; nPDFnow++) {
@@ -2887,6 +2927,9 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
   bool    isBinCls            = glob->GetOptB("doBinnedCls");
   TString aChainName          = (TString)aChain->GetName();
 
+  bool    plotWithSclBias     = glob->GetOptB("plotWithSclBias");
+  TString biasTitle           = plotWithSclBias ? (TString)"#delta/(1+"+glob->GetOptC("zTrgTitle")+")" : (TString)"#delta";
+
   TString hisName("");
   int     nBinsZ((int)zPlot_binC.size()), maxSigmaRelErrToPlot(10);
   int     closHisN(glob->GetOptI("closHisN")), nDrawBins_zTrg(glob->GetOptI("nDrawBins_zTrg")), hisBufSize(glob->GetOptI("hisBufSize"));
@@ -3226,8 +3269,16 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
         else                      nBinZnow = getBinZ(var->GetForm(plotVarForms[nTypeBinNow-2]),varPlot_binE[nTypeBinNow-2]);
         if(nBinZnow < 0) continue;
 
-        his_clos[typeName][nTypeBinNow][nBinZnow]->Fill(zRegV-zTrg , zRegW);
-        his_clos[typeName][nTypeBinNow][nBinsZ]  ->Fill(zRegV-zTrg , zRegW);
+        double sclBias(zRegV-zTrg);
+        if(plotWithSclBias) {
+          double denom = 1 + zTrg;
+          if(fabs(denom) < EPS) sclBias  = DefOpts::DefF;
+          else                  sclBias /= denom;
+        }
+
+        his_clos[typeName][nTypeBinNow][nBinZnow]->Fill(sclBias , zRegW);
+        his_clos[typeName][nTypeBinNow][nBinsZ]  ->Fill(sclBias , zRegW);
+
         if(zRegE > 0) {
           his_relErr[typeName][nTypeBinNow][nBinZnow]->Fill((zRegV-zTrg)/zRegE , zRegW);
           his_relErr[typeName][nTypeBinNow][nBinsZ]  ->Fill((zRegV-zTrg)/zRegE , zRegW);
@@ -3261,8 +3312,16 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
           else                      nBinZnow = getBinZ(var->GetForm(plotVarForms[nTypeBinNow-2]),varPlot_binE[nTypeBinNow-2]);
           if(nBinZnow < 0) continue;
 
-          his_clos[typeName][nTypeBinNow][nBinZnow]->Fill(pdfBinCtr-zTrg , pdfBinValW);
-          his_clos[typeName][nTypeBinNow][nBinsZ]  ->Fill(pdfBinCtr-zTrg , pdfBinValW);
+          double sclBias(pdfBinCtr-zTrg);
+          if(plotWithSclBias) {
+            double denom = 1 + zTrg;
+            if(fabs(denom) < EPS) sclBias  = DefOpts::DefF;
+            else                  sclBias /= denom;
+          }
+
+          his_clos[typeName][nTypeBinNow][nBinZnow]->Fill(sclBias , pdfBinValW);
+          his_clos[typeName][nTypeBinNow][nBinsZ]  ->Fill(sclBias , pdfBinValW);
+
           if(pdfErr > 0) {
             his_relErr[typeName][nTypeBinNow][nBinZnow]->Fill((pdfBinCtr-zTrg)/pdfErr , pdfBinValW);
             his_relErr[typeName][nTypeBinNow][nBinsZ]  ->Fill((pdfBinCtr-zTrg)/pdfErr , pdfBinValW);
@@ -3278,7 +3337,6 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
   }
   if(!breakLoop) { var->printCntr(aChainName,Log::DEBUG); }
 
-
   // -----------------------------------------------------------------------------------------------------------
   // 
   // -----------------------------------------------------------------------------------------------------------
@@ -3290,7 +3348,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
                             graphAvg_Xe(nAvgMetrics,vector<double>(nMLMsIn+nPDFsIn,-1)), graphAvg_Ye(nAvgMetrics,vector<double>(nMLMsIn+nPDFsIn,-1));
 
   for(int nMetricNow=0; nMetricNow<nAvgMetrics; nMetricNow++) {
-    if     (nMetricNow == 0) { metricNameV[nMetricNow] =  "mean";        metricTitleV[nMetricNow] = "#delta";                     }
+    if     (nMetricNow == 0) { metricNameV[nMetricNow] =  "mean";        metricTitleV[nMetricNow] = biasTitle;                    }
     else if(nMetricNow == 1) { metricNameV[nMetricNow] =  "sigma";       metricTitleV[nMetricNow] = "#sigma";                     }
     else if(nMetricNow == 2) { metricNameV[nMetricNow] =  "sigma_68";    metricTitleV[nMetricNow] = "#sigma_{68}";                }
     else if(nMetricNow == 3) { metricNameV[nMetricNow] =  "fracSigma_2"; metricTitleV[nMetricNow] = "f(2#sigma)";                 }
@@ -3589,7 +3647,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
 
     if     (nMultGrphNow == 0) {
       nMetricNow = 0; nGrphV.push_back(nMetricNow); assert(metricNameV[nMetricNow] == "mean"); // sanity check that the nMetricNow is correct
-      yAxisTitle = "< #delta >";
+      yAxisTitle = (TString)"< "+biasTitle+" >";
     }
     else if(nMultGrphNow == 1) {
       nMetricNow = 1; nGrphV.push_back(nMetricNow); assert(metricNameV[nMetricNow] == "sigma"); // sanity check that the nMetricNow is correct

@@ -6,6 +6,36 @@
 
 - Fixed bug in plotting routine from `ANNZ::doMetricPlots()`, when adding user-requested variables which are not floats.
 
+- Added the option,
+```python
+glob.annz["optimWithMAD"] = False
+```
+If set to `True`, then the MAD (median absolute deviation) is used, instead of the 68th percentile of the bias (`sigma_68`). This affects only the selection of the "best" MLM and the PDF optimization procedure in randomized regression. See `scripts/generalSettings.py`.
+
+- Added the option,
+```python
+glob.annz["optimWithScaledBias"] = False
+```
+If set to `True`, then instead of the bias, `delta == zReg-zTrg`, the expression `deltaScaled == delta/(1+zTrg)` is used, where `zReg` is the estimated result of the MLM/PDF and `zTrg` is the true (target) value. This affects only the selection of the "best" MLM and the PDF optimization procedure in randomized regression. E.g., one can set this parameter in order to minimize the value of `deltaScaled` instead of the value of `delta`, or correspondingly the value of the scatter of `deltaScaled` instead of that of `delta`. The selection criteria for prioritizing the bias or the scatter remains the parameter `glob.annz["optimCondReg"]`. The latter can take the value `bias` (for `delta` or `deltaScaled`), `sig68` (for the scatter of `delta` or of `deltaScaled`), and `fracSig68` (for the outlier fraction of `delta` or of `deltaScaled`). See `scripts/generalSettings.py`.
+
+- Added the option,
+```python
+glob.annz["plotWithSclBias"] = False
+```
+If set to `True`, then instead of the bias, `delta == zReg-zTrg`, the expression `delta/(1+zTrg)` is used. This affects only the figures generated with the plotting routine, `ANNZ::doMetricPlots()`, and does not change any of the optimization/output of the code. See `scripts/generalSettings.py`.
+
+- Added option to set the PDF bins in randomized regression by the width of the bins, instead of by the number of the bins. That is, one can now set e.g.,
+```python
+glob.annz["pdfBinWidth"] = 0.01
+```
+instead of e.g.,
+```python
+glob.annz["nPDFbins"] = 100
+```
+Assuming the regression range is `[minValZ,maxValZ] = [0,1.5]`, the first option will lead to 150 PDF bins of width 0.01, while the second will result in 100 bins of width 0.015. The two options are mutually exclusive (the user should define only one or the other).
+
+- *For developers:* Changed internal key-word interface in `Utils::getInterQuantileStats()` for requesting a MAD calculation: to add the calculation - changed from `medianAbsoluteDeviation` to `getMAD`; to retrieve the result of the calculation - from `quant_medianAbsoluteDeviation` to `quant_MAD`.
+
 - Other minor modifications.
 
 ## ANNZ 2.1.0 (08/10/2015)

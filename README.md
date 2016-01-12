@@ -507,17 +507,23 @@ A few notes:
 
   - There are several parameters used to tune PDFs in randomized regression. Here are a couple of principle examples:
 
-    - **`minPdfWeight` -** may be used to set a minimal weights for an MLM in the PDF. For instance, setting
-      ```python
-      glob.annz["minPdfWeight"] = 0.05
-      ```
-    will insure that each MLM will have at least 5% relative significance in the PDF. That is, in this case, no more than 20 MLMs will be used for the PDF.
+    - **`optimWithScaledBias` -** may be used to set the preferred criteria for optimizing the *best* MLM and the PDFs. By default this is `False`, so that the bias, `delta == zReg-zTrg`, is used for the optimization, where `zReg` is the estimated result of the MLM/PDF and `zTrg` is the true (target) value. If set to `True`, then the scaled bias, `deltaScaled == delta/(1+zTrg)`, is used instead. In this case, also the corresponding scatter, and outlier fractions are derived from the distribution of `deltaScaled`.
+    
+    - **`optimCondReg` -** may be used to set the preferred criteria for optimizing the *best* MLM and the PDFs. The options are `bias`, or `sig68`, or `fracSig68`. These respectively stand for prioritizing the minimization of the absolute value of the bias; or of the scatter of the bias distribution; or of the corresponding outlier fraction. If `glob.annz["optimWithScaledBias"] = True`, the options for `optimCondReg` do not change, but the scaled bias, `deltaScaled`, is used instead of the bias.
+
+    - **`optimWithMAD` -** if set to `True`, we calculate the optimizing of the *best* MLM and the of the PDFs using the MAD (median absolute deviation), instead of the 68th percentile, of the bias distribution. By default `annz["optimWithMAD"] = False`.
 
     - **`max_sigma68_PDF`, `max_bias_PDF`, `max_frac68_PDF` -** may be set to put a threshold on the maximal value of the scatter (`max_sigma68_PDF`), bias (`max_bias_PDF`) or outlier-fraction (`max_frac68_PDF`) of an MLM, which may be included in the PDF. For instance, setting
       ```python
       glob.annz["max_sigma68_PDF"] = 0.04
       ```
     will insure that any MLM which has scatter higher than `0.04` will not be included in the PDF.
+
+    - **`minPdfWeight` -** may be used to set a minimal weights for an MLM in the PDF. For instance, setting
+      ```python
+      glob.annz["minPdfWeight"] = 0.05
+      ```
+    will insure that each MLM will have at least 5% relative significance in the PDF. That is, in this case, no more than 20 MLMs will be used for the PDF.
 
   - **`doMultiCls`:** Using the *MultiClass* option of binned classification, multiple background samples can be trained simultaneously against the signal. This means that each classification bin acts as an independent sample during the training. The MultiClass option is only compatible with four MLM algorithms: `BDT`, `ANN`, `FDA` and `PDEFoam`. For `BDT`, only the gradient boosted decision trees are available. That is, one may set `:BoostType=Grad`, but not `:BoostType=Bagging` or `:BoostType=AdaBoost`, as part of the `userMLMopts` option.
 

@@ -48,8 +48,32 @@ def generalSettings():
 
   # optimCondReg -
   #   ["bias", "sig68" or "fracSig68"] - used for deciding how to rank MLM performance. the named criteria represents
-  #   the metric which is more significant in deciding which MLM performs "best".
+  #   the metric which is more significant in deciding which MLM performs "best" (correspondingly, the bias, the
+  #   68th percentile scatter of bias distribution, or the outlier fraction of the latter). The default value is "sig68".
   # glob.annz["optimCondReg"] = "bias"
+
+  # optimWithScaledBias -
+  #   If set to `True`, then instead of the bias, `delta == zReg-zTrg`, the expression `deltaScaled == delta/(1+zTrg)`
+  #   is used, where zReg is the estimated result of the MLM/PDF and zTrg is the true (target) value.
+  #   This affects only the selection of the "best" MLM and the PDF optimization procedure in randomized regression.
+  #   E.g., one can set this parameter in order to minimize the value of `deltaScaled` instead of the value of `delta`, or
+  #   correspondingly the value of the scatter of `deltaScaled` instead of that of `delta`.
+  #   The selection criteria for prioritizing the bias or the scatter remains the parameter `glob.annz["optimCondReg"]`.
+  #   This means that optimCondReg can take the value `bias` (for `delta` or `deltaScaled`),
+  #   or `sig68` (for the 68th percentile scatter of `delta` or of `deltaScaled`), or
+  #   `fracSig68` (for the outlier fraction of `delta` or of `deltaScaled`). The default value is False.
+  # glob.annz["optimWithScaledBias"] = True
+
+  # use the scaled bias `(zReg-zTrg)/(1+zTrg)` instead of the bias for the figures generated with the plotting
+  # routine - does not change any of the optimization procedure or outputs of the code, only the figures.
+  # The default value is False.
+  # glob.annz["plotWithSclBias"] = True
+
+  # optimWithMAD -
+  #   set to True, so that the MAD (median absolute deviation) is used, instead of the 68th percentile 
+  #   of the bias (`sigma_68`). This affects only the selection of the "best" MLM and the PDF optimization 
+  #   procedure in randomized regression. The default value is False.
+  #   glob.annz["optimWithMAD"] = True
 
   # number of random MLM weighting schemes to generate as part of getRndMethodBestPDF()
   # glob.annz["nRndPdfWeightTries"] = 50
