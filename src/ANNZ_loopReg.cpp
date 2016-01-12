@@ -2927,7 +2927,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
   bool    isBinCls            = glob->GetOptB("doBinnedCls");
   TString aChainName          = (TString)aChain->GetName();
 
-  bool    plotWithSclBias     = glob->GetOptB("plotWithSclBias");
+  bool    plotWithSclBias     = glob->GetOptB("plotWithScaledBias");
   TString biasTitle           = plotWithSclBias ? (TString)"#delta/(1+"+glob->GetOptC("zTrgTitle")+")" : (TString)"#delta";
 
   TString hisName("");

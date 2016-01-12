@@ -454,7 +454,7 @@ myANNZ::myANNZ() {
   glob->NewOptC("printPlotExtension","pdf");
 
   // use scaled bias (delta/(1+zTrg)) instead of delta for plotting in ANNZ::doMetricPlots()
-  glob->NewOptB("plotWithSclBias"  ,false); 
+  glob->NewOptB("plotWithScaledBias"  ,false); 
 
   // -----------------------------------------------------------------------------------------------------------
   // uncertainty estimators - either KNN (K-near-neighbours) entimation (used by default), or input-error propagation.

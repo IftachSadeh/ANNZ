@@ -20,7 +20,7 @@
 
 - Added the option,
   ```python
-  glob.annz["plotWithSclBias"] = False
+  glob.annz["plotWithScaledBias"] = False
   ```
   If set to `True`, then instead of the bias, `delta == zReg-zTrg`, the expression `delta/(1+zTrg)` is used. This affects only the figures generated with the plotting routine, `ANNZ::doMetricPlots()`, and does not change any of the optimization/output of the code. See `scripts/generalSettings.py`.
 

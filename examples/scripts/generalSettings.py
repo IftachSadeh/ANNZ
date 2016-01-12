@@ -67,7 +67,7 @@ def generalSettings():
   # use the scaled bias `(zReg-zTrg)/(1+zTrg)` instead of the bias for the figures generated with the plotting
   # routine - does not change any of the optimization procedure or outputs of the code, only the figures.
   # The default value is False.
-  # glob.annz["plotWithSclBias"] = True
+  # glob.annz["plotWithScaledBias"] = True
 
   # optimWithMAD -
   #   set to True, so that the MAD (median absolute deviation) is used, instead of the 68th percentile 
