@@ -511,7 +511,7 @@ A few notes:
     
     - **`optimCondReg` -** may be used to set the preferred criteria for optimizing the *best* MLM and the PDFs. The options are `bias`, or `sig68`, or `fracSig68`. These respectively stand for prioritizing the minimization of the absolute value of the bias; or of the scatter of the bias distribution; or of the corresponding outlier fraction. If `glob.annz["optimWithScaledBias"] = True`, the options for `optimCondReg` do not change, but the scaled bias, `deltaScaled`, is used instead of the bias.
 
-    - **`optimWithMAD` -** if set to `True`, we calculate the optimizing of the *best* MLM and the of the PDFs using the MAD (median absolute deviation), instead of the 68th percentile, of the bias distribution. By default `annz["optimWithMAD"] = False`.
+    - **`optimWithMAD` -** if set to `True`, we calculate the optimizing of the *best* MLM and that of the PDFs using the MAD (median absolute deviation), instead of the 68th percentile, of the bias distribution. By default `annz["optimWithMAD"] = False`.
 
     - **`max_sigma68_PDF`, `max_bias_PDF`, `max_frac68_PDF` -** may be set to put a threshold on the maximal value of the scatter (`max_sigma68_PDF`), bias (`max_bias_PDF`) or outlier-fraction (`max_frac68_PDF`) of an MLM, which may be included in the PDF. For instance, setting
       ```python
