@@ -1,4 +1,4 @@
-# ANNZ 2.1.0
+# ANNZ 2.1.1
 
 ## Introduction
 ANNZ uses both regression and classification techniques for estimation of single-value photo-z (or any regression problem) solutions and PDFs. In addition it is suitable for classification problems, such as star/galaxy classification.
