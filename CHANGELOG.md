@@ -1,6 +1,9 @@
 # Changelog
 
-<!-- ## Master version -->
+## Master version
+
+- Fixed bug in plotting routine from `ANNZ::doMetricPlots()`, when adding user-defined cuts for variables not already present in the input trees.
+
 ## ANNZ 2.1.1 (15/1/2016)
 
 - Fixed bug in generating a name for an internal `TF1` function in `ANNZ::setupKdTreeKNN()`.

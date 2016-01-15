@@ -95,6 +95,21 @@ void ANNZ::optimReg() {
       if(find(acceptV.begin(),acceptV.end(),addVarName) == acceptV.end()) acceptV.push_back(addVarName);
     }
 
+    // check if any variables used for cuts but not requested by the user need to be included in the tree
+    TString cutStr = (TString)(getTrainTestCuts("_comn",0)+getTrainTestCuts(getTagName(0)+"_train",0)+getTrainTestCuts(getTagName(0)+"_valid",0));
+
+    vector <TString> chain0_nameV, addPlotVarV;
+    utils->getTreeBranchNames(aChain_0,chain0_nameV);
+
+    for(int nVarsInNow=0; nVarsInNow<(int)chain0_nameV.size(); nVarsInNow++) {
+      TString addVarName = chain0_nameV[nVarsInNow];
+
+      if(cutStr.Contains(addVarName) && find(acceptV.begin(),acceptV.end(),addVarName) == acceptV.end()) {
+        acceptV    .push_back(addVarName);
+        addPlotVarV.push_back(addVarName);
+      }
+    }
+
     // create subdirectory for the output trees, as the names will be the same in case of separateTestValid
     outDirName = (TString)outDirNameOrig+((nTrainValidNow == 0) ? "train" : "valid")+"/";
     outputs->InitializeDir(outDirName,glob->GetOptC("baseName"));
@@ -106,7 +121,7 @@ void ANNZ::optimReg() {
 
     outputs->SetOutDirName(outDirNameOrig); // redirect outputs back to the current directory
 
-    acceptV.clear(); addVarV.clear();
+    acceptV.clear(); chain0_nameV.clear(); addVarV.clear();
     DELNULL(aChain_0); DELNULL(aChain_1);
 
     // ----------------------------------------------------------------------------------------------------------- 
@@ -233,8 +248,7 @@ void ANNZ::optimReg() {
       // -----------------------------------------------------------------------------------------------------------
       // evaluate the _valid chain
       // -----------------------------------------------------------------------------------------------------------
-      vector <TString> selctVarV;
-      doEvalReg(aChainMerged,outDirName,&selctVarV);
+      doEvalReg(aChainMerged,outDirName,&addPlotVarV);
 
       // create the chain for the plot-loop from the evaluated _valid chain
       // -----------------------------------------------------------------------------------------------------------
@@ -246,13 +260,14 @@ void ANNZ::optimReg() {
       aLOG(Log::DEBUG) <<coutRed<<"Created chain for plotting "<<coutGreen<<inTreeName<<"("<<nEntriesChain_plots
                        <<")"<<" from "<<coutBlue<<inFileName<<coutDef<<endl;
 
-      doMetricPlots(aChain_plots,&selctVarV);
+      doMetricPlots(aChain_plots,&addPlotVarV);
 
       outputs->SetOutDirName(outDirNameOrig); // redirect outputs back to the current directory
 
       DELNULL(aChain_plots);
     }
 
+    addPlotVarV.clear();
     DELNULL(aChainMerged);
   }
 
@@ -1926,10 +1941,18 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
   // extract the requested added variables
   vector <TString> addVarV = utils->splitStringByChar(addOutputVars,';');
 
+  // check if any variables used for cuts but not requested by the user need to be included in the tree
+  if(selctVarV) {
+    for(int nVarsInNow=0; nVarsInNow<(int)selctVarV->size(); nVarsInNow++) {
+      TString addVarName = selctVarV->at(nVarsInNow);
+
+      if(find(addVarV.begin(),addVarV.end(),addVarName) == addVarV.end()) addVarV.push_back(addVarName);
+    }
+  }
+
   int              nPdfTypes(3);
   vector <TString> tagNameV(nPdfTypes);
   tagNameV[0] = glob->GetOptC("baseTag_MLM_avg"); tagNameV[1] = glob->GetOptC("baseTag_PDF_avg"); tagNameV[2] = glob->GetOptC("baseTag_PDF_max");
-
 
   // figure out which MLMs to generate an error for, using which method (KNN errors or propagation of user-defined parameter-errors)
   // -----------------------------------------------------------------------------------------------------------
@@ -3132,8 +3155,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * selctMLMv) {
     hisName = (TString)"his1_TMP";
 
     // get the cuts (assume here that this function is used for "_valid" only, otherwise, would need to add a flag...)
-    setMethodCuts(var,0,false);
-    TString treeCuts = (TString)((TCut)(var->getTreeCuts("_comn") + var->getTreeCuts(getTagName(0)+"_valid")));
+    TString treeCuts = (TString)(getTrainTestCuts("_comn",0)+getTrainTestCuts(getTagName(0)+"_valid",0));
 
     for(int nTypeBinNow=0; nTypeBinNow<nTypeBins-2; nTypeBinNow++) {
       TString drawExprs = (TString)plotVars[nTypeBinNow]+">>"+hisName;
