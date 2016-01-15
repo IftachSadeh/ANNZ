@@ -26,8 +26,9 @@ log.info(whtOnBlck(" - "+time.strftime("%d/%m/%y %H:%M:%S")+" - starting ANNZ"))
 # outDirName - set output directory name
 glob.annz["outDirName"]   = "test_randCls_quick"
 
-# nMLMs - the number of random MLMs to generate
-glob.annz["nMLMs"]        = 10
+# nMLMs - the number of random MLMs to generate - for running the example,
+# we set nMLMs at a small value, but this should be >~ 50 for production
+glob.annz["nMLMs"]        = 10  # 100
 
 # --------------------------------------------------------------------------------------------------
 # the definition of the signal and background classes
