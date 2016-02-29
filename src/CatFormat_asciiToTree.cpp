@@ -831,7 +831,14 @@ bool CatFormat::inputLineToVars(TString line, VarMaps * var, vector <TString> & 
     if     (typeNow == "F"  || typeNow == "D"                    ) { var->SetVarF(nameNow,(TString)wordNow); }
     else if(typeNow == "S"  || typeNow == "I"  || typeNow == "L" ) { var->SetVarI(nameNow,(TString)wordNow); }
     else if(typeNow == "B"                                       ) { var->SetVarB(nameNow,(TString)wordNow); }
-    else if(typeNow == "C"                                       ) { var->SetVarC(nameNow,(TString)wordNow); }
+    else if(typeNow == "C"                                       ) {
+      if((wordNow.BeginsWith("\"") && wordNow.EndsWith("\"")) || (wordNow.BeginsWith("\'") && wordNow.EndsWith("\'"))) {
+        int length = wordNow.Length();
+        if     (length  > 2) wordNow = wordNow(1,length-2);
+        else if(length == 2) wordNow = "";
+      }
+      var->SetVarC(nameNow,(TString)wordNow);
+    }
     else if(typeNow == "US" || typeNow == "UI" || typeNow == "UL") { var->SetVarU(nameNow,(TString)wordNow); }
     else VERIFY(LOCATION,(TString)"found unsupported variable-type ("+typeNow+")",false);
   }

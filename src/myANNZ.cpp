@@ -173,7 +173,7 @@ myANNZ::myANNZ() {
   glob->NewOptI("nSplit"        ,3);
   glob->NewOptC("splitType"     ,"byInFiles"); // [serial,blocks,random,byInFiles] - methods for splitting the input dataset
   glob->NewOptC("splitTypeTrain","");          // in case of seperate input files - this is the list of training  input files
-  glob->NewOptC("splitTypeTest" ,"");          // in case of seperate input files - this is the list of testinh   input files
+  glob->NewOptC("splitTypeTest" ,"");          // in case of seperate input files - this is the list of testing   input files
   glob->NewOptC("splitTypeValid","");          // in case of seperate input files - this is the list of validating input files
   glob->NewOptI("splitSeed"     ,19888687);    // seed for random number generator for one of the splitting methods
   glob->NewOptC("inputVariables","");          // list of input variables as they appear in the input ascii files
@@ -370,6 +370,12 @@ myANNZ::myANNZ() {
   // -----------------------------------------------------------------------------------------------------------
   glob->NewOptC("optimCondReg","sig68");
 
+  // use MAD (median absolute deviation) instead of sigma_86 for randomized regression optimization
+  glob->NewOptB("optimWithMAD",false); 
+
+  // use scaled bias ((zReg-zTrg)/(1+zTrg)) instead of delta for randomized regression optimization
+  glob->NewOptB("optimWithScaledBias",false);
+
   // -----------------------------------------------------------------------------------------------------------
   // evaluation (regression, binned-classification and classification)
   // -----------------------------------------------------------------------------------------------------------
@@ -402,6 +408,8 @@ myANNZ::myANNZ() {
   glob->NewOptF("minPdfWeight"      ,0.01); // weights smaller than minPdfWeight will be discarded
   // number of PDF bins (equal distance bins in the range [minValZ,maxValZ]). If userPdfBins is defined, this value is ignored
   glob->NewOptI("nPDFbins"          ,0);
+  // instead of nPDFbins, it is possibleto define the width of a pdf bin, using pdfBinWidth
+  glob->NewOptF("pdfBinWidth"       ,0);
   // number of random MLM weighting schemes to generate as part of getRndMethodBestPDF()
   glob->NewOptI("nRndPdfWeightTries",30);
   // number of random smearing to perform when folding uncertainty estimates into MLM solutions for PDF generation
@@ -434,7 +442,7 @@ myANNZ::myANNZ() {
   glob->NewOptC("zTrgTitle"       ,"Z_{trg}"); // title of regression target   (for plots)
   glob->NewOptC("zRegTitle"       ,"Z_{reg}"); // title of regression variable (for plots)
   glob->NewOptF("zPlotBinWidth"   ,-1);        // width of bins to perform the plotting
-  glob->NewOptI("nDrawBins_zTrg"  ,30);        // number of bins in zTrg for plotting
+  glob->NewOptI("nDrawBins_zTrg"  ,-1);        // number of bins in zTrg for plotting
   // typical width in the regression variable for plotting, e.g., for 10 plotting bins, set zClosBinWidth = (maxValZ-minValZ)/10.
   glob->NewOptF("zClosBinWidth"   ,-1);
 
@@ -444,6 +452,9 @@ myANNZ::myANNZ() {
   // see: http://root.cern.ch/root/html/TPad.html#TPad:SaveAs
   // -----------------------------------------------------------------------------------------------------------
   glob->NewOptC("printPlotExtension","pdf");
+
+  // use scaled bias (delta/(1+zTrg)) instead of delta for plotting in ANNZ::doMetricPlots()
+  glob->NewOptB("plotWithScaledBias"  ,false); 
 
   // -----------------------------------------------------------------------------------------------------------
   // uncertainty estimators - either KNN (K-near-neighbours) entimation (used by default), or input-error propagation.

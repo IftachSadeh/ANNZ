@@ -81,7 +81,24 @@ void OutMngr::SetHisStyle(TGraph * grph, TMultiGraph * mGrph) {
   if(draw->OptOrNullB("moreLogY")) { grph->GetYaxis()->SetMoreLogLabels(); }
 
   if(dynamic_cast<TMultiGraph*>(mGrph)) {
-    grph->GetXaxis()->Copy(*mGrph->GetXaxis()); grph->GetYaxis()->Copy(*mGrph->GetYaxis()); // must come after: mGrph->Draw("a")
+    mGrph->GetXaxis()->SetTitle(grph->GetXaxis()->GetTitle());
+    mGrph->GetYaxis()->SetTitle(grph->GetYaxis()->GetTitle());
+
+    mGrph->GetXaxis()->SetTitleSize(grph->GetXaxis()->GetTitleSize());
+    mGrph->GetYaxis()->SetTitleSize(grph->GetYaxis()->GetTitleSize());
+
+    mGrph->GetXaxis()->SetTitleOffset(grph->GetXaxis()->GetTitleOffset());
+    mGrph->GetYaxis()->SetTitleOffset(grph->GetYaxis()->GetTitleOffset());
+
+    mGrph->GetXaxis()->SetLabelSize(grph->GetXaxis()->GetLabelSize());    
+    mGrph->GetYaxis()->SetLabelSize(grph->GetYaxis()->GetLabelSize());
+
+    mGrph->GetXaxis()->SetLabelOffset(grph->GetXaxis()->GetLabelOffset());
+    mGrph->GetYaxis()->SetLabelOffset(grph->GetYaxis()->GetLabelOffset());
+
+    if(draw->OptOrNullB("moreLogX")) { mGrph->GetXaxis()->SetMoreLogLabels(); }
+    if(draw->OptOrNullB("moreLogY")) { mGrph->GetYaxis()->SetMoreLogLabels(); }
+    // grph->GetXaxis()->Copy(*mGrph->GetXaxis()); grph->GetYaxis()->Copy(*mGrph->GetYaxis()); // must come after: mGrph->Draw("a")
   }
 
   return;

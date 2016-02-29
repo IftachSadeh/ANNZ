@@ -174,11 +174,64 @@ void ANNZ::Init() {
   VERIFY(LOCATION,(TString)"Must set (nMLMs>0)"      ,(glob->GetOptI("nMLMs") > 0));
   VERIFY(LOCATION,(TString)"Must set (nMLMnow<nMLMs)",(glob->GetOptI("nMLMs") > glob->GetOptI("nMLMnow")));
 
-  // for randomized regression, this is checked in setInfoBinsZ(), as it is possible to define userPdfBins instead of nPDFbins.
-  // however, for binned classification, there is no cohice but to explicitly set nPDFbins
-  if(!glob->GetOptB("doTrain") && glob->GetOptB("doBinnedCls")) {
-    VERIFY(LOCATION,(TString)"Must set number of PDF bins (\"nPDFbins\" > 0)",(glob->GetOptI("nPDFbins") > 0));
+  if(glob->GetOptB("doRegression")) {
+    VERIFY(LOCATION,(TString)"Must set (minValZ < maxValZ)",(glob->GetOptF("minValZ") < glob->GetOptF("maxValZ")));
   }
+
+  // -----------------------------------------------------------------------------------------------------------
+  // check the definition of PDF bins, and compute nPDFbins from pdfBinWidth if needed
+  // -----------------------------------------------------------------------------------------------------------
+  if(!glob->GetOptB("doTrain")) {
+    // for single-regression there is no pdf, so just set a sensible default value just in case
+    if     (glob->GetOptB("doSingleReg")) {
+      glob->SetOptI("nPDFbins",1);
+    }
+    // for randomized regression there is the option for the user to define a bin-width instead of the number of bins
+    else if(glob->GetOptB("doRandomReg")) {
+
+      // check if a specialized binning definition has been given by the user
+      if(glob->GetOptC("userPdfBins") != "") {
+        aLOG(Log::INFO) <<coutPurple<<" - Found \"userPdfBins\" = "<<coutRed<<glob->GetOptC("userPdfBins")<<coutPurple
+                        <<" - will ignore \"nPDFbins\" and \"pdfBinWidth\" ..."<<coutDef<<endl;
+      }
+      else {
+        double binWidth = glob->GetOptF("pdfBinWidth");
+
+        // check if need to both nPDFbins and pdfBinWidth are set and give warning
+        if(glob->GetOptI("nPDFbins") > 0) {
+          if(binWidth > 0) {
+            aLOG(Log::WARNING) <<coutRed <<" - Both \"nPDFbins\" and \"pdfBinWidth\" are set..."
+                               <<" - will ignore \"pdfBinWidth\" "<<coutDef<<endl;
+          }
+        }
+        // compute nPDFbins from pdfBinWidth if needed
+        else {
+          VERIFY(LOCATION,(TString)"Configuration problem... must set either \"nPDFbins\" or \"binWidth\" ...",(binWidth > 0));
+
+          double zDiff     = glob->GetOptF("maxValZ") - glob->GetOptF("minValZ");
+          int    nPDFbins  = static_cast<int>(floor(0.00001+zDiff/binWidth));
+          double finalBinW = zDiff/double(nPDFbins);
+
+          VERIFY(LOCATION,(TString)"Configuration problem... \"binWidth\" inconsistent with max/minValZ range ...",(nPDFbins >= 1));
+
+          glob->SetOptI("nPDFbins",nPDFbins);
+
+          aLOG(Log::INFO) <<coutGreen<<" - For \"pdfBinWidth\" = "<<binWidth<<", derived \"nPDFbins\" = "<<coutBlue<<nPDFbins<<coutDef<<endl;
+
+          if(fabs(binWidth - finalBinW)/binWidth > 1e-5) {
+            aLOG(Log::WARNING) <<coutRed <<" - \"nPDFbins\" must be an integer --> using a modified the value, "
+                               <<"\"pdfBinWidth\" = "<<coutBlue<<finalBinW<<coutRed<<" (instead of "<<binWidth<<")"<<coutDef<<endl;
+          }
+        }
+      }
+    }
+    // for randomized regression, this is checked in setInfoBinsZ(), as it is possible to define userPdfBins instead of nPDFbins.
+    // however, for binned classification, there is no cohice but to explicitly set nPDFbins
+    else if(glob->GetOptB("doBinnedCls")) {
+      VERIFY(LOCATION,(TString)"Must set number of PDF bins (\"nPDFbins\" > 0)",(glob->GetOptI("nPDFbins") > 0));
+    }
+  }
+
 
   // -----------------------------------------------------------------------------------------------------------
   // consistency checks for the different analysis types
@@ -206,7 +259,7 @@ void ANNZ::Init() {
   // number of PDF types - either generate no PDF, or choose up to two types
   // -----------------------------------------------------------------------------------------------------------
   // currently implemented in getRndMethodBestPDF()
-  if     (glob->GetOptB("doSingleReg")) { glob->SetOptI("nPDFs",0); glob->SetOptI("nPDFbins",1);         }
+  if     (glob->GetOptB("doSingleReg")) { glob->SetOptI("nPDFs", 0                                    ); }
   else if(glob->GetOptB("doRandomReg")) { glob->SetOptI("nPDFs", min(max(glob->GetOptI("nPDFs"),0),2) ); }
   // either the baseline PDF, or that as well as another, which includes uncertainty-smearing, see doEvalReg()
   else if(glob->GetOptB("doBinnedCls")) { glob->SetOptI("nPDFs", min(max(glob->GetOptI("nPDFs"),1),2) ); }
@@ -218,7 +271,6 @@ void ANNZ::Init() {
   }
 
   if(glob->GetOptB("doRegression")) {
-    VERIFY(LOCATION,(TString)"Must set (minValZ < maxValZ)",(glob->GetOptF("minValZ") < glob->GetOptF("maxValZ")));
     VERIFY(LOCATION,(TString)"Must set the name of the regression target, \"zTrg\" ",(glob->GetOptC("zTrg") != ""));
 
     if(glob->GetOptC("zTrgTitle") == "") glob->SetOptC("zTrgTitle",glob->GetOptC("zTrg"));
@@ -229,6 +281,9 @@ void ANNZ::Init() {
     }
     if(glob->GetOptF("zPlotBinWidth") < EPS) {
       glob->SetOptF("zPlotBinWidth", glob->GetOptF("zClosBinWidth"));
+    }
+    if(glob->GetOptI("nDrawBins_zTrg") < 2) {
+      glob->SetOptI("nDrawBins_zTrg", static_cast<int>(floor(0.00001+(glob->GetOptF("maxValZ")-glob->GetOptF("minValZ"))/0.05)));
     }
 
     double zDiff            = glob->GetOptF("maxValZ")-glob->GetOptF("minValZ");
@@ -1273,7 +1328,8 @@ void ANNZ::setInfoBinsZ() {
   if(hasUserPdfBins) {
     vector <TString> pdfBinV = utils->splitStringByChar(userPdfBins,';');
 
-    nBinsZ = (int)pdfBinV.size() - 1;
+    nBinsZ   = (int)pdfBinV.size() - 1;
+    nPDFbins = nBinsZ;
 
     glob->SetOptI("nPDFbins",nBinsZ);
 
