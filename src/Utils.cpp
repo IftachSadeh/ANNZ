@@ -1498,7 +1498,7 @@ int Utils::getInterQuantileStats(double * dataArr, TH1 * dataHis) {
 
   // Median absolute deviation
   // -----------------------------------------------------------------------------------------------------------
-  if(param->OptOrNullB("medianAbsoluteDeviation")) {
+  if(param->OptOrNullB("getMAD")) {
     TH1 * madH = new TH1F("madHisTMP","madHisTMP",closHisN,1,-1); madH->SetDefaultBufferSize(closHisN);
 
     if(hasHis) {
@@ -1521,7 +1521,7 @@ int Utils::getInterQuantileStats(double * dataArr, TH1 * dataHis) {
     double * madProb  = new double[1]; madProb[0] = 0.50;
 
     madH->GetQuantiles(1,madQuant,madProb);
-    param->NewOptF("quant_medianAbsoluteDeviation", madQuant[0]);
+    param->NewOptF("quant_MAD", madQuant[0]);
 
     delete [] madQuant; delete [] madProb; delete madH;
   }
