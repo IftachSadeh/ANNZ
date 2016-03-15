@@ -464,12 +464,36 @@ void ANNZ::Train_binnedCls() {
 
   // extract all input-variable and MLM-options provided by the user
   glob->GetAllOptNames(optNameV,"C");
-  for(int nOptNow=0; nOptNow<(int)optNameV.size(); nOptNow++) {
-    TString optNameNow = optNameV[nOptNow];
-    
-    if(optNameNow.BeginsWith("inputVariables_")) binClsInpVarV.push_back(glob->GetOptC(optNameNow));
-    if(optNameNow.BeginsWith("inputVarErrors_")) binClsInpErrV.push_back(glob->GetOptC(optNameNow));
-    if(optNameNow.BeginsWith("userMLMopts_"))    binClsUsrOptV.push_back(glob->GetOptC(optNameNow));
+  
+  for(int nOptTypeNow=0; nOptTypeNow<3; nOptTypeNow++) {
+    TString optTypeNameNow("");
+    if     (nOptTypeNow == 0) optTypeNameNow = "inputVariables_";
+    else if(nOptTypeNow == 1) optTypeNameNow = "inputVarErrors_";
+    else if(nOptTypeNow == 2) optTypeNameNow = "userMLMopts_";
+
+    int nOptIn(0);
+    for(int nOptNow=0; nOptNow<(int)optNameV.size(); nOptNow++) {
+      if(optNameV[nOptNow].BeginsWith(optTypeNameNow)) nOptIn++;
+    }
+
+    // check the detected variable content and if as expected, fill the vectors for the next stage
+    for(int nOptNow=0; nOptNow<nOptIn; nOptNow++) {
+      TString optNameNow = (TString)optTypeNameNow+utils->intToStr(nOptNow);
+      
+      VERIFY(LOCATION,(TString)"Found conflict in options ... If setting \"inputVariables_X\", then X must be "
+                              +"consecutive, starting from zero. For example, you can set three options (in which ever order), "
+                              +"as e.g., [\"inputVariables_0\",\"inputVariables_2\",\"inputVariables_1\"] "
+                              +"but you can't set [\"inputVariables_0\",\"inputVariables_2\",\"inputVariables_5\"]. (Note - it is allowed "
+                              +" to define empty values for \"inputVarErrors_X\" and \"userMLMopts_X\", but not for \"inputVariables_X\"). "
+                              +"   -----> For this run, detected "+utils->intToStr(nOptIn)+" defined options of this type, and so expected "
+                              +"to find \"inputVariables_"+utils->intToStr(nOptNow)+"\", which is not defined ...",(glob->HasOptC(optNameNow)));
+      
+      if     (nOptTypeNow == 0) binClsInpVarV.push_back(glob->GetOptC(optNameNow));
+      else if(nOptTypeNow == 1) binClsInpErrV.push_back(glob->GetOptC(optNameNow));
+      else if(nOptTypeNow == 2) binClsUsrOptV.push_back(glob->GetOptC(optNameNow));
+
+      aLOG(Log::DEBUG_1) <<coutBlue<<" - got \""<<coutGreen<<optNameNow<<coutBlue<<"\" --> "<<coutYellow<<glob->GetOptC(optNameNow)<<coutDef<<endl;
+    }
   }
   optNameV.clear();
 

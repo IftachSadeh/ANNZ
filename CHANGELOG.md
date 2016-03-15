@@ -1,9 +1,12 @@
 # Changelog
 
-<!-- ## Master version (20/1/2016) -->
+## Master version (15/3/2016)
+
+- Fixed minor bug in `ANNZ::Train_binnedCls()`, which caused a miss-match of job-options for some configuration of binned classification.
+
 ## ANNZ 2.1.2 (15/3/2016)
 
-- Improved selection criteria for `ANNZ_best` in randomized regression. The optimization is now based on `glob.annz["optimCondReg"]="sig68"` or `"bias"` (The `"fracSig68"` option is deprecated.)
+- Improved selection criteria for `ANNZ_best` in randomized regression. The optimization is now based on `glob.annz["optimCondReg"]="sig68"` or `"bias"`. (The `"fracSig68"` option is deprecated.)
 
 - **Significant speed improvement** for KNN weights and `inTrainFlag` calculations in `CatFormat::addWgtKNNtoTree()`.
 
