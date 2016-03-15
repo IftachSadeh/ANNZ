@@ -2,7 +2,7 @@
 
 ## Master version (15/3/2016)
 
-- Fixed minor bug in `ANNZ::Train_binnedCls()`, which caused a miss-match of job-options for some configuration of binned classification.
+- Fixed minor bug in `ANNZ::Train_binnedCls()`, which caused a mismatch of job-options for some configuration of binned classification.
 
 ## ANNZ 2.1.2 (15/3/2016)
 
