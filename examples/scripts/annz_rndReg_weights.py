@@ -50,7 +50,7 @@ log.info(whtOnBlck(" - "+time.strftime("%d/%m/%y %H:%M:%S")+" - starting ANNZ"))
 glob.annz["outDirName"] = "test_randReg_weights"
 
 # no splitting of the dataset into training/validation is needed here
-glob.annz["nSplit"]     = 1
+glob.annz["nSplit"] = 1
 
 # --------------------------------------------------------------------------------------------------
 # pre-processing of the input dataset
@@ -109,19 +109,31 @@ if glob.annz["doGenInputTrees"]:
   if useWgtKNN:
     glob.annz["useWgtKNN"]             = True
     glob.annz["minNobjInVol_wgtKNN"]   = 100
-    glob.annz["inAsciiFiles_wgtKNN"]   = "boss_dr10_colorCuts.csv"
-    glob.annz["inAsciiVars_wgtKNN"]    = "F:MAG_U;F:MAGERR_U;F:MAG_G;F:MAGERR_G;F:MAG_R;F:MAGERR_R;F:MAG_I;F:MAGERR_I;F:MAG_Z;F:MAGERR_Z;D:Z"
+    # glob.annz["inAsciiFiles_wgtKNN"]   = "boss_dr10_colorCuts.csv"
+    # glob.annz["inAsciiVars_wgtKNN"]    = "F:MAG_U;F:MAGERR_U;F:MAG_G;F:MAGERR_G;F:MAG_R;F:MAGERR_R;F:MAG_I;F:MAGERR_I;F:MAG_Z;F:MAGERR_Z;D:Z"
+    glob.annz["inAsciiFiles_wgtKNN"]   = glob.annz["inAsciiFiles"]
+    glob.annz["inAsciiVars_wgtKNN"]    = glob.annz["inAsciiVars"]
+    glob.annz["weightInp_wgtKNN"]      = "1/pow(MAG_G*MAG_U*MAG_R*MAG_I, 5)"
+    glob.annz["weightRef_wgtKNN"]      = "1/MAGERR_G"
+
     glob.annz["weightVarNames_wgtKNN"] = "MAG_U;MAG_G;MAG_R;MAG_I;MAG_Z"
 
     # optional parameters (may leave empty as default value):
-    glob.annz["sampleFracInp_wgtKNN"]  = 0.15                                          # fraction of dataset to use (positive number, smaller or equal to 1)
-    glob.annz["sampleFracRef_wgtKNN"]  = 0.95                                          # fraction of dataset to use (positive number, smaller or equal to 1)
+    glob.annz["sampleFracInp_wgtKNN"]  = 0.85                                          # fraction of dataset to use (positive number, smaller or equal to 1)
+    glob.annz["sampleFracRef_wgtKNN"]  = 0.90                                          # fraction of dataset to use (positive number, smaller or equal to 1)
     glob.annz["outAsciiVars_wgtKNN"]   = "MAG_U;MAG_G;MAGERR_U"                        # write out two additional variables to the output file
     glob.annz["weightRef_wgtKNN"]      = "(MAGERR_R<0.7)*1 + (MAGERR_R>=0.7)/MAGERR_R" # down-weight objects with high MAGERR_R
     glob.annz["cutRef_wgtKNN"]         = "MAGERR_U<200"                                # only use objects which have small MAGERR_U
     glob.annz["doWidthRescale_wgtKNN"] = True
 
-
+    # - trainTestTogether_wgtKNN
+    #   by default, the weights are computed for the entire sample [trainTestTogether_wgtKNN = True].
+    #   That is, the training and the testing samples are used together - we calculate the difference between the
+    #   distribution of input-variables between [train+test samples] and [ref sample]. However, it is possible to
+    #   decide to comput the weights for each separately. That is, to calculate wegiths for [train sample]
+    #   with regards to [ref sample], and to separately get [test sample] with regards to [ref sample]. The latter
+    #   is only recommended if the training and testing samples have different inpput-variable distributions.
+    glob.annz["trainTestTogether_wgtKNN"] = False
 
   # run ANNZ with the current settings
   runANNZ()
@@ -134,7 +146,7 @@ if glob.annz["doInTrainFlag"]:
 
   # inDirName,inAsciiFiles - directory with files to make the calculations from, and list of input files
   glob.annz["inDirName"]      = "examples/data/photoZ/eval/"
-  glob.annz["inAsciiFiles"]   = "boss_dr10_eval1_noZ.csv"
+  glob.annz["inAsciiFiles"]   = "boss_dr10_eval0_noZ.csv"
   # inAsciiVars - list of parameters in the input files (doesnt need to be exactly the same as in doGenInputTrees, but must contain all
   #               of the parameers which were used for training)
   glob.annz["inAsciiVars"]    = "F:MAG_U;F:MAGERR_U;F:MAG_G;F:MAGERR_G;F:MAG_R;F:MAGERR_R;F:MAG_I;F:MAGERR_I;F:MAG_Z;F:MAGERR_Z"
@@ -149,9 +161,11 @@ if glob.annz["doInTrainFlag"]:
   #                                The calculation is performed using a KNN approach, similar to the algorithm used for
   #                                the [glob.annz["useWgtKNN"] = True] calculation.
   #   - minNobjInVol_inTrain     - The number of reference objects in the reference dataset which are used in the calculation.
-  #   - maxRelRatioInRef_inTrain - Nominally, a number in the range, [0,1] - The minimal threshold of the relative difference between
-  #                                distances in the inTrainFlag calculation for accepting an object - Should be a (<0.5) positive number.
-  #                                If [maxRelRatioInRef_inTrain < 0] then this number is ignored, and the "inTrainFlag" flag becomes
+  #   - maxRelRatioInRef_inTrain - Nominally [maxRelRatioInRef_inTrain = -1], but can also be
+  #                                a number in the range, [0,1] - This is the minimal threshold of the relative
+  #                                difference between distances in the inTrainFlag calculation for accepting an object.
+  #                                If positive, it should probably be a (<0.5) positive number. If [maxRelRatioInRef_inTrain < 0],
+  #                                then this number is ignored, and the "inTrainFlag" flag becomes
   #                                a floating-point number in the range [0,1], instead of a binary flag.
   #   - ...._inTrain             - The rest of the parameters ending with "_inTrain" have a similar role as
   #                                their "_wgtKNN" counterparts, which are used with [glob.annz["useWgtKNN"] = True]. These are:

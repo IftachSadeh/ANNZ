@@ -1,4 +1,4 @@
-# ANNZ 2.1.1
+# ANNZ 2.1.2
 
 ## Introduction
 ANNZ uses both regression and classification techniques for estimation of single-value photo-z (or any regression problem) solutions and PDFs. In addition it is suitable for classification problems, such as star/galaxy classification.
@@ -145,7 +145,7 @@ python scripts/annz_singleReg_quick.py --singleRegression --evaluate
   python scripts/annz_singleReg_quick.py --singleRegression --optimize
   ```
   
-  4. **evaluate**: Evaluate an input dataset using the trained MLM.
+  4. **evaluate**: Evaluate an input dataset using the trained MLM. If the regression target is detected as part of the evaluated dataset, performance plots are created as well.
   ```bash
   python scripts/annz_singleReg_quick.py --singleRegression --evaluate
   ```
@@ -167,7 +167,7 @@ python scripts/annz_singleReg_quick.py --singleRegression --evaluate
   python scripts/annz_rndReg_quick.py --randomRegression --optimize
   ```
 
-  4. **evaluate**: Evaluate an input dataset using the derived estimators: the *best* MLM, the PDF(s) and the average of the weighted and the un-weighted PDF solutions.
+  4. **evaluate**: Evaluate an input dataset using the derived estimators: the *best* MLM, the PDF(s) and the average of the weighted PDF solutions. If the regression target is detected as part of the evaluated dataset, performance plots are created as well.
   ```bash
   python scripts/annz_rndReg_quick.py --randomRegression --evaluate
   ```
@@ -190,7 +190,7 @@ python scripts/annz_singleReg_quick.py --singleRegression --evaluate
   python scripts/annz_binCls_quick.py --binnedClassification --verify
   ```
 
-  4. **evaluate**: Evaluate an input dataset using the derived estimators: the PDF and the average of the PDF solution.
+  4. **evaluate**: Evaluate an input dataset using the derived estimators: the PDF and the average of the PDF solution. If the regression target is detected as part of the evaluated dataset, performance plots are created as well.
   ```bash
   python scripts/annz_binCls_quick.py --binnedClassification --evaluate
   ```
@@ -296,6 +296,30 @@ Here are a couple of examples:
 
 See the advanced scripts for additional details.
 
+#### Definition of input samples
+
+- Machine learning methods require two input samples for the training process. The first of these is the *training sample*, which is used explicitly for the training process - we'll refer to this sample as `S-1`. The second is sometimes called the *validation sample* and sometimes the *testing sample*. It is used for evaluating the result of the trained MLM in each step of the training - we'll refer to this sample is `S-2`. The `S-2` sample should have the same properties as `S-1`, but should be an independent collection of objects.
+
+- The terminology between *validation* and *testing* is not always consistent. Some authors refer to a third independent sample of objects which is used to check the performance of the trained MLM after training is complete; this third sample may be referred to as a *validation* or as a *testing* sample, thus creating potential confusion with regards to `S-2`. For the purposes of using this software package, the distinction between *validation* and *testing* is not relevant. We define only two samples, `S-1` for training, and `S-2` for checking the performance during each step of the training process. The user may use the evaluation stage (after optimization/verification is complete) in order to derive the solution for any other sample of objects.
+
+- The user may define the training/testing samples in one of two ways (see `scripts/annz_rndReg_advanced.py` for details):
+  
+  1. Automatic splitting:
+    ```python
+    glob.annz["splitType"]    = "random"
+    glob.annz["inAsciiFiles"] = "boss_dr10_0.csv;boss_dr10_1.csv"
+    ```
+  Set a list of input files in `inAsciiFiles`, and use `splitType` to specify the method for splitting the sample. Allowed values for the latter are `serial`, `blocks` or `random`.
+  
+  2. Splitting by file:
+    ```python
+    glob.annz["splitType"]      = "byInFiles"
+    glob.annz["splitTypeTrain"] = "boss_dr10_0.csv"
+    glob.annz["splitTypeTest"]  = "boss_dr10_1.csv;boss_dr10_2.csv"
+    ```
+  Set a list of input files for training in `splitTypeTrain`, and a list of input files for testing in `splitTypeTest`. 
+
+
 #### Definition of signal and background objects in single/randomized classification
 
 Signal and background objects may be defined by using at least one pair of variables, either `userCuts_sig` and `userCuts_bck` or `inpFiles_sig` and `inpFiles_bck`. Alternatively, it is also possible to use three of the latter or all four in tandem. For example:
@@ -400,9 +424,12 @@ glob.annz["addInTrainFlag"] = True
 
   - This output indicates if the an evaluated object is "compatible" with corresponding objects from the training dataset. The compatibility is estimated by comparing the density of objects in the training dataset in the vicinity of the evaluated object. If the evaluated object belongs to an area of parameter-space which is not represented in the training dataset, we will get `inTrainFlag = 0`. In this case, the output of the training is probably unreliable.
 
-  - The calculation is performed using a KNN approach, similar to the algorithm used for the `useWgtKNN` calculation. It is possible to generate either binary flags (i.e., `inTrainFlag = 0` or `1`) or to get a floating-point value between zero and one. The binary decision is based on the `maxRelRatioInRef_inTrain` parameter; the latter represents a threshold for the relative density of objects from the training sample in the area of the evaluated object. (If `maxRelRatioInRef_inTrain > 0`, then `inTrainFlag` is binary.)
+  - The calculation is performed using a KNN approach, similar to the algorithm used for the `useWgtKNN` calculation. It is possible to generate either binary flags (i.e., `inTrainFlag = 0` or `1`) or to get a floating-point value with in the range, `[0,1]`. The binary decision is based on the `maxRelRatioInRef_inTrain` parameter; the latter represents a threshold for the relative density of objects from the training sample in the area of the evaluated object. By default, `maxRelRatioInRef_inTrain = -1`. In this case, the user is expected to study the distribution of the `inTrainFlag` parameter, and decide on an appropriate cut value as a quality criteria. If the user sets ` 0 < maxRelRatioInRef_inTrain < 1`, this is equivalent to choosing the cut parameter in advance. In this case the quality flag is binary (i.e., all objects for which `inTrainFlag < maxRelRatioInRef_inTrain` will get a flag rounded down to `0`, the rest will get `1` ).
 
-  - It is recommended to first generate a floating-point estimate of `inTrainFlag` and to study the distribution. For production, once a proper cut value for `maxRelRatioInRef_inTrain` is determined, `inTrainFlag` should be set to produce a binary decision.
+  - It is recommended to first generate a floating-point estimate of `inTrainFlag` and to study the distribution. One could e.g., decide to discard objects with a low value of `inTrainFlag`, based on how the bias or scatter increase as `inTrainFlag` decreases. Them, once a proper cut value for `maxRelRatioInRef_inTrain` is determined, `inTrainFlag` may be set to produce a binary decision.
+
+If the regression target is detected as part of the evaluated dataset, performance plots are created as well, found e.g., at `output/test_randReg_quick/regres/eval/plots/`. This is useful if, for instance, one wants to easily check the performance on a dataset which was not used for training/testing.
+The plots will also include the dependence of the performance on any added variable in the evaluated dataset. For instance, if one sets `glob.annz["addOutputVars"] = "MAG_Z"`, then the dependence of the bias, scatter etc. on `MAG_Z` wil be plotted. This is particularly useful for assessing the dependence of the performance on the `inTrainFlag` parameter, in order to decide on a cut value for the latter.
 
 ### Single regression
 
@@ -452,8 +479,6 @@ A few notes:
 
   - The cut variables, `userCuts_train` and `userCuts_valid`, are binary, in the sense that they define the conditions for an object to be accepted for training or validation. On the other hand, the weight variables, `userWeights_train` and `userWeights_valid`, can serve as either cuts or weights; a zero-weight is equivalent to a cut, as it effectively excludes an objects. Therefore it is possible to compose weight expressions which have "boolean" components (such as `(MAGERR_I > 1)`) which are numerically equivalent to `0` or `1`. In principle, we can therefore do everything with `userWeights_train` and `userWeights_valid`. However, due to performance considerations, it is recommended to use `userCuts_train` and `userCuts_valid` for well defined rejection criteria; then use the weight variables for everything else.
 
-  - If as part of the ascii or ROOT output an object has a weight which is zero, then the corresponding estimator for that object should not be used!
-
   - The plots provided following optimization or verification all take into account the respective weights of the different estimators.
 
 ## General comments
@@ -468,7 +493,6 @@ A few notes:
  glob.annz["inputVariables"] = "MAG_U*(MAG_U < 99)+28*(MAG_U >= 99) ; MAG_G*(MAG_G < 99)+25*(MAG_G >= 99) ; MAG_R*(MAG_R < 99)+23*(MAG_R >= 99) ; MAG_I*(MAG_I < 99)+22*(MAG_I >= 99) ; MAG_Z*(MAG_Z < 99)+22*(MAG_Z >= 99)"
   ```
   where non-detection of magnitudes (usually indicated by setting a magnitude to `100`) are mapped to the magnitude limits in the different bands. This avoids training/evaluating with nonsensical numerical values; it also does not require any special pre-processing of the input dataset, as the conditions are set on the fly during the training and evaluation stages.
-
 
   - The training phase may be run multiple times, in order to make sure that all MLMs have completed training successfully. By default, if a trained MLM is detected in the output directory, then ANNZ does not overwrite it. In order to force re-training, one may delete the training directory for a particular MLM (for instance, using `scripts/annz_rndReg_quick.py`, this might be `output/test_randReg_quick/regres/train/ANNZ_3`). Alternatively, it's possible to force retraining by setting in the relevant python script the flag, 
   ```python
@@ -485,7 +509,7 @@ A few notes:
   - It is possible to use ANNZ to generate object weights, based on a reference dataset. The weights are generated as part of the `--genInputTrees` phase using the `useWgtKNN` option, and are then used for training and optimization; they are also calculated during evaluation, and added as part of the per-object weight which is included in the output of the evaluation.
   This feature is useful, if e.g., the target dataset for evaluation has a different distribution of input parameters, compared to the training dataset. For instance, for photo-z derivation, it is possible for the spectroscopic  training sample to have a different color distribution, compared to the target photometric sample. The derived weights in this case are calculated as the ratio between the number of objects in a given color-box in the reference sample, compared to the training sample. The procedure is implemented in `CatFormat::addWgtKNNtoTree()` (in `src/CatFormat_wgtKNN.cpp`), where a more detailed explanation is also given. See `scripts/annz_rndReg_advanced.py` for a use-example.
 
-  - Using the script, `scripts/annz_rndReg_weights.py`, it is possible to generate the weights based on the KNN method (`useWgtKNN`), and/or the `inTrainFlag` quality-flag, without training/evaluating any MLMs. The former are stored to e.g., `output/test_randReg_weights/rootIn/ANNZ_KNN_wANNZ_tree_valid_0000.csv`, and the latter to `output/test_randReg_weights/inTrainFlag/inTrainFlagANNZ_tree_wgtTree_0000.csv`.
+  - Using the script, `scripts/annz_rndReg_weights.py`, it is possible to generate the weights based on the KNN method (`useWgtKNN`), and/or the `inTrainFlag` quality-flag, without training/evaluating any MLMs. That is, no machine-learning or photo-z training is needed. Instead, this script may be used to simple generate training weights, or conversely derive the `inTrainFlag` quality-flag, for a given evaluated sample, with respect to a specific reference sample. The former are stored to e.g., `output/test_randReg_weights/rootIn/ANNZ_KNN_wANNZ_tree_valid_0000.csv`, and the latter to `output/test_randReg_weights/inTrainFlag/inTrainFlagANNZ_tree_wgtTree_0000.csv`.
 
   - The KNN error, weight and quality-flag calculations are nominally performed for rescaled variable distributions; each input variable is mapped by a linear transformation to the range `[-1,1]`, so that the distance in the input parameter space is not biased by the scale (units) of the different parameters. It is possible to prevent the rescalling by setting the following flags to `False`: `doWidthRescale_errKNN`, `doWidthRescale_wgtKNN` and `doWidthRescale_inTrain`.
   These respectively relate to the KNN error calculation, the reference dataset reweighting, and the training quality-flag.
@@ -493,11 +517,24 @@ A few notes:
 
   - It is possible to train/optimize MLMs using specific cuts and/or weights, based on any mathematical expression which uses the variables defined in the input dataset (not limited to the variables used for the training). The relevant variables are `userCuts_train`, `userCuts_valid`, `userWeights_train` and `userWeights_valid`. See the advanced scripts for use-examples.
 
-  - The syntax for math expressions is defined using the ROOT conventions (see e.g., [TMath](https://root.cern.ch/root/html/TMath.html) and [TFormula](https://root.cern.ch/root/html/TFormula.html)). Acceptable expressions may for instance include the following ridiculous choice:
+  - The syntax for math expressions is defined using the ROOT conventions (see e.g., [TMath](https://root.cern.ch/root/html524/TMath.html) and [TFormula](https://root.cern.ch/root/html/TFormula.html)). Acceptable expressions may for instance include the following ridiculous choice:
   ```python
   glob.annz["userCuts_train"]    = "(MAG_R > 22)/MAG_R + (MAG_R <= 22)*1"
   glob.annz["userCuts_valid"]    = "pow(MAG_G,3) + exp(MAG_R)*MAG_I/20. + abs(sin(MAG_Z))"
   ```
+
+  - Note that training variables (defined in `inputVariables`) can only include expressions containing integer or floating-point variables. However, for the cut and weight variables, it is possible to also use string variables.
+    
+    - For instance, let's assume that `inAsciiVars` included the variable `FIELD`, which gives the name of the field for each galaxy in the training and validation datasets. Then, one may e.g., set cuts and weights of the form:
+    ```python
+    glob.annz["userCuts_train"]    = "    (FIELD == \"FIELD_0\") ||     (FIELD == \"FIELD_1\")"
+    glob.annz["userCuts_valid"]    = "    (FIELD == \"FIELD_1\") ||     (FIELD == \"FIELD_2\")"
+    glob.annz["userWeights_train"] = "1.0*(FIELD == \"FIELD_0\") +  2.0*(FIELD == \"FIELD_1\")"
+    glob.annz["userWeights_valid"] = "1.0*(FIELD == \"FIELD_1\") +  0.1*(FIELD == \"FIELD_2\")"
+    ```
+    Here, training is only done using `FIELD_0` and `FIELD_1`; validation is weighted such that galaxies from `FIELD_1` have 10 times the weight compared to galaxies from `FIELD_2` etc.
+    
+    - The same rules also apply for the weight and cut options for the KNN re-weighting method: `cutInp_wgtKNN`, `cutRef_wgtKNN`, `weightRef_wgtKNN` and `weightInp_wgtKNN`, and for the corresponding variables for the evaluation compatibility test (the `inTrainFlag` parameter): `cutInp_inTrain`, `cutRef_inTrain`, `weightRef_inTrain` and `weightInp_inTrain`. (Examples for the re-weighting and for the compatibility test using these variables are given in `scripts/annz_rndReg_advanced.py`.)
 
   - By default, the output of evaluation is written to a subdirectory named `eval` in the output directory. An output file may e.g., be `./output/test_randReg_quick/regres/eval/ANNZ_randomReg_0000.csv`. It is possible to set the the `evalDirPostfix` variable in order to change this. For instance, setting
   ```python
@@ -532,7 +569,7 @@ A few notes:
   glob.annz["isBatch"] = True
   ```
 
-  - It is possible to use root input files instead of ascii inputs. In this case, use the `splitTypeTrain`, `splitTypeTest`, `splitTypeValid`, `inAsciiFiles` and `inAsciiFiles_wgtKNN` variables in the same way as for ascii inputs; in addition, specify the name of the tree inside the root files. The latter is done using the variable `inTreeName` (for the nominal set) or `inTreeName_wgtKNN` (for the `inAsciiFiles_wgtKNN` variable). An example is given in `scripts/annz_rndReg_advanced.py`.
+  - It is possible to use root input files instead of ascii inputs. In this case, use the `splitTypeTrain`, `splitTypeTest`, `inAsciiFiles` and `inAsciiFiles_wgtKNN` variables in the same way as for ascii inputs; in addition, specify the name of the tree inside the root files. The latter is done using the variable `inTreeName` (for the nominal set) or `inTreeName_wgtKNN` (for the `inAsciiFiles_wgtKNN` variable). An example is given in `scripts/annz_rndReg_advanced.py`.
 
   - The output of ANNZ includes escape sequences for color. To avoid these, set 
   ```python

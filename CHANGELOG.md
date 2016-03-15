@@ -1,8 +1,61 @@
 # Changelog
 
-## Master version
+<!-- ## Master version (20/1/2016) -->
+## ANNZ 2.1.2 (15/3/2016)
+
+- Improved selection criteria for `ANNZ_best` in randomized regression. The optimization is now based on `glob.annz["optimCondReg"]="sig68"` or `"bias"` (The `"fracSig68"` option is deprecated.)
+
+- **Significant speed improvement** for KNN weights and `inTrainFlag` calculations in `CatFormat::addWgtKNNtoTree()`.
+
+- Modified `CatFormat::addWgtKNNtoTree()` and `CatFormat::inputToSplitTree_wgtKNN()` so that both training and testing objects are used together as the reference dataset, when deriving KNN weights. This new option is on by default, and may be turned off by setting:
+  ```python
+  glob.annz["trainTestTogether_wgtKNN"] = False
+  ```
+  - For developers: internal interface change (not backward compatible) - What used to be `CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString outTreeName)` has been changed to `CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TChain * aChainEvl, TString outTreeName)`.
+
+- Cancelled the `splitTypeValid` option, which was not very useful and confusing for users. From now on, input datasets may only be divided into two subsets, one for training and one for testing. The user may define the training/testing samples in one of two ways (see `scripts/annz_rndReg_advanced.py` for details):
+  
+  1. Automatic splitting:
+    ```python
+    glob.annz["splitType"]    = "random"
+    glob.annz["inAsciiFiles"] = "boss_dr10_0.csv;boss_dr10_1.csv"
+    ```
+  Set a list of input files in `inAsciiFiles`, and use `splitType` to specify the method for splitting the sample. Allowed values for the latter are `serial`, `blocks` or `random`.
+  
+  2. Splitting by file:
+    ```python
+    glob.annz["splitType"]      = "byInFiles"
+    glob.annz["splitTypeTrain"] = "boss_dr10_0.csv"
+    glob.annz["splitTypeTest"]  = "boss_dr10_1.csv;boss_dr10_2.csv"
+    ```
+  Set a list of input files for training in `splitTypeTrain`, and a list of input files for testing in `splitTypeTest`. 
+
+- Added plotting for the evaluation mode of regression (single regression, randomized regression and binned classification). If the regression target is detected as part of the evaluated dataset, the nominal performance plots are created. For instance, for the `scripts/annz_rndReg_quick.py` script, the plots will be created in `output/test_randReg_quick/regres/eval/plots/`.
 
 - Fixed bug in plotting routine from `ANNZ::doMetricPlots()`, when adding user-defined cuts for variables not already present in the input trees.
+
+- Simplified the interface for string variables in cut and weight expressions.
+  - For example, given a set of input parameters,
+    ```python
+    glob.annz["inAsciiVars"] = "D:MAG_AUTO_G;D:MAG_AUTO_R;D:MAG_AUTO_I;D:Z_SPEC;C:FIELD"
+    ```
+    one can now use cuts and weights of the form:
+    ```python
+    glob.annz["userCuts_train"]    = "    (FIELD == \"FIELD_0\") ||     (FIELD == \"FIELD_1\")"
+    glob.annz["userCuts_valid"]    = "    (FIELD == \"FIELD_1\") ||     (FIELD == \"FIELD_2\")"
+    glob.annz["userWeights_train"] = "1.0*(FIELD == \"FIELD_0\") +  2.0*(FIELD == \"FIELD_1\")"
+    glob.annz["userWeights_valid"] = "1.0*(FIELD == \"FIELD_1\") +  0.1*(FIELD == \"FIELD_2\")"
+    ```
+    Here, training is only done using `FIELD_0` and `FIELD_1`; validation is weighted such that galaxies from `FIELD_1` have ten times the weight compared to galaxies from `FIELD_2` etc.
+
+  - The same rules also apply for the weight and cut options for the KNN re-weighting method: `cutInp_wgtKNN`, `cutRef_wgtKNN`, `weightRef_wgtKNN` and `weightInp_wgtKNN`, and for the corresponding variables for the evaluation compatibility test: `cutInp_inTrain`, `cutRef_inTrain`, `weightRef_inTrain` and `weightInp_inTrain`. (Examples for the re-weighting and for the compatibility test using these variables are given in `scripts/annz_rndReg_advanced.py`.)
+
+- `ANNZ_PDF_max_0` no longer calculated by default. This may be turned back on by setting
+```python
+glob.annz["addMaxPDF"] = True
+```
+
+- Other minor modifications and bug fixes.
 
 ## ANNZ 2.1.1 (15/1/2016)
 

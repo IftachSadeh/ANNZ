@@ -49,9 +49,10 @@ void ANNZ::Init() {
   glob->NewOptC("aTimeName","ANNZ_aTime"); // internal flag name for time operations
   glob->NewOptB("hasTruth",!glob->GetOptB("doEval")); // internal flag for adding a cut on the range of values of zTrg
 
-  // internal parameters - the condition for defining the test/valid sub-smaples from the _valid tree in case of nSplit==3
-  glob->NewOptC("testValidType_train", glob->GetOptC("testValidType")+"<0.5"); // where [ testValidType == 0 ] for train
-  glob->NewOptC("testValidType_valid", glob->GetOptC("testValidType")+">0.5"); // where [ testValidType == 1 ] for valid
+  // deprecated
+  // // internal parameters - the condition for defining the test/valid sub-smaples from the _valid tree in case of nSplit==3
+  // glob->NewOptC("testValidType_train", glob->GetOptC("testValidType")+"<0.5"); // where [ testValidType == 0 ] for train
+  // glob->NewOptC("testValidType_valid", glob->GetOptC("testValidType")+">0.5"); // where [ testValidType == 1 ] for valid
 
   if(glob->GetOptC("userWeights_train") == "") glob->SetOptC("userWeights_train","1"); // set proper init value for weights
   if(glob->GetOptC("userWeights_valid") == "") glob->SetOptC("userWeights_valid","1"); // set proper init value for weights
@@ -87,7 +88,7 @@ void ANNZ::Init() {
 
   if(glob->GetOptB("doTrain") && !glob->GetOptB("isBatch")) {
     aLOG(Log::WARNING) <<coutGreen<<" - training progress bar is active - if using a log file, it will become very large... (Can set "
-                       <<coutYellow<<"\"isBatch\""<<coutGreen<<" instead.)" <<coutDef<<endl;
+                       <<coutYellow<<"[\"isBatch\""<<coutGreen<<" = true] instead.)" <<coutDef<<endl;
   }
 
   // -----------------------------------------------------------------------------------------------------------
@@ -98,8 +99,8 @@ void ANNZ::Init() {
                            "Must run GenerateInputTrees() first ...",(utils->isDirFile(glob->GetOptC("inputTreeDirName"))));
 
   vector <TString> optNames;
-  optNames.push_back("nSplit");        optNames.push_back("treeName");      optNames.push_back("indexName"); 
-  optNames.push_back("splitName");     optNames.push_back("testValidType"); optNames.push_back("useWgtKNN");
+  optNames.push_back("nSplit"); optNames.push_back("treeName");  optNames.push_back("indexName"); optNames.push_back("useWgtKNN");
+  // optNames.push_back("splitName"); optNames.push_back("testValidType"); // deprecated
   
   if(glob->GetOptB("storeOrigFileName")) optNames.push_back("origFileName");
 
@@ -108,12 +109,15 @@ void ANNZ::Init() {
   optNames.clear();
 
   int nSplit(glob->GetOptI("nSplit"));
-  VERIFY(LOCATION,(TString)"Cant run with [\"nSplit\" = "+utils->intToStr(nSplit)+"]. Must set to either [2] or [3] when "
-                          +"generating the input trees !",(nSplit == 2 || nSplit == 3));
+  if(!glob->GetOptB("doEval")) {
+    VERIFY(LOCATION,(TString)"Cant run with [\"nSplit\" = "+utils->intToStr(nSplit)+"] ..."
+                            +" Must set to 2 when generating the input trees !",(nSplit == 2));
+  }
 
-  // flag for splitting the sample into two (train,valid) or three (train,test,valid)
-  // (must come after reading-in userOptsFile_genInputTrees, which may override nSplit)
-  glob->NewOptB("separateTestValid",(nSplit == 3)); // internal flag
+  // deprecated
+  // // flag for splitting the sample into two (train,valid) or three (train,test,valid)
+  // // (must come after reading-in userOptsFile_genInputTrees, which may override nSplit)
+  // glob->NewOptB("separateTestValid",(nSplit == 3)); // internal flag
 
   // -----------------------------------------------------------------------------------------------------------
   // single regression/classification overrides
@@ -295,6 +299,12 @@ void ANNZ::Init() {
     setInfoBinsZ();
 
     // validate correct setting for the primary condition for optimization, and set the corresponding title
+    if(glob->GetOptC("optimCondReg") == "fracSig68") {
+      aLOG(Log::WARNING) <<coutRed <<" - Found [\"optimCondReg\" = "<<coutYellow<<glob->GetOptC("optimCondReg")
+                         <<coutRed<<"] which is deprecated...  Will change this to "<<coutGreen<<"sig68"<<coutDef<<endl;
+      
+      glob->SetOptC("optimCondReg","sig68");
+    }
     if     (glob->GetOptC("optimCondReg") == "sig68")     glob->NewOptC("optimCondRegtitle", "#sigma_{68}");
     else if(glob->GetOptC("optimCondReg") == "bias")      glob->NewOptC("optimCondRegtitle", "Bias");
     else if(glob->GetOptC("optimCondReg") == "fracSig68") glob->NewOptC("optimCondRegtitle", "f(2,3#sigma_{68})");
@@ -311,6 +321,8 @@ void ANNZ::Init() {
   // number of random smearing to perform when folding uncertainty estimates into MLM solutions for PDF generation
   glob->SetOptI("nSmearsRnd",max(glob->GetOptI("nSmearsRnd"),50));                                    // set minimal value
   if(glob->GetOptI("nSmearsRnd") % 2 == 1) glob->SetOptI("nSmearsRnd",glob->GetOptI("nSmearsRnd")+1); // needs to be an even number
+
+  glob->SetOptI("nSmearUnf",max(glob->GetOptI("nSmearUnf"),glob->GetOptI("nSmearsRnd") * 2));           // set minimal value
 
   // a lower acceptance bound to check if too few MLMs are trained or if something went wrong with the optimization procedure
   // (e.g., not enough trained MLMs have 'good' combinations of scatter, bias and outlier-fraction metrics).
@@ -511,7 +523,7 @@ void ANNZ::setTags() {
   inErrTag.resize(nMLMs,vector<TString>(0,"")); // the internal length is set in setNominalParams()
   
   for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) {
-    TString MLMname       = (TString)glob->GetOptC("baseName_ANNZ")+utils->intToStr(nMLMnow); // format of "ANNZ_0"
+    TString MLMname       = (TString)glob->GetOptC("basePrefix")+utils->intToStr(nMLMnow); // format of "ANNZ_0"
 
     mlmTagName  [nMLMnow] = (TString)MLMname;
     mlmTagWeight[nMLMnow] = (TString)MLMname+baseTag_w;
@@ -620,7 +632,7 @@ TString ANNZ::getTagBestMLMname(TString type) {
 // ===========================================================================================================
 int ANNZ::getTagNow(TString MLMname) {
 // ===================================
-  TString MLMnamePost(MLMname); MLMnamePost.ReplaceAll(glob->GetOptC("baseName_ANNZ"),"");
+  TString MLMnamePost(MLMname); MLMnamePost.ReplaceAll(glob->GetOptC("basePrefix"),"");
   VERIFY(LOCATION,(TString)"(MLMname = \""+MLMname+"\") has unsupported format",(MLMnamePost.IsDigit()));
 
   int nMLMnow = static_cast<int>(MLMnamePost.Atoi());
@@ -731,6 +743,38 @@ TString ANNZ::getKeyWord(TString MLMname, TString sequence, TString key) {
   
   VERIFY(LOCATION,(TString)"Unknown sequence (\""+sequence+"\") in ketKeyWord()",false);
   return "";
+}
+
+// ===========================================================================================================
+/**
+ * @brief          - get the weight expression from userWgtsM using either a VarMaps or a TChain
+ * 
+ * @param var     - The associated chain (needed for string variable identification)
+ * @param aChain  - The associated chain (needed for string variable identification)
+ * @param tagName - The access string from userWgtsM
+ * 
+ * @return         - The requested string
+ */
+// ===========================================================================================================
+TString ANNZ::getRegularStrForm(TString strIn, VarMaps * var, TChain * aChain) {
+  if(strIn == "") return strIn;
+
+  bool hasVar   = (dynamic_cast<VarMaps*>(var)   != NULL);
+  bool hasChain = (dynamic_cast<TChain*>(aChain) != NULL);
+
+  VERIFY(LOCATION,(TString)"Must provide either a VarMaps or a TChain in order to get a safe weight expression",(hasVar || hasChain));
+
+  // define a temporary VarMaps so as to regularize the weight expression
+  if(!hasVar) {
+    var = new VarMaps(glob,utils,"varRegularStrForm");
+    var->connectTreeBranches(aChain);
+  }
+  
+  TString strOut = var->regularizeStringForm(strIn);
+
+  if(!hasVar) DELNULL(var);
+
+  return strOut;
 }
 
 // ===========================================================================================================
@@ -1051,7 +1095,7 @@ void  ANNZ::loadOptsMLM() {
 void ANNZ::setNominalParams(int nMLMnow, TString inputVariables, TString inputVarErrors) {
 // =======================================================================================
   TString MLMname           = getTagName(nMLMnow);
-  TString baseName_ANNZ     = glob->GetOptC("baseName_ANNZ");
+  TString basePrefix        = glob->GetOptC("basePrefix");
   TString baseName_inVarErr = glob->GetOptC("baseName_inVarErr");
 
   aLOG(Log::DEBUG_2) <<coutBlue<<" - setNominalParams() - "<<coutRed<<nMLMnow<<coutBlue<<" - inputVariables = "<<coutGreen<<inputVariables
@@ -1065,9 +1109,9 @@ void ANNZ::setNominalParams(int nMLMnow, TString inputVariables, TString inputVa
   VERIFY(LOCATION,(TString)"List of input variable names (\"inputVariables\") is empty !!!",(nInVars > 0));
 
   for(int nVarNow=0; nVarNow<nInVars; nVarNow++) {
-    bool isAllowedName = !(inNamesVar[nMLMnow][nVarNow].BeginsWith(baseName_ANNZ));
+    bool isAllowedName = !(inNamesVar[nMLMnow][nVarNow].BeginsWith(basePrefix));
 
-    VERIFY(LOCATION,(TString)"Variable names in \"inputVariables\" can not begin with \""+baseName_ANNZ+"\"",isAllowedName);
+    VERIFY(LOCATION,(TString)"Variable names in \"inputVariables\" can not begin with \""+basePrefix+"\"",isAllowedName);
   }
 
   if(inputVarErrors == "") {
@@ -1108,10 +1152,10 @@ void ANNZ::setMethodCuts(VarMaps * var, int nMLMnow, bool verbose) {
 
   for(int nCutNow=0; nCutNow<100; nCutNow++) {
     TString cutName("");
-    if     (nCutNow == 0) cutName = "_comn";          else if(nCutNow == 1) cutName = "_sig";
-    else if(nCutNow == 2) cutName = "_bck";           else if(nCutNow == 3) cutName = "_train";
-    else if(nCutNow == 4) cutName = "_valid";         else if(nCutNow == 5) cutName = MLMname+"_train";
-    else if(nCutNow == 6) cutName = MLMname+"_valid"; else break;
+    if     (nCutNow == 0) cutName = "_comn";  else if(nCutNow == 1) cutName = "_sig";
+    else if(nCutNow == 2) cutName = "_bck";   else if(nCutNow == 3) cutName = MLMname+"_train";
+    // else if(nCutNow == 4) cutName = "_train"; else if(nCutNow == 5) cutName = "_valid"; // deprecated
+    else if(nCutNow == 4) cutName = MLMname+"_valid"; else break;
 
     var->setTreeCuts(cutName,getTrainTestCuts(cutName,nMLMnow));
 
@@ -1131,36 +1175,52 @@ void ANNZ::setMethodCuts(VarMaps * var, int nMLMnow, bool verbose) {
  *                       e.g., for [split0=2 , split1=3], accept two out of every three objects.
  */
 // ===========================================================================================================
-TCut ANNZ::getTrainTestCuts(TString cutType, int nMLMnow, int split0, int split1) {
-// ================================================================================
-  TString MLMname  = getTagName(nMLMnow);
-  TCut    treeCuts = "";
+TCut ANNZ::getTrainTestCuts(TString cutType, int nMLMnow, int split0, int split1, VarMaps * var, TChain * aChain) {
+// ================================================================================================================
+  vector <TString> cutTypeV = utils->splitStringByChar(cutType,';');
+  int              nCuts    = (int)cutTypeV.size();
+  TString          MLMname  = getTagName(nMLMnow);
+  TCut             treeCuts = "";
 
-  if(cutType == "_comn") {
-    if(glob->GetOptB("hasTruth") && !glob->GetOptB("doClassification")) {
-      if(glob->GetOptB("useCutsMinMaxZ")) {
-        treeCuts += glob->GetOptC("zTrg")+TString::Format(" > %f",glob->GetOptF("minValZ"));
-        treeCuts += glob->GetOptC("zTrg")+TString::Format(" < %f",glob->GetOptF("maxValZ"));
+  VERIFY(LOCATION,(TString)"Trying to use getTrainTestCuts() with no defined cut-type: \""+cutType+"\"",(nCuts > 0 && cutType != ""));
+
+  for(int nCutNow=0; nCutNow<nCuts; nCutNow++) {
+    TString cutTypeNow = cutTypeV[nCutNow];
+
+    if(cutTypeNow == "_comn") {
+      if(glob->GetOptB("hasTruth") && !glob->GetOptB("doClassification")) {
+        if(glob->GetOptB("useCutsMinMaxZ")) {
+          treeCuts += (TCut)(glob->GetOptC("zTrg")+TString::Format(" > %f",glob->GetOptF("minValZ")));
+          treeCuts += (TCut)(glob->GetOptC("zTrg")+TString::Format(" < %f",glob->GetOptF("maxValZ")));
+        }
       }
     }
-  }
-  else if(cutType == "_train" || cutType == "_valid") {
-    // if has separate sub-sample for training convergence and for testing -> "testValidType_train" or "testValidType_valid"
-    if(glob->GetOptB("separateTestValid")) treeCuts += glob->GetOptC((TString)"testValidType"+cutType);
-  }
-  else if(cutType == MLMname+"_train" || cutType == MLMname+"_valid" || cutType == "_sig" || cutType == "_bck") {
-    VERIFY(LOCATION,(TString)"Trying to get from userCutsM element [\""+cutType+"\"] which doesnt exist ..."
-                            ,(userCutsM.find(cutType) != userCutsM.end()));
+    // deprecated
+    // else if(cutTypeNow == "_train" || cutTypeNow == "_valid") {
+    //   // if has separate sub-sample for training convergence and for testing -> "testValidType_train" or "testValidType_valid"
+    //   if(glob->GetOptB("separateTestValid")) treeCuts += (TCut)glob->GetOptC((TString)"testValidType"+cutTypeNow);
+    // }
+    else if(cutTypeNow == "_train" || cutTypeNow == "_valid") {
+      aLOG(Log::WARNING) <<coutWhiteOnBlack<<" - Somehow got \"cutTypeNow\" = "<<coutPurple<<cutTypeNow<<coutWhiteOnBlack
+                         <<" in getTrainTestCuts(). Can go on, but please check where this comes from ..." <<coutDef<<endl;
+    }
+    else if(cutTypeNow == MLMname+"_train" || cutTypeNow == MLMname+"_valid" || cutTypeNow == "_sig" || cutTypeNow == "_bck") {
+      VERIFY(LOCATION,(TString)"Trying to get from userCutsM element [\""+cutTypeNow+"\"] which doesnt exist ..."
+                              ,(userCutsM.find(cutTypeNow) != userCutsM.end()));
 
-    treeCuts += userCutsM[cutType];
-  }
-  else if(cutType == "split") {
-    VERIFY(LOCATION,(TString)"Must have (0 < split0 < split1)",(split1 > split0 && split0 > 0));
+      treeCuts += (TCut)userCutsM[cutTypeNow];
+    }
+    else if(cutTypeNow == "split") {
+      VERIFY(LOCATION,(TString)"Must have (0 < split0 < split1)",(split1 > split0 && split0 > 0));
 
-    treeCuts += (TString)glob->GetOptC("splitName")+" % "+TString::Format("%d < %d",split1,split0);
+      treeCuts += (TCut)((TString)glob->GetOptC("indexName")+" % "+TString::Format("%d < %d",split1,split0));
+    }
+    else VERIFY(LOCATION,(TString)"Trying to use getTrainTestCuts() with unsupported cut-type (\""+cutTypeNow+"\")",false);
   }
-  else VERIFY(LOCATION,(TString)"Trying to use getTrainTestCuts() with unsupported cut-type (\""+cutType+"\")",false);
 
+  if(var || aChain) treeCuts = (TCut)getRegularStrForm((TString)treeCuts,var,aChain);
+
+  cutTypeV.clear();
   return treeCuts;
 }
 
@@ -1484,8 +1544,10 @@ TString ANNZ::deriveBinClsBins(map < TString,TChain* > & chainM, map < TString,T
   double  maxBinW         = glob->GetOptF("binCls_maxBinW");
   int     nBinDivs        = glob->GetOptI("binCls_nBins");
   TString MLMname         = getTagName(nMLMnow);
+  TString wgtTrain        = getRegularStrForm(userWgtsM[MLMname+"_train"],NULL,chainM["_train"]);
 
   Log::LOGtypes binLog(Log::DEBUG_2);
+
 
   // fill a histogram with the distribution of zTrgName (from the training chain, after cuts)
   // -----------------------------------------------------------------------------------------------------------
@@ -1496,8 +1558,8 @@ TString ANNZ::deriveBinClsBins(map < TString,TChain* > & chainM, map < TString,T
     
     TString drawExprs    = (TString)zTrgName+">>+"+hisQuantName;
     TString cutExprs     = (TString)+"("+(TString)((TCut)cutM["_comn"]+(TCut)cutM["_train"])+")";  cutExprs.ReplaceAll("()","");
-    if(nHisNow == 1 && userWgtsM[MLMname+"_train"] != "") {
-      cutExprs          += (TString)" * ("+userWgtsM[MLMname+"_train"]+")";
+    if(nHisNow == 1 && wgtTrain != "") {
+      cutExprs          += (TString)" * ("+wgtTrain+")";
     }
     TCanvas * tmpCnvs    = new TCanvas("tmpCnvs","tmpCnvs");
     int     nEvtPass     = chainM["_train"]->Draw(drawExprs,cutExprs); DELNULL(tmpCnvs);
@@ -1790,8 +1852,7 @@ void ANNZ::createCutTrainTrees(map < TString,TChain* > & chainM, map < TString,T
       if(var_0->hasFailedTreeCuts(varCutNameCmn)) continue;
 
       var_1->copyVarData(var_0,&varTypeNameV);
-
-      cutTree->Fill();
+      var_1->fillTree();
 
       var_0->IncCntr("nObj"); mayWriteObjects = true;
     }
@@ -1837,7 +1898,7 @@ void ANNZ::splitToSigBckTrees(map < TString,TChain* > & chainM, map < TString,TC
   aLOG(Log::DEBUG) <<coutWhiteOnBlack<<coutYellow<<" - starting ANNZ::splitToSigBckTrees() ... "<<coutDef<<endl;
 
   int     maxNobj         = glob->GetOptI("maxNobj");
-  TString splitName       = glob->GetOptC("splitName");
+  // TString splitName       = glob->GetOptC("splitName");  // deprecated
   TString outDirNameFull  = glob->GetOptC("outDirNameFull");
   int     nObjectsToWrite = glob->GetOptI("nObjectsToWrite");
 
@@ -1863,8 +1924,10 @@ void ANNZ::splitToSigBckTrees(map < TString,TChain* > & chainM, map < TString,TC
     // create splitIndex variables for signal and background (countinous counters for each sub-sample that can later be used for cuts)
     vector < pair<TString,TString> > varTypeNameV;
 
-    VarMaps * varSig = new VarMaps(glob,utils,varName+"_sig"); varSig->varStruct(var,NULL,NULL,&varTypeNameV); varSig->NewVarI(splitName+"_sigBck");
-    VarMaps * varBck = new VarMaps(glob,utils,varName+"_bck"); varBck->varStruct(var);                         varBck->NewVarI(splitName+"_sigBck");
+    VarMaps * varSig = new VarMaps(glob,utils,varName+"_sig");  varSig->varStruct(var,NULL,NULL,&varTypeNameV);
+    VarMaps * varBck = new VarMaps(glob,utils,varName+"_bck");  varBck->varStruct(var);
+
+    // varSig->NewVarI(splitName+"_sigBck"); varBck->NewVarI(splitName+"_sigBck"); // deprecated
 
     // create an output tree with branches according to var
     TTree * mergedTreeSig = new TTree(inTreeNameSig,inTreeNameSig); mergedTreeSig->SetDirectory(0);  outputs->TreeMap[inTreeNameSig] = mergedTreeSig;
@@ -1895,19 +1958,19 @@ void ANNZ::splitToSigBckTrees(map < TString,TChain* > & chainM, map < TString,TC
 
       if(!var->hasFailedTreeCuts(varCutNameSig)) {
         varSig->copyVarData(var,&varTypeNameV);
-        varSig->SetVarI(splitName+"_sigBck",var->GetCntr(nObjNameSig));
+        // varSig->SetVarI(splitName+"_sigBck",var->GetCntr(nObjNameSig));  // deprecated
         var->IncCntr(nObjNameSig);
 
-        mergedTreeSig->Fill();
+        varSig->fillTree();
       }
       else var->IncCntr((TString)"failedCut: "+var->getFailedCutType());
 
       if(!var->hasFailedTreeCuts(varCutNameBck)) {
         varBck->copyVarData(var,&varTypeNameV);
-        varBck->SetVarI(splitName+"_sigBck",var->GetCntr(nObjNameBck));
+        // varBck->SetVarI(splitName+"_sigBck",var->GetCntr(nObjNameBck)); // deprecated
         var->IncCntr(nObjNameBck);
 
-        mergedTreeBck->Fill();
+        varBck->fillTree();
       }
       else var->IncCntr((TString)"failedCut: "+var->getFailedCutType());
 

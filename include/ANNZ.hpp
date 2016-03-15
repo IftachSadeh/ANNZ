@@ -82,10 +82,11 @@ private:
   TString  getErrKNNname(int nMLMnow = -1);
   int      getErrKNNtagNow(TString errKNNname);
   TString  getKeyWord(TString MLMname, TString sequence, TString key);
+  TString  getRegularStrForm(TString strIn = "", VarMaps * var = NULL, TChain * aChain = NULL);
   void     loadOptsMLM();
   void     setNominalParams(int nMLMnow, TString inputVariables, TString inputVarErrors);
   void     setMethodCuts(VarMaps * var, int nMLMnow, bool verbose = true);
-  TCut     getTrainTestCuts(TString cutType = "", int nMLMnow = -1, int split0 = 0, int split1 = 0);
+  TCut     getTrainTestCuts(TString cutType = "", int nMLMnow = 0, int split0 = -1, int split1 = -1, VarMaps * var = NULL, TChain * aChain = NULL);
   void     selectUserMLMlist(vector <TString> & optimMLMv, map <TString,bool> & mlmSkipNow);
   void     setInfoBinsZ();
   int      getBinZ(double valZ, vector <double> & binEdgesV, bool forceCheck = false);
@@ -153,7 +154,7 @@ private:
   void     setBinClsPdfBinWeights(vector < vector < pair<int,double> > > & pdfBinWgt, vector <int> & nClsBinsIn);
   void     getBinClsBiasCorPDF(TChain * aChain, vector <TH2*>  & hisPdfBiasCorV);
   void     doEvalReg(TChain * inChain = NULL, TString outDirName = "", vector <TString> * selctVarV = NULL);
-  void     doMetricPlots(TChain * inChain = NULL, vector <TString> * selctMLMv = NULL);
+  void     doMetricPlots(TChain * inChain = NULL, vector <TString> * addPlotVarV = NULL);
 
   // -----------------------------------------------------------------------------------------------------------
   // ANNZ_loopRegCls.cpp :

@@ -167,14 +167,14 @@ myANNZ::myANNZ() {
   glob->NewOptC("inpFiles_bck","");
 
   // nSplit - how to split into training/testing(/validation) - 
-  //   nSplit = [2,3] -> split into 2 (training,testing) or 3 (training,testing,validting) sub-sets - for trainig/optimization
-  //   nSplit = 1     -> no splitting - for evaluation
+  //   nSplit = 2 -> split into 2 (training,testing) sub-sets - for trainig/optimization
+  //   nSplit = 1 -> no splitting - for evaluation
   // -----------------------------------------------------------------------------------------------------------
-  glob->NewOptI("nSplit"        ,3);
+  glob->NewOptI("nSplit"        ,2);
   glob->NewOptC("splitType"     ,"byInFiles"); // [serial,blocks,random,byInFiles] - methods for splitting the input dataset
   glob->NewOptC("splitTypeTrain","");          // in case of seperate input files - this is the list of training  input files
   glob->NewOptC("splitTypeTest" ,"");          // in case of seperate input files - this is the list of testing   input files
-  glob->NewOptC("splitTypeValid","");          // in case of seperate input files - this is the list of validating input files
+  glob->NewOptC("splitTypeValid","");          // deprecated (kept for backward compatibility only)
   glob->NewOptI("splitSeed"     ,19888687);    // seed for random number generator for one of the splitting methods
   glob->NewOptC("inputVariables","");          // list of input variables as they appear in the input ascii files
   glob->NewOptC("inputVarErrors","");          // (optional) list of input variable errors
@@ -194,8 +194,19 @@ myANNZ::myANNZ() {
   glob->NewOptF("sampleFracInp_wgtKNN" ,1);     // fraction of the input sample to use for the kd-tree (positive number, smaller or equal to 1)
   glob->NewOptF("sampleFracRef_wgtKNN" ,1);     // fraction of the input sample to use for the kd-tree (positive number, smaller or equal to 1)
   glob->NewOptB("doWidthRescale_wgtKNN",true);  // transform the input parameters used for the kd-tree to the range [-1,1]
+  // number of KNN modules to use for hierarchical searches (may limit if consumes too much memory, but must be >= 2
+  glob->NewOptI("nKnnFracs_wgtKNN"     ,10);
+  // factor to decrease fraction of accepted objects for each KNN module - e.g., for module 1 all objects are
+  // in, for module 2, 1/knnFracFact_wgtKNN are in, for module 3 1/(knnFracFact_wgtKNN*knnFracFact_wgtKNN) are in ...
+  glob->NewOptI("knnFracFact_wgtKNN"   ,3);
+  // by default, the weights are computed for the entire sample. That is, the training and the testing samples
+  // are used together - we calculate the difference between the distribution of input-variables between [train+test samples]
+  // and [ref sample]. However, it is possible to decide to comput the weights for each separately. That is, to calculate
+  // wegiths for [train sample] with regards to [ref sample], and to separately get [test sample] with regards to [ref sample]. The
+  // latter is only recommended if the training and testing samples have different inpput-variable distributions.
+  glob->NewOptB("trainTestTogether_wgtKNN",true);
 
-  // input files (given by splitTypeTrain, splitTypeTest, splitTypeValid and inAsciiFiles) may also be root files, containing
+  // input files (given by splitTypeTrain, splitTypeTest and inAsciiFiles) may also be root files, containing
   // root trees, instead of ascii files. In this case, the name of the tree in the input files is defined in inTreeName
   glob->NewOptC("inTreeName"     ,"");
   // if root input is given in inAsciiFiles_wgtKNN, the corresponding tree name is defined in treeName_wgtKNN
@@ -210,12 +221,13 @@ myANNZ::myANNZ() {
   //                              The calculation is performed using a KNN approach, similar to the algorithm used for the "useWgtKNN" calculation.
   //   minNobjInVol_inTrain     - The number of reference objects in the reference dataset which are used in the calculation.
   //   maxRelRatioInRef_inTrain - A number in the range, [0,1] - The minimal threshold of the relative difference between distances 
-  //                              in the inTrainFlag calculation for accepting an object.
+  //                              in the inTrainFlag calculation for accepting an object. If set to a negative value, then the value of the
+  //                              output parameter will be distributed within the range [0,1].
   //   ...._inTrain             - The rest of the parameters ending with "_inTrain" have a similar role as their "_wgtKNN" counterparts
   // -----------------------------------------------------------------------------------------------------------
   glob->NewOptB("addInTrainFlag"          ,false);
   glob->NewOptI("minNobjInVol_inTrain"    ,100);
-  glob->NewOptF("maxRelRatioInRef_inTrain",0.1);
+  glob->NewOptF("maxRelRatioInRef_inTrain",-1);
   glob->NewOptC("weightVarNames_inTrain"  ,"");    // list of input variables for KNN in/out computation
   glob->NewOptC("outAsciiVars_inTrain"    ,"");    // list of output variables to be written to the ascii output of the KNN in/out computation
   glob->NewOptC("weightInp_inTrain"       ,"");    // weight expression for input     kd-tree (function of the variables used in weightVarNames_inTrain)
@@ -365,7 +377,7 @@ myANNZ::myANNZ() {
   glob->NewOptF("excludeRangePdfModelFit",0.1); // exclude margin for fitting cumulative dist as part of PDF optimization
 
   // optimCondReg -
-  //   ["bias", "sig68" or "fracSig68"] - used for deciding how to rank MLM performance. the named criteria represents
+  //   ["sig68" or "bias"] - used for deciding how to rank MLM performance. the named criteria represents
   //   the metric which is more significant in deciding which MLM performs "best".
   // -----------------------------------------------------------------------------------------------------------
   glob->NewOptC("optimCondReg","sig68");
@@ -419,6 +431,10 @@ myANNZ::myANNZ() {
   glob->NewOptI("minAcptMLMsForPDFs",5);
   // wether or not to perform a bias-correction on PDFs
   glob->NewOptB("doBiasCorPDF"      ,true);
+  // number of random smearing to perform for the PDF bias-correction
+  glob->NewOptI("nSmearUnf"         ,100);
+  // add calculation of maximum of PDF to output
+  glob->NewOptB("addMaxPDF"         ,false);
 
   // if max_sigma68_PDF,max_bias_PDF are positive, they put thresholds on the maximal value of the
   // scatter/bias/outlier-fraction of an MLM which may be included in the PDF created in randomized regression
@@ -550,25 +566,26 @@ void myANNZ::Init() {
   // -----------------------------------------------------------------------------------------------------------
   // names of index parameters in trees
   // -----------------------------------------------------------------------------------------------------------
-  glob->NewOptC("baseName_ANNZ"       ,"ANNZ_");          // base tag for all MLM names
-  glob->NewOptC("baseName_inVarErr"   ,"ANNZ_inVarErr_"); // base tag for all PDF names
-  glob->NewOptC("baseName_nPDF"       ,"ANNZ_PDF_");      // base tag for all PDF names
-  glob->NewOptC("baseName_wgtKNN"     ,"ANNZ_KNN_w");     // KNN weight variable
-  glob->NewOptC("treeName"            ,"ANNZ_tree");      // internal name prefix for input trees
-  glob->NewOptC("hisName"             ,"ANNZ_his");       // internal name prefix for histograms
-  glob->NewOptC("indexName"           ,"ANNZ_index");     // original index from input file
-  glob->NewOptC("splitName"           ,"ANNZ_split");     // continous index for a given sub-sample (training,testing,validting)
-  glob->NewOptC("origFileName"        ,"ANNZ_inFile");    // name of original source file
-  glob->NewOptC("testValidType"       ,"ANNZ_tvType");    // index to keep track of testing/validation sub-sample withn the _valid trees
-  glob->NewOptC("baseName_regBest"    ,"ANNZ_best");      // the "best"-performing MLM in randomized regression
-  glob->NewOptC("baseName_regMLM_avg" ,"ANNZ_MLM_avg_");  // base-name for the average MLM solution (and its error) in randomized regression
-  glob->NewOptC("baseName_regPDF_max" ,"ANNZ_PDF_max_");  // base-name for the peak of the pdf solution (and its error) in randomized regression
-  glob->NewOptC("baseName_regPDF_avg" ,"ANNZ_PDF_avg_");  // base-name for the average pdf solution (and its error) in randomized regression
+  TString basePrefix("ANNZ_");
+  glob->NewOptC("basePrefix"          ,basePrefix);             // base tag for all MLM names
+  glob->NewOptC("baseName_inVarErr"   ,basePrefix+"inVarErr_"); // base tag for all PDF names
+  glob->NewOptC("baseName_nPDF"       ,basePrefix+"PDF_");      // base tag for all PDF names
+  glob->NewOptC("baseName_wgtKNN"     ,basePrefix+"KNN_w");     // KNN weight variable
+  glob->NewOptC("treeName"            ,basePrefix+"tree");      // internal name prefix for input trees
+  glob->NewOptC("hisName"             ,basePrefix+"his");       // internal name prefix for histograms
+  glob->NewOptC("indexName"           ,basePrefix+"index");     // original index from input file
+  glob->NewOptC("origFileName"        ,basePrefix+"inFile");    // name of original source file
+  glob->NewOptC("baseName_regBest"    ,basePrefix+"best");      // the "best"-performing MLM in randomized regression
+  glob->NewOptC("baseName_regMLM_avg" ,basePrefix+"MLM_avg_");  // base-name for the average MLM solution (and its error) in randomized regression
+  glob->NewOptC("baseName_regPDF_max" ,basePrefix+"PDF_max_");  // base-name for the peak of the pdf solution (and its error) in randomized regression
+  glob->NewOptC("baseName_regPDF_avg" ,basePrefix+"PDF_avg_");  // base-name for the average pdf solution (and its error) in randomized regression
   glob->NewOptC("baseName_knnErr"     ,"_knnErr");        // name-postfix of error variable derived with the KNN estimator 
   // name of an optional output parameter in evaluation (is it "safe" to use the result for an evaluated object)
   glob->NewOptC("baseName_inTrain"    ,"inTrainFlag");
   // optional parameter to mark if an object is of type signal (1), background (0) or undefined (-1), based on the name of the original input file
   glob->NewOptC("sigBckInpName","sigBckInp");
+  // glob->NewOptC("splitName"           ,basePrefix+"split");  // deprecated
+  // glob->NewOptC("testValidType"       ,basePrefix+"tvType"); // deprecated
 
   // -----------------------------------------------------------------------------------------------------------
   // working directory names
@@ -628,7 +645,7 @@ void myANNZ::Init() {
 
   if(glob->GetOptB("doTrain")) {
     int nMLMnow = glob->GetOptB("doBinnedCls") ? glob->GetOptI("nBinNow") : glob->GetOptI("nMLMnow");
-    glob->SetOptC("trainDirName",(TString)glob->GetOptC("trainDirName")+glob->GetOptC("baseName_ANNZ")+TString::Format("%d",nMLMnow)+"/");
+    glob->SetOptC("trainDirName",(TString)glob->GetOptC("trainDirName")+glob->GetOptC("basePrefix")+TString::Format("%d",nMLMnow)+"/");
   }
 
   glob->NewOptC("outDirNamePath",        (TString)glob->baseOutDirName()         +glob->GetOptC("outDirName"));
@@ -701,8 +718,38 @@ void myANNZ::Init() {
                             +" without setting corresponding input files in \"inAsciiFiles_wgtKNN\"",(glob->GetOptC("inAsciiFiles_wgtKNN") != ""));
   }
 
+  // check the tadaset division (full, or split into training/testing). make sure that the 
+  // deprecated split to 3 samples (training/testing/validation) is not requested by mistake
+  // -----------------------------------------------------------------------------------------------------------
   int nSplit = glob->GetOptI("nSplit");
-  VERIFY(LOCATION,(TString)"Currently, only [\"nSplit\" = 2 or 3] is supported ...",(nSplit >= 1 && nSplit <= 3));
+  VERIFY(LOCATION,(TString)"Currently, only [\"nSplit\" = 1 or 2] is supported ...",(nSplit == 1 || nSplit == 2));
+
+  // for backward compatibility, make sure that splitTypeValid and splitTypeTest are not noth set.
+  // If splitTypeValid is set instead of splitTypeTest, give a warning set splitTypeTest and reset splitTypeValid.
+  TString sptTrn(glob->GetOptC("splitTypeTrain")), sptTst(glob->GetOptC("splitTypeTest")), sptVld(glob->GetOptC("splitTypeValid"));
+  if(sptTrn != "" && sptVld != "") {
+    VERIFY(LOCATION,(TString)"Got [\"splitTypeTrain\"="+sptTrn+"], [\"splitTypeTest\"="+sptTst+"], [\"splitTypeValid\"="+sptVld+"] ..."
+                            +" please set only \"splitTypeTest\", as \"splitTypeValid\" is deprecated.",(sptTst == ""));
+
+    aLOG(Log::WARNING) <<coutRed<<" - Found [\"splitTypeValid\" = "<<coutPurple<<sptVld
+                       <<coutRed<<"] which is deprecated ... Setting as \"splitTypeTest\" instead "<<coutDef<<endl;
+
+    glob->SetOptC("splitTypeTest",sptVld); glob->SetOptC("splitTypeValid","");
+  }
+
+  TString sptTyp(glob->GetOptC("splitType")), inFiles(glob->GetOptC("inAsciiFiles"));
+  if(glob->GetOptB("doGenInputTrees") && sptTyp != "byInFiles") {
+    if(inFiles == "") {
+      VERIFY(LOCATION,(TString)"Got [\"splitType\"="+sptTyp+"] but \"inAsciiFiles\" is not set ...",false);
+    }
+    else if(sptTrn != "" || sptTst != "" || sptVld != "") {
+      aLOG(Log::WARNING) <<coutRed<<" - Found [\"splitType\" = "<<coutPurple<<sptTyp<<coutRed<<" and [\"inAsciiFiles\" = "<<coutPurple<<inFiles
+                         <<coutRed<<"] but also non-empty \"splitTypeTrain\", \"splitTypeTest\" or \"splitTypeValid\"."
+                         <<" Will ignore the latter three... "<<coutDef<<endl;
+    }
+  }
+
+
 
   if(glob->GetOptI("initSeedRnd") < 0) glob->SetOptI("initSeedRnd",0);
   if(glob->GetOptI("maxNobj")     < 0) glob->SetOptI("maxNobj"    ,0);

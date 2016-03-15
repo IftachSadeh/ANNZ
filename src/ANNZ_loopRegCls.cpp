@@ -25,8 +25,65 @@ void ANNZ::Eval() {
 // ================
   aLOG(Log::INFO) <<coutWhiteOnBlack<<coutCyan<<" - starting ANNZ::Eval() ... "<<coutDef<<endl;
 
-  if     (glob->GetOptB("doRegression"))     doEvalReg();
-  else if(glob->GetOptB("doClassification")) doEvalCls();
+  // -----------------------------------------------------------------------------------------------------------
+  // evaluation for regression
+  // -----------------------------------------------------------------------------------------------------------
+  if(glob->GetOptB("doRegression")) {
+    // -----------------------------------------------------------------------------------------------------------
+    // perform the evaluation
+    // -----------------------------------------------------------------------------------------------------------
+    doEvalReg();
+
+    // -----------------------------------------------------------------------------------------------------------
+    // run the plotting function if the regression target is included in the evaluated sample
+    // -----------------------------------------------------------------------------------------------------------
+    if(glob->GetOptB("doPlots")) {
+      aLOG(Log::DEBUG) <<coutBlue<<" - will check if plots may be produced ..."<<coutDef<<endl;
+
+      TString basePrefix     = glob->GetOptC("basePrefix");
+      TString treeName       = glob->GetOptC("treeName");
+      TString typeANNZ       = glob->GetOptC("_typeANNZ");
+      TString outDirNameFull = glob->GetOptC("outDirNameFull");
+      TString zTrg           = glob->GetOptC("zTrg");
+      TString inTreeName     = (TString)treeName+typeANNZ;
+      TString inFileName     = (TString)outDirNameFull+inTreeName+"*.root";
+
+      // create a chain from the output of the evaluation
+      TChain * aChain = new TChain(inTreeName,inTreeName); aChain->SetDirectory(0); aChain->Add(inFileName);
+      aLOG(Log::DEBUG) <<coutRed<<" - added chain "<<coutGreen<<inTreeName<<"("<<aChain->GetEntries()<<")"
+                       <<" from "<<coutBlue<<inFileName<<coutDef<<endl;
+
+      vector <TString> branchNameV, addPlotVarV;
+      utils->getTreeBranchNames(aChain,branchNameV);
+
+      // check if the chain has the regression target, and collect any other added variables
+      bool hasZtrg(false);
+      for(int nBranchNow=0; nBranchNow<(int)branchNameV.size(); nBranchNow++) {
+        TString addVarName = branchNameV[nBranchNow];
+
+        if     (addVarName == zTrg)                 { hasZtrg = true;                    }
+        else if(!addVarName.BeginsWith(basePrefix)) { addPlotVarV.push_back(addVarName); }
+      }
+
+      // generate the plots if the regression target was detected
+      if(hasZtrg) {
+        aLOG(Log::INFO) <<coutBlue<<" - detected the target,"<<coutGreen<<zTrg<<coutBlue
+                        <<" in the evaluated sample - Will create performance plots ..."<<coutDef<<endl;
+
+        doMetricPlots(aChain,&addPlotVarV);
+      }
+
+      // cleanup
+      DELNULL(aChain);
+      branchNameV.clear(); addPlotVarV.clear();
+    }
+  }
+  // -----------------------------------------------------------------------------------------------------------
+  // evaluation for classification
+  // -----------------------------------------------------------------------------------------------------------
+  else if(glob->GetOptB("doClassification")) {
+    doEvalCls();
+  }
 
   return;
 }
@@ -82,7 +139,7 @@ void  ANNZ::makeTreeRegClsAllMLM() {
 
   int     nMLMs             = glob->GetOptI("nMLMs");
   TString postTrainDirName  = glob->GetOptC("postTrainDirNameFull");
-  bool    separateTestValid = glob->GetOptB("separateTestValid");
+  // bool    separateTestValid = glob->GetOptB("separateTestValid"); // deprecated
   int     maxTreesMerge     = glob->GetOptI("maxTreesMerge");
   bool    needBinClsErr     = glob->GetOptB("needBinClsErr");
 
@@ -90,7 +147,7 @@ void  ANNZ::makeTreeRegClsAllMLM() {
   // get the number of entries in the input trees to compare to the generated result-trees
   // -----------------------------------------------------------------------------------------------------------
   for(int nTrainValidNow=0; nTrainValidNow<2; nTrainValidNow++) {
-    if(separateTestValid && (nTrainValidNow==0)) continue;
+    // if(separateTestValid && (nTrainValidNow==0)) continue; // deprecated
 
     treeNamePostfix = (TString)( (nTrainValidNow == 0) ? "_train" : "_valid" );
     inTreeName      = (TString)glob->GetOptC("treeName")+treeNamePostfix;
@@ -123,7 +180,7 @@ void  ANNZ::makeTreeRegClsAllMLM() {
       // -----------------------------------------------------------------------------------------------------------
       bool foundGoodTrees = true;
       for(int nTrainValidNow=0; nTrainValidNow<2; nTrainValidNow++) {
-        if(separateTestValid && (nTrainValidNow==0)) continue;
+        // if(separateTestValid && (nTrainValidNow==0)) continue; // deprecated
 
         treeNamePostfix = (TString)( (nTrainValidNow == 0) ? "_train" : "_valid" );
         inTreeName      = (TString)glob->GetOptC("treeName")+treeNamePostfix;
@@ -182,15 +239,15 @@ void  ANNZ::makeTreeRegClsAllMLM() {
         TString weights_train = optMap->GetOptC("userWeights_train"); TString weights_valid = optMap->GetOptC("userWeights_valid");
 
         TString misMatchs("");
-        if(cuts_train    != (TString)(getTrainTestCuts("_comn",nMLMnow)+getTrainTestCuts(MLMname+"_train",nMLMnow))) misMatchs += "cuts(train) ";
-        if(cuts_valid    != (TString)(getTrainTestCuts("_comn",nMLMnow)+getTrainTestCuts(MLMname+"_valid",nMLMnow))) misMatchs += "cuts(valid) ";
-        if(weights_train != userWgtsM[MLMname+"_train"]                                                            ) misMatchs += "weights(train) ";
-        if(weights_valid != userWgtsM[MLMname+"_valid"]                                                            ) misMatchs += "weights(valid) ";
+        if(cuts_train    != (TString)(getTrainTestCuts((TString)"_comn"+";"+MLMname+"_train",nMLMnow))) misMatchs += "cuts(train) ";
+        if(cuts_valid    != (TString)(getTrainTestCuts((TString)"_comn"+";"+MLMname+"_valid",nMLMnow))) misMatchs += "cuts(valid) ";
+        if(weights_train != userWgtsM[MLMname+"_train"]                                               ) misMatchs += "weights(train) ";
+        if(weights_valid != userWgtsM[MLMname+"_valid"]                                               ) misMatchs += "weights(valid) ";
 
-        aLOG(Log::DEBUG_2) <<"cuts_train    "<<cuts_train   <<CT<<(TString)(getTrainTestCuts("_comn",nMLMnow)+getTrainTestCuts(MLMname+"_train",nMLMnow))<<endl;
-        aLOG(Log::DEBUG_2) <<"cuts_valid    "<<cuts_valid   <<CT<<(TString)(getTrainTestCuts("_comn",nMLMnow)+getTrainTestCuts(MLMname+"_valid",nMLMnow))<<endl;
-        aLOG(Log::DEBUG_2) <<"weights_train "<<weights_train<<CT<<userWgtsM[MLMname+"_train"]                                                            <<endl;
-        aLOG(Log::DEBUG_2) <<"weights_valid "<<weights_valid<<CT<<userWgtsM[MLMname+"_valid"]                                                            <<endl;
+        aLOG(Log::DEBUG_2)<<"cuts_train    "<<cuts_train   <<CT<<(TString)(getTrainTestCuts((TString)"_comn"+";"+MLMname+"_train",nMLMnow))<<endl;
+        aLOG(Log::DEBUG_2)<<"cuts_valid    "<<cuts_valid   <<CT<<(TString)(getTrainTestCuts((TString)"_comn"+";"+MLMname+"_valid",nMLMnow))<<endl;
+        aLOG(Log::DEBUG_2)<<"weights_train "<<weights_train<<CT<<userWgtsM[MLMname+"_train"]                                               <<endl;
+        aLOG(Log::DEBUG_2)<<"weights_valid "<<weights_valid<<CT<<userWgtsM[MLMname+"_valid"]                                               <<endl;
 
         DELNULL(optMap);
 
@@ -229,7 +286,7 @@ void  ANNZ::makeTreeRegClsAllMLM() {
     int  hasFound         = 0;
     bool needToMergeTrees = false;
     for(int nTrainValidNow=0; nTrainValidNow<2; nTrainValidNow++) {
-      if(separateTestValid && (nTrainValidNow==0)) { hasFound++; continue; }
+      // if(separateTestValid && (nTrainValidNow==0)) { hasFound++; continue; } // deprecated
 
       treeNamePostfix = (TString)( (nTrainValidNow == 0) ? "_train" : "_valid" );
       inTreeName      = (TString)glob->GetOptC("treeName")+treeNamePostfix;
@@ -298,7 +355,7 @@ void  ANNZ::makeTreeRegClsAllMLM() {
       saveFileName = getKeyWord("","postTrain","configSaveFileName");  //saveFileName = (TString)glob->GetOptC("postTrainDirNameFull")+"saveTime.txt";
 
       for(int nTreeInNow=0; nTreeInNow<3; nTreeInNow++) {
-        if(separateTestValid && (nTreeInNow==0)) continue;
+        // if(separateTestValid && (nTreeInNow==0)) continue; // deprecated
 
         inTreeName = "";
         if     (nTreeInNow == 0) inTreeName = (TString)glob->GetOptC("treeName")+"_train";
@@ -438,9 +495,9 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
   int     maxNobj           = 0;  // maxNobj = glob->GetOptI("maxNobj"); // only allow limits in case of debugging !! 
   TString indexName         = glob->GetOptC("indexName");
   TString sigBckTypeName    = glob->GetOptC("sigBckTypeName");
-  TString testValidType     = glob->GetOptC("testValidType");
+  // TString testValidType     = glob->GetOptC("testValidType"); // deprecated
   UInt_t  seed              = glob->GetOptI("initSeedRnd"); if(seed > 0) seed += 58606;
-  bool    separateTestValid = glob->GetOptB("separateTestValid");
+  // bool    separateTestValid = glob->GetOptB("separateTestValid"); // deprecated
   bool    isBinCls          = glob->GetOptB("doBinnedCls");
   bool    isCls             = glob->GetOptB("doClassification") || isBinCls;
   bool    needBinClsErr     = glob->GetOptB("needBinClsErr");
@@ -491,7 +548,7 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
 
   double separation(-1);
   for(int nTrainValidNow=0; nTrainValidNow<2; nTrainValidNow++) {
-    if(separateTestValid && (nTrainValidNow==0)) continue;
+    // if(separateTestValid && (nTrainValidNow==0)) continue; // deprecated
 
     TString treeNamePostfix = (TString)( (nTrainValidNow == 0) ? "_train" : "_valid" );
     TString baseCutsName    = (TString)"_comn"+";"+MLMname+treeNamePostfix;
@@ -525,8 +582,8 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
 
       setMethodCuts(varKNN,nMLMnow);
 
-      TCut    cutsNow(varKNN->getTreeCuts("_comn") + varKNN->getTreeCuts(MLMname+treeNamePostfix));
-      TString wgtReg(userWgtsM[MLMname+treeNamePostfix]);
+      TCut    cutsNow = varKNN->getTreeCuts("_comn") + varKNN->getTreeCuts(MLMname+treeNamePostfix);
+      TString wgtReg  = getRegularStrForm(userWgtsM[MLMname+treeNamePostfix],varKNN);
 
       setupKdTreeKNN(aChainKnn[0],knnErrOutFile,knnErrFactory,knnErrModule,trgIndexV,nMLMnow,cutsNow,wgtReg);
     }
@@ -548,10 +605,11 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
     int nEntriesChain = aChain->GetEntries();
     aLOG(Log::INFO) <<coutRed<<" - added chain "<<coutGreen<<inTreeName<<"("<<nEntriesChain<<")"<<" from "<<coutBlue<<inFileName<<coutDef<<endl;
 
-    var_1->NewVarI(testValidType);
+    // var_1->NewVarI(testValidType); // deprecated
 
     // create MLM-weight formulae for the input variables
-    var_0->NewForm(MLMname_w,userWgtsM[MLMname+treeNamePostfix]);
+    TString wgtStr = getRegularStrForm(userWgtsM[MLMname+treeNamePostfix],var_0);
+    var_0->NewForm(MLMname_w,wgtStr);
 
     // formulae for inpput-variable errors, to be used by getRegClsErrINP()
     if(isErrINP) {
@@ -623,8 +681,8 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
       }
       if(skipObj) continue; // only relevant for classification
       
-      var_1->SetVarI(MLMname_i,    var_0->GetVarI(indexName)    );
-      var_1->SetVarI(testValidType,var_0->GetVarI(testValidType));
+      var_1->SetVarI(MLMname_i,var_0->GetVarI(indexName));
+      // var_1->SetVarI(testValidType,var_0->GetVarI(testValidType)); // deprecated
 
       // fill the output tree
       if(isCls) {
@@ -654,7 +712,7 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
         var_1->SetVarF(MLMname_eN,regErrV[nMLMnow][0]); var_1->SetVarF(MLMname_e,regErrV[nMLMnow][1]); var_1->SetVarF(MLMname_eP,regErrV[nMLMnow][2]);
       }
 
-      treeOut->Fill();
+      var_1->fillTree();
 
       // to increment the loop-counter, at least one method should have passed the cuts
       mayWriteObjects = true;
@@ -695,9 +753,9 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
           TString hisName    = (TString)"sepHis"+"_all";
           TString drawExprs  = (TString)MLMname+">>"+hisName;
           
-          TString trainCut   = (TString)var_0->getTreeCuts("_train");
           TString cutExprs   = (TString)"("+MLMname_w+" > 0)";
-          if(trainCut != "") cutExprs += (TString)" && ("+trainCut+")";
+          // TString trainCut   = (TString)var_0->getTreeCuts("_train");   // deprecated
+          // if(trainCut != "") cutExprs += (TString)" && ("+trainCut+")"; // deprecated
           
           int     nEvtPass   = aChainOut->Draw(drawExprs,cutExprs);
           if(nEvtPass > 0) his_all = (TH1F*)gDirectory->Get(hisName); his_all->BufferEmpty();
@@ -712,9 +770,9 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
         TH1     * his1_sb  = new TH1F(hisName,hisName,nBins,binL,binH); 
         TString drawExprs  = (TString)MLMname+">>+"+hisName;
 
-        TString trainCut   = (TString)var_0->getTreeCuts("_train");
         TString cutExprs   = (TString)"("+MLMname_w+" > 0) && ("+sigBckTypeName+sigBckCut+")";
-        if(trainCut != "") cutExprs += (TString)" && ("+trainCut+")";
+        // TString trainCut   = (TString)var_0->getTreeCuts("_train");   // deprecated
+        // if(trainCut != "") cutExprs += (TString)" && ("+trainCut+")"; // deprecated
 
         int     nEvtPass   = aChainOut->Draw(drawExprs,cutExprs);
 
@@ -760,8 +818,8 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
   OptMaps * optMap = new OptMaps("localOptMap");
 
   TString saveName  = "";
-  TString cut_train = (TString)(getTrainTestCuts("_comn",nMLMnow)+getTrainTestCuts(MLMname+"_train",nMLMnow));
-  TString cut_valid = (TString)(getTrainTestCuts("_comn",nMLMnow)+getTrainTestCuts(MLMname+"_valid",nMLMnow));
+  TString cut_train = (TString)(getTrainTestCuts((TString)"_comn"+";"+MLMname+"_train",nMLMnow));
+  TString cut_valid = (TString)(getTrainTestCuts((TString)"_comn"+";"+MLMname+"_valid",nMLMnow));
   
   vector <TString> optNames;
   saveName = "userCuts_train";    optNames.push_back(saveName); optMap->NewOptC(saveName, cut_train);
@@ -906,7 +964,8 @@ void ANNZ::deriveHisClsPrb(int nMLMnow) {
   var_0->setTreeCuts("_bck",bckCuts);
 
   // create MLM-weight formulae for the input variables
-  var_0->NewForm(MLMname_w,userWgtsM[MLMname+"_train"]);
+  TString wgtStr = getRegularStrForm(userWgtsM[MLMname+"_train"],var_0);
+  var_0->NewForm(MLMname_w,wgtStr);
 
   var_0->connectTreeBranchesForm(aChain,&readerInptV);
 
@@ -1127,8 +1186,7 @@ TChain * ANNZ::mergeTreeFriends(TChain * aChain, TChain * aChainFriend, vector<T
     if(hasCut) { if(var_0->hasFailedTreeCuts("aCut")) continue; }
 
     var_1->copyVarData(var_0,&varTypeNameV);
-
-    mergedTree->Fill();
+    var_1->fillTree();
 
     var_0->IncCntr("nObj"); mayWriteObjects = true;
   }

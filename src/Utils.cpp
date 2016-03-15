@@ -222,11 +222,21 @@ vector<TString> Utils::splitStringByChar(TString s, char delim) {
 }
 
 // ===========================================================================================================
-void Utils::safeRM(TString cmnd, bool verbose) {
-// =============================================
+void Utils::safeRM(TString cmnd, bool verbose, bool checkExitStatus) {
+// ===================================================================
 
   checkCmndSafety(cmnd);
-  exeShellCmndOutput((TString)"rm -rf "+cmnd,verbose);
+  int sysReturn = exeShellCmndOutput((TString)"rm -rf "+cmnd,verbose,false);
+  
+  if(checkExitStatus && sysReturn != 0) {
+    TString junkDirName = (TString)"/tmp/"+regularizeName(glob->basePrefix(),"")+"_junk/"
+                          +((doubleToStr(rnd->Rndm(),"%.20f")).ReplaceAll("0.",""))+"/";
+
+    aLOG(Log::WARNING) <<coutRed<<" - Could not execute command ["<<coutYellow<<(TString)"rm -rf "+cmnd<<coutRed
+                       <<"] - will move to junk-dir, "<<coutPurple<<junkDirName<<coutRed<<" , instead ..."<<endl;
+
+    exeShellCmndOutput((TString)"mkdir -p "+junkDirName+" ; mv "+cmnd+" "+junkDirName,verbose,checkExitStatus);
+  }
 
   return;
 }
@@ -355,15 +365,15 @@ TString Utils::getShellCmndOutput(TString cmnd, vector <TString> * outV, bool ve
 }
 
 // ===========================================================================================================
-void Utils::exeShellCmndOutput(TString cmnd, bool verbose, bool checkExitStatus) {
-// ===============================================================================
+int Utils::exeShellCmndOutput(TString cmnd, bool verbose, bool checkExitStatus) {
+// ==============================================================================
  if(glob->OptOrNullB("debugSysCmnd")) verbose = true;
 
  int sysReturn = system(cmnd);
  if(verbose)         aCustomLOG("       ")<<coutRed<<" - Sys-comnd (exit="<<sysReturn<<") : "<<coutBlue<<cmnd<<coutDef<<endl;
- if(checkExitStatus) VERIFY(LOCATION,(TString)" - Failed system-call ("+cmnd+") ...",(sysReturn == 0));
+ if(checkExitStatus) VERIFY(LOCATION,(TString)" - Failed system-call ("+cmnd+") - sysReturn = "+intToStr(sysReturn)+"...",(sysReturn == 0));
 
- return;
+ return sysReturn;
 }
 
 // ===========================================================================================================
@@ -1596,12 +1606,14 @@ Utils::Utils(OptMaps * aMaps) {
 
   if(isLocked) glob->setLock(true);
 
+  rnd = new TRandom3(0);
+
   return;
 }
 // ===========================================================================================================
 Utils::~Utils() { 
 // ==============
-  DELNULL(param);
+  DELNULL(param); DELNULL(rnd);
   colours.clear(); markers.clear(); greens.clear(); blues.clear(); reds.clear(); fillStyles.clear();
   return;
 }

@@ -88,11 +88,7 @@ void ANNZ::Train_singleCls() {
     aLOG(Log::DEBUG) <<coutRed<<" - added chain  "<<coutGreen<<inTreeName<<" from "<<coutBlue<<inFileName<<coutDef<<endl;
   }
 
-  // -----------------------------------------------------------------------------------------------------------
   // set input variables and cuts and connect them to the factory
-  // - TRAINING CUTS:
-  //     these cuts include (glob->GetOptC("testValidType_train")) if has separate sub-sample for training 
-  //     convergence and for testing, as this condition is true for all training sample and for half of the testing sample
   // -----------------------------------------------------------------------------------------------------------
   VarMaps * var = new VarMaps(glob,utils,"mainTrainVar");
 
@@ -100,20 +96,22 @@ void ANNZ::Train_singleCls() {
 
   setMethodCuts(var,nMLMnow);
 
-  // replace the training/validation cut definition in var, os that cutM["_valid"] will get the testing objects  
-  if(glob->GetOptB("separateTestValid")) {
-    int nFoundCuts = var->replaceTreeCut(glob->GetOptC("testValidType_valid"),glob->GetOptC("testValidType_train"));
-    VERIFY(LOCATION,(TString)"Did not find cut \""+glob->GetOptC("testValidType_valid")+"\". Something is horribly wrong... ?!?",(nFoundCuts != 0));
-  }
+  // deprecated
+  // // replace the training/validation cut definition in var, so that cutM["_valid"] will get the testing objects  
+  // if(glob->GetOptB("separateTestValid")) {
+  //   int nFoundCuts = var->replaceTreeCut(glob->GetOptC("testValidType_valid"),glob->GetOptC("testValidType_train"));
+  //   VERIFY(LOCATION,(TString)"Did not find cut \""+glob->GetOptC("testValidType_valid")+"\". Something is horribly wrong... ?!?",(nFoundCuts != 0));
+  // }
 
-  TCut cutTrain  = var->getTreeCuts(MLMname+"_train");
-  TCut cutValid  = var->getTreeCuts(MLMname+"_valid");
+  TString wgtTrain = getRegularStrForm(userWgtsM[MLMname+"_train"],var);
 
-  cutM["_comn"]  = var->getTreeCuts("_comn");
-  cutM["_sig"]   = var->getTreeCuts("_sig");
-  cutM["_bck"]   = var->getTreeCuts("_bck");
-  cutM["_train"] = var->getTreeCuts("_train") + cutTrain;
-  cutM["_valid"] = var->getTreeCuts("_valid") + cutValid;
+  cutM["_comn"]    = var->getTreeCuts("_comn");
+  cutM["_sig"]     = var->getTreeCuts("_sig");
+  cutM["_bck"]     = var->getTreeCuts("_bck");
+  cutM["_train"]   = var->getTreeCuts(MLMname+"_train");
+  cutM["_valid"]   = var->getTreeCuts(MLMname+"_valid");
+  // cutM["_train"]   = var->getTreeCuts("_train") + var->getTreeCuts(MLMname+"_train"); // deprecated
+  // cutM["_valid"]   = var->getTreeCuts("_valid") + var->getTreeCuts(MLMname+"_valid"); // deprecated
 
   DELNULL(var);
 
@@ -139,8 +137,8 @@ void ANNZ::Train_singleCls() {
   factory->AddBackgroundTree(chainM["_valid_bck"],clsWeight,TMVA::Types::kTesting );
 
   // set the sample-weights
-  factory->SetWeightExpression(userWgtsM[MLMname+"_train"],"Signal");
-  factory->SetWeightExpression(userWgtsM[MLMname+"_train"],"Background");
+  factory->SetWeightExpression(wgtTrain,"Signal");
+  factory->SetWeightExpression(wgtTrain,"Background");
 
   TString trainValidStr = (TString)sigBckStr+":SplitMode=Random:"+factoryNorm;
 
@@ -148,12 +146,12 @@ void ANNZ::Train_singleCls() {
   aLOG(Log::INFO) <<coutLightBlue<<" - will book ("<<coutYellow<<MLMname<<coutLightBlue<<") method("
                   <<coutYellow<<mlmType<<coutLightBlue<<") with options: "<<coutCyan<<mlmOpt<<coutDef<<endl;
 
-  aLOG(Log::INFO) <<coutLightBlue<<"   - factory settings:   "<<coutCyan<<trainValidStr                                   <<coutDef<<endl;
-  aLOG(Log::INFO) <<coutLightBlue<<"   - cuts (all):         "<<coutCyan<<cutM["_comn"]              <<coutLightBlue<<" ,"<<coutDef<<endl;
-  aLOG(Log::INFO) <<coutLightBlue<<"     cuts (train):       "<<coutCyan<<cutTrain                   <<coutLightBlue<<" ,"<<coutDef<<endl;
-  aLOG(Log::INFO) <<coutLightBlue<<"     cuts (valid):       "<<coutCyan<<cutValid                                        <<coutDef<<endl;
-  aLOG(Log::INFO) <<coutLightBlue<<"   - weights (train):    "<<coutCyan<<userWgtsM[MLMname+"_train"]                     <<coutDef<<endl;
-  aLOG(Log::INFO) <<coutLightBlue<<"     weights (valid):    "<<coutCyan<<userWgtsM[MLMname+"_valid"]                     <<coutDef<<endl;
+  aLOG(Log::INFO) <<coutLightBlue<<"   - factory settings:   "<<coutCyan<<trainValidStr                                    <<coutDef<<endl;
+  aLOG(Log::INFO) <<coutLightBlue<<"   - cuts (all):         "<<coutCyan<<cutM["_comn"]               <<coutLightBlue<<" ,"<<coutDef<<endl;
+  aLOG(Log::INFO) <<coutLightBlue<<"     cuts (train):       "<<coutCyan<<cutM["_train"]              <<coutLightBlue<<" ,"<<coutDef<<endl;
+  aLOG(Log::INFO) <<coutLightBlue<<"     cuts (valid):       "<<coutCyan<<cutM["_valid"]                                   <<coutDef<<endl;
+  aLOG(Log::INFO) <<coutLightBlue<<"   - weights (train):    "<<coutCyan<<userWgtsM[MLMname+"_train"]                      <<coutDef<<endl;
+  aLOG(Log::INFO) <<coutLightBlue<<"     weights (valid):    "<<coutCyan<<userWgtsM[MLMname+"_valid"]                      <<coutDef<<endl;
   aLOG(Log::INFO) <<coutCyan<<LINE_FILL('-',100)<<coutDef<<endl;
 
   // cuts have already been applied during splitToSigBckTrees(), so leave empty here
@@ -282,11 +280,7 @@ void ANNZ::Train_singleReg() {
   }
   verifTarget(chainM["_train"]); verifTarget(chainM["_valid"]);
 
-  // -----------------------------------------------------------------------------------------------------------
   // set input variables and cuts and connect them to the factory
-  // - TRAINING CUTS:
-  //     these cuts include (glob->GetOptC("testValidType_train")) if has separate sub-sample for training 
-  //     convergence and for testing, as this condition is true for all training sample and for half of the testing sample
   // -----------------------------------------------------------------------------------------------------------
   VarMaps * var = new VarMaps(glob,utils,"mainTrainVar");
 
@@ -294,23 +288,27 @@ void ANNZ::Train_singleReg() {
 
   setMethodCuts(var,nMLMnow);
 
-  // replace the training/validation cut definition in var, os that cutM["_valid"] will get the testing objects  
-  if(glob->GetOptB("separateTestValid")) {
-    int nFoundCuts = var->replaceTreeCut(glob->GetOptC("testValidType_valid"),glob->GetOptC("testValidType_train"));
-    VERIFY(LOCATION,(TString)"Did not find cut \""+glob->GetOptC("testValidType_valid")+"\". Something is horribly wrong... ?!?",(nFoundCuts != 0));
-  }
+  // deprecated
+  // // replace the training/validation cut definition in var, so that cutM["_valid"] will get the testing objects  
+  // if(glob->GetOptB("separateTestValid")) {
+  //   int nFoundCuts = var->replaceTreeCut(glob->GetOptC("testValidType_valid"),glob->GetOptC("testValidType_train"));
+  //   VERIFY(LOCATION,(TString)"Did not find cut \""+glob->GetOptC("testValidType_valid")+"\". Something is horribly wrong... ?!?",(nFoundCuts != 0));
+  // }
 
   cutM["_comn"]    = var->getTreeCuts("_comn");
-  cutM["_train"]   = var->getTreeCuts("_train") + var->getTreeCuts(MLMname+"_train");
-  cutM["_valid"]   = var->getTreeCuts("_valid") + var->getTreeCuts(MLMname+"_valid");
+  cutM["_train"]   = var->getTreeCuts(MLMname+"_train");
+  cutM["_valid"]   = var->getTreeCuts(MLMname+"_valid");
+  // cutM["_train"]   = var->getTreeCuts("_train") + var->getTreeCuts(MLMname+"_train"); // deprecated
+  // cutM["_valid"]   = var->getTreeCuts("_valid") + var->getTreeCuts(MLMname+"_valid"); // deprecated
 
-  TString cutTrain = ((TString)var->getTreeCuts(MLMname+"_train")).ReplaceAll(" ","");
-  TString cutValid = ((TString)var->getTreeCuts(MLMname+"_valid")).ReplaceAll(" ","");
+  TString wgtTrain = getRegularStrForm(userWgtsM[MLMname+"_train"],var);
 
   DELNULL(var);
 
   // if the cuts for training and validation are different, create new trees
   // for each of these with the corresponding cuts.
+  TString cutTrain((TString)cutM["_train"]); cutTrain.ReplaceAll(" ","");
+  TString cutValid((TString)cutM["_valid"]); cutValid.ReplaceAll(" ","");
   if(cutTrain != cutValid) {
     createCutTrainTrees(chainM,cutM,optMap);
     cutM["_combined"] = "";
@@ -326,7 +324,7 @@ void ANNZ::Train_singleReg() {
   factory->AddRegressionTree(chainM["_valid_cut"], regWeight, TMVA::Types::kTesting );
 
   // set the sample-weights  
-  factory->SetWeightExpression(userWgtsM[MLMname+"_train"],"Regression");
+  factory->SetWeightExpression(wgtTrain,"Regression");
 
   TCanvas * tmpCnvs = new TCanvas("tmpCnvs","tmpCnvs");
   int nTrain = chainM["_train_cut"]->Draw(zTrgName,cutM["_combined"]); if(maxNobj > 0 && maxNobj < nTrain) nTrain = maxNobj;
@@ -345,8 +343,8 @@ void ANNZ::Train_singleReg() {
 
   aLOG(Log::INFO) <<coutLightBlue<<"   - factory settings:   "<<coutCyan<<trainValidStr                                   <<coutDef<<endl;
   aLOG(Log::INFO) <<coutLightBlue<<"   - cuts (all):         "<<coutCyan<<cutM["_comn"]              <<coutLightBlue<<" ,"<<coutDef<<endl;
-  aLOG(Log::INFO) <<coutLightBlue<<"     cuts (train):       "<<coutCyan<<cutTrain                   <<coutLightBlue<<" ,"<<coutDef<<endl;
-  aLOG(Log::INFO) <<coutLightBlue<<"     cuts (valid):       "<<coutCyan<<cutValid                                        <<coutDef<<endl;
+  aLOG(Log::INFO) <<coutLightBlue<<"     cuts (train):       "<<coutCyan<<cutM["_train"]             <<coutLightBlue<<" ,"<<coutDef<<endl;
+  aLOG(Log::INFO) <<coutLightBlue<<"     cuts (valid):       "<<coutCyan<<cutM["_valid"]                                  <<coutDef<<endl;
   aLOG(Log::INFO) <<coutLightBlue<<"   - weights (train):    "<<coutCyan<<userWgtsM[MLMname+"_train"]                     <<coutDef<<endl;
   aLOG(Log::INFO) <<coutLightBlue<<"     weights (valid):    "<<coutCyan<<userWgtsM[MLMname+"_valid"]                     <<coutDef<<endl;
   aLOG(Log::INFO) <<coutCyan<<LINE_FILL('-',100)<<coutDef<<endl;
@@ -496,8 +494,8 @@ void ANNZ::Train_binnedCls() {
   // with makeTreeRegClsOneMLM(), and compute the corresponding value of the separation between signal
   // and background.
   // -----------------------------------------------------------------------------------------------------------
-  TCut cutTrain(""), cutValid("");
-  int  nTrain_sig(0), nTrain_bck(0), nValid_sig(0), nValid_bck(0);
+  TString wgtTrain("");
+  int     nTrain_sig(0), nTrain_bck(0), nValid_sig(0), nValid_bck(0);
 
   for(int nTryNow=0; nTryNow<nTries; nTryNow++) {
     TString nTryName = TString::Format("nTry_%d",nTryNow);
@@ -549,11 +547,7 @@ void ANNZ::Train_binnedCls() {
       }
       verifTarget(chainM["_train"]); verifTarget(chainM["_valid"]);
 
-      // -----------------------------------------------------------------------------------------------------------
       // set input variables and cuts and connect them to the factory
-      // - TRAINING CUTS:
-      //     these cuts include (glob->GetOptC("testValidType_train")) if has separate sub-sample for training 
-      //     convergence and for testing, as this condition is true for all training sample and for half of the testing sample
       // -----------------------------------------------------------------------------------------------------------
       VarMaps * var = new VarMaps(glob,utils,"mainTrainVar");
 
@@ -561,18 +555,20 @@ void ANNZ::Train_binnedCls() {
 
       setMethodCuts(var,nMLMnow);
 
-      // replace the training/validation cut definition in var, os that cutM["_valid"] will get the testing objects  
-      if(glob->GetOptB("separateTestValid")) {
-        int nFoundCuts = var->replaceTreeCut(glob->GetOptC("testValidType_valid"),glob->GetOptC("testValidType_train"));
-        VERIFY(LOCATION,(TString)"Did not find cut \""+glob->GetOptC("testValidType_valid")+"\". Something is horribly wrong... ?!?",(nFoundCuts != 0));
-      }
+      // deprecated
+      // // replace the training/validation cut definition in var, so that cutM["_valid"] will get the testing objects  
+      // if(glob->GetOptB("separateTestValid")) {
+      //   int nFoundCuts = var->replaceTreeCut(glob->GetOptC("testValidType_valid"),glob->GetOptC("testValidType_train"));
+      //   VERIFY(LOCATION,(TString)"Did not find cut \""+glob->GetOptC("testValidType_valid")+"\". Something is horribly wrong... ?!?",(nFoundCuts != 0));
+      // }
 
-      cutTrain       = var->getTreeCuts(MLMname+"_train");
-      cutValid       = var->getTreeCuts(MLMname+"_valid");
+      wgtTrain       = getRegularStrForm(userWgtsM[MLMname+"_train"],var);
 
       cutM["_comn"]  = var->getTreeCuts("_comn");
-      cutM["_train"] = var->getTreeCuts("_train") + cutTrain;
-      cutM["_valid"] = var->getTreeCuts("_valid") + cutValid;
+      cutM["_train"] = var->getTreeCuts(MLMname+"_train");
+      cutM["_valid"] = var->getTreeCuts(MLMname+"_valid");
+      // cutM["_train"] = var->getTreeCuts("_train") + var->getTreeCuts(MLMname+"_train"); // deprecated
+      // cutM["_valid"] = var->getTreeCuts("_valid") + var->getTreeCuts(MLMname+"_valid"); // deprecated
 
       DELNULL(var);
 
@@ -603,9 +599,9 @@ void ANNZ::Train_binnedCls() {
     // log-in the signal/background samples in the factory. include user0defined cuts if needed.
     // for each sample, set the sum of weights to 1 after all cuts
     // -----------------------------------------------------------------------------------------------------------
-    double  clsWeight(1);                                           // weight for the entire sample
-    TCut    bckShiftCut(""), bckSubsetCut(""), fullCut("");         // optional user-defined cuts
-    TString clsWgtExp(userWgtsM[MLMname+"_train"]), fullWgtCut(""); // object-weight expressions
+    double  clsWeight(1);                                    // weight for the entire sample
+    TCut    bckShiftCut(""), bckSubsetCut(""), fullCut("");  // optional user-defined cuts
+    TString fullWgtCut("");                                  // object-weight expressions
 
     // -----------------------------------------------------------------------------------------------------------
     // all background objects treated as one sample
@@ -660,12 +656,12 @@ void ANNZ::Train_binnedCls() {
       }
 
       fullCut    = bckShiftCut + bckSubsetCut;
-      fullWgtCut = utils->cleanWeightExpr((TString)"("+(TString)fullCut+")*("+clsWgtExp+")");
+      fullWgtCut = utils->cleanWeightExpr((TString)"("+(TString)fullCut+")*("+wgtTrain+")");
 
-      clsWeight = chainM["_train_sig"]->Draw(zTrgName,clsWgtExp); clsWeight = (clsWeight > 0) ? 1/clsWeight : 0;
+      clsWeight = chainM["_train_sig"]->Draw(zTrgName,wgtTrain); clsWeight = (clsWeight > 0) ? 1/clsWeight : 0;
       factory->AddTree(chainM["_train_sig"],"Signal",clsWeight,"",TMVA::Types::kTraining);
 
-      clsWeight = chainM["_valid_sig"]->Draw(zTrgName,clsWgtExp); clsWeight = (clsWeight > 0) ? 1/clsWeight : 0;
+      clsWeight = chainM["_valid_sig"]->Draw(zTrgName,wgtTrain); clsWeight = (clsWeight > 0) ? 1/clsWeight : 0;
       factory->AddTree(chainM["_valid_sig"],"Signal",clsWeight,"",TMVA::Types::kTesting );
 
       clsWeight = chainM["_train_bck"]->Draw(zTrgName,fullWgtCut); clsWeight = (clsWeight > 0) ? 1/clsWeight : 0;
@@ -674,8 +670,8 @@ void ANNZ::Train_binnedCls() {
       clsWeight = chainM["_valid_bck"]->Draw(zTrgName,fullWgtCut); clsWeight = (clsWeight > 0) ? 1/clsWeight : 0;
       factory->AddTree(chainM["_valid_bck"],"Background",clsWeight,fullCut,TMVA::Types::kTesting );
 
-      factory->SetWeightExpression(clsWgtExp,"Signal");
-      factory->SetWeightExpression(clsWgtExp,"Background");
+      factory->SetWeightExpression(wgtTrain,"Signal");
+      factory->SetWeightExpression(wgtTrain,"Background");
     }
 
     // -----------------------------------------------------------------------------------------------------------
@@ -687,13 +683,13 @@ void ANNZ::Train_binnedCls() {
 
       TCanvas * tmpCnvs  = new TCanvas("tmpCnvs","tmpCnvs");
 
-      clsWeight = chainM["_train_sig"]->Draw(zTrgName,clsWgtExp); clsWeight = (clsWeight > 0) ? 1/clsWeight : 0;
+      clsWeight = chainM["_train_sig"]->Draw(zTrgName,wgtTrain); clsWeight = (clsWeight > 0) ? 1/clsWeight : 0;
       factory->AddTree(chainM["_train_sig"],"Signal",clsWeight,"",TMVA::Types::kTraining);
 
-      clsWeight = chainM["_valid_sig"]->Draw(zTrgName,clsWgtExp); clsWeight = (clsWeight > 0) ? 1/clsWeight : 0;
+      clsWeight = chainM["_valid_sig"]->Draw(zTrgName,wgtTrain); clsWeight = (clsWeight > 0) ? 1/clsWeight : 0;
       factory->AddTree(chainM["_valid_sig"],"Signal",clsWeight,"",TMVA::Types::kTesting );
 
-      factory->SetWeightExpression(clsWgtExp,"Signal");
+      factory->SetWeightExpression(wgtTrain,"Signal");
 
       for(int nClsBinNow=0; nClsBinNow<(int)zBinCls_binE.size()-1; nClsBinNow++) {
         if(nClsBinNow == nMLMnow) continue;
@@ -701,7 +697,7 @@ void ANNZ::Train_binnedCls() {
         TString bckName = TString::Format("Background_%d",nClsBinNow);
         TCut    bckCut  = (TCut)(TString::Format((TString)"("+zTrgName+" > %f && "+zTrgName+" <= %f)",zBinCls_binE[nClsBinNow],zBinCls_binE[nClsBinNow+1]));
 
-        fullWgtCut      = utils->cleanWeightExpr((TString)"("+(TString)bckCut+")*("+clsWgtExp+")");
+        fullWgtCut      = utils->cleanWeightExpr((TString)"("+(TString)bckCut+")*("+wgtTrain+")");
 
         // check that the unweighted number of objects is sufficient
         clsWeight = chainM["_train_bck"]->Draw(zTrgName,bckCut);
@@ -713,7 +709,7 @@ void ANNZ::Train_binnedCls() {
         clsWeight = chainM["_valid_bck"]->Draw(zTrgName,fullWgtCut); clsWeight = (clsWeight > 0) ? 1/clsWeight : 0;
         factory->AddTree(chainM["_valid_bck"],bckName,clsWeight,bckCut,TMVA::Types::kTesting );
         
-        factory->SetWeightExpression(clsWgtExp,bckName);
+        factory->SetWeightExpression(wgtTrain,bckName);
       }
 
       DELNULL(tmpCnvs);
@@ -748,8 +744,8 @@ void ANNZ::Train_binnedCls() {
 
     aLOG(Log::INFO)   <<coutLightBlue<<"   - factory settings:     "<<coutCyan<<trainValidStr              <<coutDef<<endl;
     aLOG(Log::INFO)   <<coutLightBlue<<"   - cuts (all):           "<<coutCyan<<cutM["_comn"]              <<coutDef<<endl;
-    aLOG(Log::INFO)   <<coutLightBlue<<"     cuts (train):         "<<coutCyan<<cutTrain                   <<coutDef<<endl;
-    aLOG(Log::INFO)   <<coutLightBlue<<"     cuts (valid):         "<<coutCyan<<cutValid                   <<coutDef<<endl;
+    aLOG(Log::INFO)   <<coutLightBlue<<"     cuts (train):         "<<coutCyan<<cutM["_train"]             <<coutDef<<endl;
+    aLOG(Log::INFO)   <<coutLightBlue<<"     cuts (valid):         "<<coutCyan<<cutM["_valid"]             <<coutDef<<endl;
     if(!doMultiCls) {
       aLOG(Log::INFO) <<coutLightBlue<<"     cuts (background):    "<<coutCyan<<fullCut                    <<coutDef<<endl;
     }
@@ -781,8 +777,8 @@ void ANNZ::Train_binnedCls() {
     saveName = "inputVarErrors";    optNames.push_back(saveName); optMap->NewOptC(saveName, inputVarErrors);
     saveName = "userWeights_train"; optNames.push_back(saveName); optMap->NewOptC(saveName, userWgtsM[MLMname+"_train"]);
     saveName = "userWeights_valid"; optNames.push_back(saveName); optMap->NewOptC(saveName, userWgtsM[MLMname+"_valid"]);
-    saveName = "userCuts_train";    optNames.push_back(saveName); optMap->NewOptC(saveName, (TString)cutTrain);
-    saveName = "userCuts_valid";    optNames.push_back(saveName); optMap->NewOptC(saveName, (TString)cutValid); 
+    saveName = "userCuts_train";    optNames.push_back(saveName); optMap->NewOptC(saveName, (TString)cutM["_train"]);
+    saveName = "userCuts_valid";    optNames.push_back(saveName); optMap->NewOptC(saveName, (TString)cutM["_valid"]); 
     saveName = "zTrg";              optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(saveName));
     saveName = "minValZ";           optNames.push_back(saveName); optMap->NewOptF(saveName, glob->GetOptF(saveName));
     saveName = "maxValZ";           optNames.push_back(saveName); optMap->NewOptF(saveName, glob->GetOptF(saveName));

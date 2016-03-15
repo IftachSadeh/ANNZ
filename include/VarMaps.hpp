@@ -107,6 +107,7 @@ public:
   inline TTree *  getTreeRead ()                    { if(dynamic_cast<TTree*>(treeRead )) return treeRead;  else return NULL;          }
   void            setTreeWrite(TTree * tree = NULL);
   void            setTreeRead (TTree * tree = NULL);
+  void            fillTree();
 
   void            createTreeBranches(TTree * tree = NULL, TString prefix = "", TString postfix = "", vector <TString> * excludedBranchNames = NULL);
   void            connectTreeBranches(TTree * tree = NULL, vector <TString> * excludedBranchNames = NULL);
@@ -276,6 +277,20 @@ public:
   inline void OrVarB (TString aName, Bool_t    input) { SetVarB_ (aName, GetVarB_(aName) || input);  }
   // -----------------------------------------------------------------------------------------------------------
 
+  // simplify the interface to string formulae
+  // -----------------------------------------------------------------------------------------------------------
+  inline TString regularizeStringForm(TString strIn) {
+    TString strOut(strIn), strGetBy(".fString");
+
+    for(Map <TString,TObjString*>::iterator itr=varC.begin(); itr!=varC.end(); ++itr) {      
+      strOut.ReplaceAll(itr->first,(TString)(itr->first)+strGetBy);
+      while(strOut.Contains(strGetBy+strGetBy)) { strOut.ReplaceAll(strGetBy+strGetBy,strGetBy); }
+    }
+    
+    return strOut;
+  }
+  inline TCut regularizeStringForm(TCut cutIn) { return ((TCut)regularizeStringForm((TString)cutIn)); }
+
   // counter access
   // -----------------------------------------------------------------------------------------------------------
   inline void resetCntr()                            { cntrMap->resetCntr();           }
@@ -296,8 +311,9 @@ private:
   // internal functions for variable manipulatios
   // -----------------------------------------------------------------------------------------------------------
   inline void NewVarB_ (TString aName, Bool_t    input) { verifyType(aName,"B");  DelVarB_ (aName); varB [aName] = input; hasB [aName] = true; }
-  inline void NewVarC_ (TString aName, TString   input) { verifyType(aName,"C");  DelVarC_ (aName); varC [aName] = new TObjString(aName);
-                                                                                          varC [aName]->SetString(input); hasC [aName] = true; } 
+  inline void NewVarC_ (TString aName, TString   input) {
+    verifyType(aName,"C");  DelVarC_(aName); varC[aName] = new TObjString(aName); varC[aName]->SetString(input); hasC[aName] = true;
+  } 
   inline void NewVarS_ (TString aName, Short_t   input) { verifyType(aName,"S");  DelVarS_ (aName); varS [aName] = input; hasS [aName] = true; }
   inline void NewVarI_ (TString aName, Int_t     input) { verifyType(aName,"I");  DelVarI_ (aName); varI [aName] = input; hasI [aName] = true; }
   inline void NewVarL_ (TString aName, Long64_t  input) { verifyType(aName,"L");  DelVarL_ (aName); varL [aName] = input; hasL [aName] = true; }

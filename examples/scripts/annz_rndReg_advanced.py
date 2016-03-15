@@ -65,42 +65,28 @@ if glob.annz["doGenInputTrees"]:
   glob.annz["inAsciiVars"]  = "F:MAG_U;F:MAGERR_U;F:MAG_G;F:MAGERR_G;F:MAG_R;F:MAGERR_R;F:MAG_I;F:MAGERR_I;F:MAG_Z;F:MAGERR_Z;D:Z"
 
   # --------------------------------------------------------------------------------------------------
-  #   - For training and testing/validation the input is divided into two (test,train) or into three (test,train,valid)
-  #     sub-samples.
-  #   - The user needs to define the number of sub-samples (e.g., nSplit = 1,2 or 3) and the way to divide the
+  #   - For training and testing/validation the input is divided into two (test,train) sub-samples.
+  #   - The user needs to define the way to divide the samples
   #     inputs in one of 4 ways (e.g., splitType = "serial", "blocks", "random" or "byInFiles" (default)):
   #       - serial: -> test;train;valid;test;train;valid;test;train;valid;test;train;valid...
   #       - blocks: -> test;test;test;test;train;train;train;train;valid;valid;valid;valid...
   #       - random: -> valid;test;test;train;valid;test;valid;valid;test;train;valid;train...
   #       - separate input files. Must supplay at least one file in splitTypeTrain and one in splitTypeTest.
-  #         In this case, [nSplit = 2]. Optionally can set [nSplit = 3] and provide a list of files in "splitTypeValid" as well.
-  #   - It is possible to use root input files instead of ascii inputs. In this case, use the "splitTypeTrain", "splitTypeTest",
-  #     "splitTypeValid" and "inAsciiFiles" variables in the same way as for ascii inputs, but in addition, specify the name of the
-  #     tree inside the root files, as the variable "inTreeName". Make sure not to mix ascii and root input files!
   # - example use:
   #   set inFileOpt and choose one of the following options for input file configuration:
   # --------------------------------------------------------------------------------------------------
   inFileOpt = 1
-  # splitTypeTrain - list of files for training. splitTypeTest - list of files for testing and validation
+  # splitTypeTrain - list of files for training. splitTypeTest - list of files for testing
   if   inFileOpt == 0:
-    glob.annz["nSplit"]         = 2
     glob.annz["splitTypeTrain"] = "boss_dr10_0.csv"
     glob.annz["splitTypeTest"]  = "boss_dr10_1.csv;boss_dr10_2.csv"
-  # splitTypeTrain - list of files for training. splitTypeTest - list of files for testing. splitTypeValid - list of files for validation
-  elif inFileOpt == 1:
-    glob.annz["nSplit"]         = 3
-    glob.annz["splitTypeTrain"] = "boss_dr10_0.csv"
-    glob.annz["splitTypeTest"]  = "boss_dr10_1.csv;boss_dr10_2.csv"
-    glob.annz["splitTypeValid"] = "boss_dr10_3.csv" 
-  # inAsciiFiles - one list of input files for training, testing and validation, where the the objects are assigned to a given
+  # inAsciiFiles - one list of input files for training and testing, where the the objects are assigned to a given
   # category based on the selection criteria defined by splitType
-  elif inFileOpt == 2:
-    glob.annz["nSplit"]         = 3
+  elif inFileOpt == 1:
     glob.annz["splitType"]      = "serial" # "serial", "blocks" or "random"
     glob.annz["inAsciiFiles"]   = "boss_dr10_0.csv;boss_dr10_1.csv;boss_dr10_2.csv;boss_dr10_3.csv"
   # example ofr using a root tree input file, instead of an ascii input
-  elif inFileOpt == 3:
-    glob.annz["nSplit"]         = 2
+  elif inFileOpt == 2:
     glob.annz["splitType"]      = "serial" # "serial", "blocks" or "random"
     glob.annz["inTreeName"]     = "ANNZ_tree_full"  
     glob.annz["inAsciiFiles"]   = "ANNZ_tree_full_00000.root"
@@ -156,12 +142,21 @@ if glob.annz["doGenInputTrees"]:
     glob.annz["weightVarNames_wgtKNN"] = "MAG_U;MAG_G;MAG_R;MAG_I;MAG_Z"
 
     # optional parameters (may leave empty as default value):
-    glob.annz["sampleFracInp_wgtKNN"]  = 0.15                                          # fraction of dataset to use (positive number, smaller or equal to 1)
+    glob.annz["sampleFracInp_wgtKNN"]  = 0.99                                          # fraction of dataset to use (positive number, smaller or equal to 1)
     glob.annz["sampleFracRef_wgtKNN"]  = 0.95                                          # fraction of dataset to use (positive number, smaller or equal to 1)
     glob.annz["outAsciiVars_wgtKNN"]   = "MAG_U;MAG_G;MAGERR_U"                        # write out two additional variables to the output file
     glob.annz["weightRef_wgtKNN"]      = "(MAGERR_R<0.7)*1 + (MAGERR_R>=0.7)/MAGERR_R" # down-weight objects with high MAGERR_R
     glob.annz["cutRef_wgtKNN"]         = "MAGERR_U<200"                                # only use objects which have small MAGERR_U
 
+    # - trainTestTogether_wgtKNN
+    #   by default, the weights are computed for the entire sample [trainTestTogether_wgtKNN = True].
+    #   That is, the training and the testing samples are used together - we calculate the difference between the
+    #   distribution of input-variables between [train+test samples] and [ref sample]. However, it is possible to
+    #   decide to comput the weights for each separately. That is, to calculate wegiths for [train sample]
+    #   with regards to [ref sample], and to separately get [test sample] with regards to [ref sample]. The latter
+    #   is only recommended if the training and testing samples have different inpput-variable distributions.
+    glob.annz["trainTestTogether_wgtKNN"] = False
+    
     # example for using a root file as input, instead of an ascii input:
     useRootInputFile = False
     if useRootInputFile:
@@ -333,7 +328,7 @@ if glob.annz["doOptim"] or glob.annz["doEval"]:
     glob.annz["nPDFbins"]    = 90
   elif pdfBinsType == 2:
     # pdfBinWidth - width of each PDF bin (equal width bins between minValZ and maxValZ - automatically derive nPDFbins)
-    glob.annz["pdfBinWidth"] = 0.1 
+    glob.annz["pdfBinWidth"] = 0.01
 
   # --------------------------------------------------------------------------------------------------
   # modify_userCuts_valid,modify_userWeights_valid -
@@ -421,9 +416,11 @@ if glob.annz["doOptim"] or glob.annz["doEval"]:
     #                                The calculation is performed using a KNN approach, similar to the algorithm used for
     #                                the [glob.annz["useWgtKNN"] = True] calculation.
     #   - minNobjInVol_inTrain     - The number of reference objects in the reference dataset which are used in the calculation.
-    #   - maxRelRatioInRef_inTrain - Nominally, a number in the range, [0,1] - The minimal threshold of the relative difference between
-    #                                distances in the inTrainFlag calculation for accepting an object - Should be a (<0.5) positive number.
-    #                                If [maxRelRatioInRef_inTrain < 0] then this number is ignored, and the "inTrainFlag" flag becomes
+    #   - maxRelRatioInRef_inTrain - Nominally [maxRelRatioInRef_inTrain = -1], but can also be
+    #                                a number in the range, [0,1] - This is the minimal threshold of the relative
+    #                                difference between distances in the inTrainFlag calculation for accepting an object.
+    #                                If positive, it should probably be a (<0.5) positive number. If [maxRelRatioInRef_inTrain < 0],
+    #                                then this number is ignored, and the "inTrainFlag" flag becomes
     #                                a floating-point number in the range [0,1], instead of a binary flag.
     #   - ...._inTrain             - The rest of the parameters ending with "_inTrain" have a similar role as
     #                                their "_wgtKNN" counterparts, which are used with [glob.annz["useWgtKNN"] = True]. These are:
@@ -432,9 +429,10 @@ if glob.annz["doOptim"] or glob.annz["doEval"]:
     # --------------------------------------------------------------------------------------------------
     addInTrainFlag = False
     if addInTrainFlag:
+      glob.annz["inAsciiFiles"]             = "boss_dr10_eval0_noZ.csv" # in this case, choose a larger input file
       glob.annz["addInTrainFlag"]           = True
       glob.annz["minNobjInVol_inTrain"]     = 100
-      glob.annz["maxRelRatioInRef_inTrain"] = 0.1
+      glob.annz["maxRelRatioInRef_inTrain"] = -1
       glob.annz["weightVarNames_inTrain"]   = "MAG_U;MAG_G;MAG_R;MAG_I;MAG_Z"
       # glob.annz["weightRef_inTrain"]        = "(MAG_Z<20.5 && MAG_R<22 && MAG_U<24)" # cut the reference sample, just to have some difference...
 

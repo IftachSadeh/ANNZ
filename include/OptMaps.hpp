@@ -67,6 +67,8 @@ public:
   // -----------------------------------------------------------------------------------------------------------
   inline TString baseOutDirName() { return (TString)"./output/"; }; // this values must never be changed !!!
   inline TString baseInDirName()  { return (TString)"rootIn/";   }; // this values must never be changed !!!
+  // base-prefix (may be defined by user) for general naming
+  inline TString basePrefix()     { return (TString)(HasOptC("basePrefix")?GetOptC("basePrefix"):"basePrefix_"); };
 
   void                        setColors();
   

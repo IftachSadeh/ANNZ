@@ -36,14 +36,7 @@ void ANNZ::createTreeErrKNN(int nMLMnow) {
   TString MLMname        = getTagName(nMLMnow);
   TString errKNNname     = getErrKNNname(nMLMnow);
   TString MLMname_i      = getTagIndex(nMLMnow);
-
-  // -----------------------------------------------------------------------------------------------------------  
-  // the _train trees are used in all cases:
-  //  - if (separateTestValid == false) then the errors of the _train will be derived from the same source, but
-  //    there is no choice in the matter anyway...
-  //  - if (separateTestValid == true) then the errors for both the testing (ANNZ_tvType<0.5 in _valid) and for the
-  //    validation (ANNZ_tvType>0.5 in _valid) will be derived from the independent source of the _train tree
-  // -----------------------------------------------------------------------------------------------------------  
+ 
   VarMaps * var_0 = new VarMaps(glob,utils,"treeErrKNN_0");
   VarMaps * var_1 = new VarMaps(glob,utils,"treeErrKNN_1");
 
@@ -121,7 +114,7 @@ void ANNZ::createTreeErrKNN(int nMLMnow) {
       var_1->SetVarF(zTrgName,zTrg);
     }
 
-    outTree->Fill();
+    var_1->fillTree();
 
     var_0->IncCntr("nObj"); mayWriteObjects = true;
   }

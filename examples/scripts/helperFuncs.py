@@ -22,32 +22,31 @@ def init():
 # --------------------------------------------------------------------------------------------------
 def initParse():
   parser = argparse.ArgumentParser(description="Command line parser:")
-  parser.add_argument("--make",                action='store_true')
-  parser.add_argument("--clean",               action='store_true')
-  parser.add_argument("--train",               action='store_true')
-  parser.add_argument("--optimize",            action='store_true')
-  parser.add_argument("--verify",              action='store_true')
-  parser.add_argument("--evaluate",            action='store_true')  
-  parser.add_argument("--qsub",                action='store_true')
-  parser.add_argument("--genInputTrees",       action='store_true')
-  parser.add_argument("--singleRegression",    action='store_true')
-  parser.add_argument("--randomRegression",    action='store_true')
-  parser.add_argument("--binnedClassification",action='store_true')
-  parser.add_argument("--singleClassification",action='store_true')
-  parser.add_argument("--randomClassification",action='store_true')
-  parser.add_argument("--inTrainFlag"         ,action='store_true')
-
-  parser.add_argument("--truncateLog",         action='store_true')
-  parser.add_argument("--isBatch",             action='store_true')
-
-  parser.add_argument("--logFileName",type=str,   default="")
-  parser.add_argument("--logLevel",   type=str,   default="INFO")
-
-  parser.add_argument("--maxNobj",    type=float, default=0)
-  parser.add_argument("--trainIndex", type=int,   default=-1)
-
-  parser.add_argument("--fitsToAscii",         action='store_true')
-  parser.add_argument("--asciiToFits",         action='store_true')
+  parser.add_argument("--make",                 action='store_true')
+  parser.add_argument("--clean",                action='store_true')
+  parser.add_argument("--train",                action='store_true')
+  parser.add_argument("--optimize",             action='store_true')
+  parser.add_argument("--verify",               action='store_true')
+  parser.add_argument("--evaluate",             action='store_true')  
+  parser.add_argument("--qsub",                 action='store_true')
+  parser.add_argument("--genInputTrees",        action='store_true')
+  parser.add_argument("--singleRegression",     action='store_true')
+  parser.add_argument("--randomRegression",     action='store_true')
+  parser.add_argument("--binnedClassification", action='store_true')
+  parser.add_argument("--singleClassification", action='store_true')
+  parser.add_argument("--randomClassification", action='store_true')
+  parser.add_argument("--inTrainFlag"         , action='store_true')
+  parser.add_argument("--truncateLog",          action='store_true')
+  parser.add_argument("--isBatch",              action='store_true')
+  parser.add_argument("--fitsToAscii",          action='store_true')
+  parser.add_argument("--asciiToFits",          action='store_true')
+  parser.add_argument("--logFileName",          type=str,   default="")
+  parser.add_argument("--logLevel",             type=str,   default="INFO")
+  parser.add_argument("--generalOptS",          type=str,   default="NULL")
+  parser.add_argument("--makeOpt",              type=str,   default="NULL")
+  parser.add_argument("--maxNobj",              type=float, default=0)
+  parser.add_argument("--trainIndex",           type=int,   default=-1)
+  parser.add_argument("--generalOptI",          type=int,   default=-1)
 
   glob.pars = vars(parser.parse_args())
 
@@ -68,7 +67,7 @@ def initParse():
   if glob.pars["fitsToAscii"]:          nSetups += 1
   if glob.pars["asciiToFits"]:          nSetups += 1
 
-  if not ((nSetups == 1) or (nSetups == 0 and (hasMake or glob.pars["qsub"]))):
+  if not ((nSetups == 1) or (nSetups == 0 and (glob.pars["genInputTrees"] or hasMake or glob.pars["qsub"]))):
     log.warning("Should define exactly one of --singleClassification --randomClassification , --singleRegression " \
          +"--randomRegression, --binnedClassification, --fitsToAscii, --asciiToFits !")
 
@@ -85,7 +84,10 @@ def initParse():
     if not (nModes == 1 or hasMake):
       log.warning("Should define exactly one of --genInputTrees --train , --optimize --verify, --evaluate, --inTrainFlag, --fitsToAscii, --asciiToFits !")
 
-  glob.pars["onlyMake"] = (((nSetups == 0) or (nModes == 0)) and hasMake)
+  glob.pars["onlyMake"] = (((nSetups == 0) or (nModes == 0)) and hasMake and (not glob.pars["genInputTrees"]))
+
+  # add make option, e.g., "-j4"
+  glob.makeOpt = glob.pars["makeOpt"] if glob.pars["makeOpt"] is not "NULL" else ""
 
   # set basic values for operational flags
   # --------------------------------------------------------------------------------------------------
@@ -112,6 +114,10 @@ def initParse():
 
   glob.annz["doFitsToAscii"]    = glob.pars["fitsToAscii"]
   glob.annz["doAsciiToFits"]    = glob.pars["asciiToFits"]
+
+  # general-use options for developers
+  glob.annz["generalOptS"]      = glob.pars["generalOptS"]
+  glob.annz["generalOptI"]      = glob.pars["generalOptI"]
 
   # default values for options which should be overridden in generalSettings()
   # --------------------------------------------------------------------------------------------------
@@ -221,7 +227,7 @@ def doMake():
     resetDir(glob.libDirName,isClean)
   if isMake:
     log.info(blue(" - Moving to ")+red(glob.libDirName)+blue(" and compiling ANNZ... "))
-    cmnd = "cd "+glob.libDirName+" ; make -f "+glob.annzDir+"Makefile"
+    cmnd = "cd "+glob.libDirName+" ; make "+glob.makeOpt+" -f "+glob.annzDir+"Makefile"
     cmkdStatus = os.system(cmnd) ; Assert("compilation failed",(cmkdStatus == 0))
 
     if os.path.isfile(glob.exeName): log.info(blue(" - Found ")+red(glob.exeName)+blue(" - compilation seems to have succeded... "))
