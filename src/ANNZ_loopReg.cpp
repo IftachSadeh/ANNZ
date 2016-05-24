@@ -123,7 +123,7 @@ void ANNZ::optimReg() {
 
     // create the merged chain
     // TChain * aChainMerged = mergeTreeFriends(aChain_0,aChain_1,NULL,&acceptV,NULL,aCut); // deprecated
-    TChain * aChainMerged = mergeTreeFriends(aChain_0,aChain_1,NULL,&acceptV); // deprecated
+    TChain * aChainMerged = mergeTreeFriends(aChain_0,aChain_1,NULL,&acceptV);
 
     verifyIndicesMLM(aChainMerged);
 
@@ -209,8 +209,9 @@ void ANNZ::optimReg() {
         TString          saveName("");
         vector <TString> optNames;
         
-        saveName = "bestMLM";     optNames.push_back(saveName); optMap->NewOptI(saveName, bestANNZindex);
-        saveName = "userPdfBins"; optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC("userPdfBins"));
+        saveName = glob->versionTag();  optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(glob->versionTag()));
+        saveName = "bestMLM";           optNames.push_back(saveName); optMap->NewOptI(saveName, bestANNZindex);
+        saveName = "userPdfBins";       optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC("userPdfBins"));
         
         for(int nPDFnow=0; nPDFnow<nPDFs; nPDFnow++) {
           saveName = TString::Format("weightsPDF_%d",nPDFnow); optNames.push_back(saveName); optMap->NewOptC(saveName, pdfWeightList[nPDFnow]);
@@ -409,10 +410,10 @@ void  ANNZ::fillColosureV( map < int,vector<int> >    & zRegQnt_nANNZ,   map < i
       utils->param->clearAll();
       utils->param->NewOptB("doFracLargerSigma" , true);
       utils->param->NewOptB("getMAD"            , optimWithMAD);
-      int hasQuantStats = utils->getInterQuantileStats(closH[nMLMnow][nBinNow]);
+      int hasQnt = utils->getInterQuantileStats(closH[nMLMnow][nBinNow]);
 
       // if the calculation disnt go through (no entries) then the currect metrics are all negative
-      if(hasQuantStats) {
+      if(hasQnt) {
         quant_mean          = fabs(utils->param->GetOptF("quant_mean"));  // all values must be positive for the optimization to work
         quant_sigma_68      = utils->param->GetOptF(quantScatterName);
         quant_fracSig68_2   = utils->param->GetOptF("quant_fracSig68_2");
@@ -494,24 +495,33 @@ void  ANNZ::getBestANNZ( map < int,vector<int> >    & zRegQnt_nANNZ,   map < int
 
   bestMLMsV.clear(); // before anything, clear the ouput vector
 
-  int     minAcptANNZs   = glob->GetOptI("minAcptMLMsForPDFs");;
-  TString optimCondReg   = glob->GetOptC("optimCondReg");
-  TString optimCondTitle = glob->GetOptB("optimWithMAD")        ? (TString)"MAD"                                     : (TString)optimCondReg;
-  TString biasTitle      = glob->GetOptB("optimWithScaledBias") ? (TString)"bias/(1+"+glob->GetOptC("zTrgTitle")+")" : (TString)"bias";
+  int     minAcptANNZs       = glob->GetOptI("minAcptMLMsForPDFs");
+  TString optimCondReg       = glob->GetOptC("optimCondReg");
+  bool    optimWithFracSig68 = glob->GetOptB("optimWithFracSig68");
+  TString zTrgTitle          = glob->GetOptC("zTrgTitle");
+  TString optimCondTitle     = glob->GetOptB("optimWithMAD")        ? (TString)"MAD"                    : (TString)optimCondReg;
+  TString biasTitle          = glob->GetOptB("optimWithScaledBias") ? (TString)"bias/(1+"+zTrgTitle+")" : (TString)"bias";
+
+  // if not choosing to optimize by the outlier fraction, don't use it at all (nMetrics set to 2)
+  int nMetrics = (optimCondReg == "fracSig68" || optimWithFracSig68) ? 3 : 2;
+  if(nMetrics == 2) {
+    aLOG(Log::INFO) <<coutBlue<<" - Will optimize based on bias and sig68 only (priority on "
+                    <<coutGreen<<optimCondReg<<coutBlue<<")"<<coutDef<<endl;
+  }
 
   // -----------------------------------------------------------------------------------------------------------
   // if too few MLMs are available, do a simple ordering by the nominal metric
   // -----------------------------------------------------------------------------------------------------------
   vector< pair<int,double> > nMLMmetricPairV;
 
-  for(int nAcptANNZNow=0; nAcptANNZNow<(int)zRegQnt_nANNZ[-1].size(); nAcptANNZNow++) {
-    if(zRegQnt_sigma68[-1][nAcptANNZNow] < EPS) continue; // has been initialized, such that no entries in this bin
+  for(int nAcptANNZnow=0; nAcptANNZnow<(int)zRegQnt_nANNZ[-1].size(); nAcptANNZnow++) {
+    if(zRegQnt_sigma68[-1][nAcptANNZnow] < EPS) continue; // has been initialized, such that no entries in this bin
 
-    int    nMLMnow   = zRegQnt_nANNZ [-1][nAcptANNZNow];
+    int    nMLMnow   = zRegQnt_nANNZ [-1][nAcptANNZnow];
     double metricNow = 0;
-    if     (optimCondReg == "bias")      metricNow = zRegQnt_bias     [-1][nAcptANNZNow];
-    else if(optimCondReg == "sig68")     metricNow = zRegQnt_sigma68  [-1][nAcptANNZNow];
-    else if(optimCondReg == "fracSig68") metricNow = zRegQnt_fracSig68[-1][nAcptANNZNow];
+    if     (optimCondReg == "bias")      metricNow = zRegQnt_bias     [-1][nAcptANNZnow];
+    else if(optimCondReg == "sig68")     metricNow = zRegQnt_sigma68  [-1][nAcptANNZnow];
+    else if(optimCondReg == "fracSig68") metricNow = zRegQnt_fracSig68[-1][nAcptANNZnow];
     else VERIFY(LOCATION,(TString)"Configuration problem... \"optimCondReg\" should have one of the "+
                                   "following values: \"sig68\", \"bias\" or \"fracSig68\" options ...",false);
 
@@ -521,8 +531,8 @@ void  ANNZ::getBestANNZ( map < int,vector<int> >    & zRegQnt_nANNZ,   map < int
     // sort so that the smallest element is first
     sort(nMLMmetricPairV.begin(),nMLMmetricPairV.end(),sortFunctors::pairIntDouble_descendSecond);
 
-    for(int nAcptANNZNow=0; nAcptANNZNow<(int)nMLMmetricPairV.size(); nAcptANNZNow++) {
-      bestMLMsV.push_back(nMLMmetricPairV[nAcptANNZNow].first);
+    for(int nAcptANNZnow=0; nAcptANNZnow<(int)nMLMmetricPairV.size(); nAcptANNZnow++) {
+      bestMLMsV.push_back(nMLMmetricPairV[nAcptANNZnow].first);
     }
   }
   nMLMmetricPairV.clear();
@@ -550,19 +560,19 @@ void  ANNZ::getBestANNZ( map < int,vector<int> >    & zRegQnt_nANNZ,   map < int
       double fracLimNow1 = fracLimNow0 + 0.1   * (1 + nfracLimNow1); fracLimNow1 = min(fracLimNow1,0.8);
 
       aLOG(Log::INFO) <<coutRed<<" - Now trying to find best methods with a limit of "<<coutYellow<<fracLimNow0*100<<coutRed
-                      <<"\% of the ["<<optimCondTitle<<"] dist, and "<<coutYellow<<fracLimNow1*100<<coutRed<<"\% of the other two"
-                      <<" (iteration "<<coutYellow<<(nfracLimNow0+nfracLimNow1*nfracLims0)<<coutRed<<") ..."<<coutDef<<endl;
+                      <<"\% of the ["<<optimCondTitle<<"] dist, and "<<coutYellow<<fracLimNow1*100<<coutRed<<"\% of the other(s)"
+                      <<" - iteration "<<coutYellow<<(nfracLimNow0+nfracLimNow1*nfracLims0)<<coutRed<<" ..."<<coutDef<<endl;
 
       nANNZv.clear(); biasV.clear(); sigma68V.clear(); fracSig68V.clear();
 
       for(int nBinNow=-1; nBinNow<nBinsZ; nBinNow++) {
-        for(int nAcptANNZNow=0; nAcptANNZNow<(int)zRegQnt_nANNZ[nBinNow].size(); nAcptANNZNow++) {
-          if(zRegQnt_sigma68[nBinNow][nAcptANNZNow] < EPS) continue; // has been initialized, such that no entries in this bin
+        for(int nAcptANNZnow=0; nAcptANNZnow<(int)zRegQnt_nANNZ[nBinNow].size(); nAcptANNZnow++) {
+          if(zRegQnt_sigma68[nBinNow][nAcptANNZnow] < EPS) continue; // has been initialized, such that no entries in this bin
 
-          nANNZv    [nBinNow].push_back(zRegQnt_nANNZ    [nBinNow][nAcptANNZNow]);
-          biasV     [nBinNow].push_back(zRegQnt_bias     [nBinNow][nAcptANNZNow]);
-          sigma68V  [nBinNow].push_back(zRegQnt_sigma68  [nBinNow][nAcptANNZNow]);
-          fracSig68V[nBinNow].push_back(zRegQnt_fracSig68[nBinNow][nAcptANNZNow]);
+          nANNZv    [nBinNow].push_back(zRegQnt_nANNZ    [nBinNow][nAcptANNZnow]);
+          biasV     [nBinNow].push_back(zRegQnt_bias     [nBinNow][nAcptANNZnow]);
+          sigma68V  [nBinNow].push_back(zRegQnt_sigma68  [nBinNow][nAcptANNZnow]);
+          fracSig68V[nBinNow].push_back(zRegQnt_fracSig68[nBinNow][nAcptANNZnow]);
         }
       }
 
@@ -571,25 +581,21 @@ void  ANNZ::getBestANNZ( map < int,vector<int> >    & zRegQnt_nANNZ,   map < int
       for(int nBinNow=-1; nBinNow<nBinsZ; nBinNow++) {
         if(onlyInclusiveBin && nBinNow == 0) break;
 
-        int nAcptANNZs = (int)nANNZv[nBinNow].size();
-        // if(nAcptANNZs < glob->GetOptI("minEleForQuantile")) continue;
-
         map < TString, vector<double> > metricLowQuants;
-        for(int nMetricNow=0; nMetricNow<3; nMetricNow++) {
+        for(int nMetricNow=0; nMetricNow<nMetrics; nMetricNow++) {
           TString         metricName("");
           vector <double> fracV, quantV(2,-1);
-          fracV.push_back(fracLimNow0); fracV.push_back(fracLimNow1); //fracV.push_back(0.16); fracV.push_back(0.84);
+          fracV.push_back(fracLimNow0); fracV.push_back(fracLimNow1);
 
-          int hasQuants(0);
+          int hasQnt(0);
           utils->param->clearAll();
-          if     (nMetricNow == 0) { hasQuants = utils->getQuantileV(fracV,quantV,biasV     [nBinNow]); metricName = "bias";      }
-          else if(nMetricNow == 1) { hasQuants = utils->getQuantileV(fracV,quantV,sigma68V  [nBinNow]); metricName = "sig68";     }
-          else if(nMetricNow == 2) { hasQuants = utils->getQuantileV(fracV,quantV,fracSig68V[nBinNow]); metricName = "fracSig68"; }
-          else assert(false);
+          if     (nMetricNow == 0) { hasQnt = utils->getQuantileV(fracV,quantV,biasV     [nBinNow]); metricName = "bias";      }
+          else if(nMetricNow == 1) { hasQnt = utils->getQuantileV(fracV,quantV,sigma68V  [nBinNow]); metricName = "sig68";     }
+          else if(nMetricNow == 2) { hasQnt = utils->getQuantileV(fracV,quantV,fracSig68V[nBinNow]); metricName = "fracSig68"; }
           
-          double  quantLow = hasQuants ? quantV[0] : -1;
-          double  quantDif = hasQuants ? quantV[1] : -1;
-          // double  quantDif = hasQuants ? quantLow + (quantV[2] - quantV[1])/2. : -1;
+          double  quantLow = hasQnt ? quantV[0] : -1;
+          double  quantDif = hasQnt ? quantV[1] : -1;
+          // double  quantDif = hasQnt ? quantLow + (quantV[2] - quantV[1])/2. : -1;
           
           metricLowQuants[metricName].push_back(quantLow);
           metricLowQuants[metricName].push_back(quantDif);
@@ -600,49 +606,67 @@ void  ANNZ::getBestANNZ( map < int,vector<int> >    & zRegQnt_nANNZ,   map < int
           fracV.clear(); fracV.clear();
         }
 
-        for(int nAcptANNZNow=0; nAcptANNZNow<nAcptANNZs; nAcptANNZNow++) {
-          map <TString,bool>  hasMetric;
-          double              frac_bias(0),frac_sig68(0),frac_fracSig68(0);
-
-          int     nMLMnow        = nANNZv    [nBinNow][nAcptANNZNow];
-          double  mean_bias      = biasV     [nBinNow][nAcptANNZNow];
-          double  mean_sigma68   = sigma68V  [nBinNow][nAcptANNZNow];
-          double  mean_fracSig68 = fracSig68V[nBinNow][nAcptANNZNow];
+        int nAcptANNZs = (int)nANNZv[nBinNow].size();
+        for(int nAcptANNZnow=0; nAcptANNZnow<nAcptANNZs; nAcptANNZnow++) {
+          int     nMLMnow        = nANNZv    [nBinNow][nAcptANNZnow];
+          double  mean_bias      = biasV     [nBinNow][nAcptANNZnow];
+          double  mean_sigma68   = sigma68V  [nBinNow][nAcptANNZnow];
+          double  mean_fracSig68 = fracSig68V[nBinNow][nAcptANNZnow];
 
           // make sure all the quantile calculations for this bin which are OK
           bool skip(false);
           for(int nEle=0; nEle<2; nEle++) { 
-            for(int nMetricNow=0; nMetricNow<3; nMetricNow++) {
+            for(int nMetricNow=0; nMetricNow<nMetrics; nMetricNow++) {
               TString metricName("");
-              if(nMetricNow == 0) metricName = "bias";  else if(nMetricNow == 1) metricName = "sig68"; else if(nMetricNow == 2) metricName = "fracSig68";
+              if     (nMetricNow == 0) metricName = "bias";
+              else if(nMetricNow == 1) metricName = "sig68";
+              else if(nMetricNow == 2) metricName = "fracSig68";
+              
               if(metricLowQuants[metricName][nEle] < 0) skip = true;
             }
           }
           if(skip) continue;
 
           // -----------------------------------------------------------------------------------------------------------
+          // check which MLMs passed the required thresholds
+          // -----------------------------------------------------------------------------------------------------------
+          double              frac_bias(0), frac_sig68(0), frac_fracSig68(0);
+          map <TString,bool>  hasMetric;
+
           // check if "bias" is within the top fracLimNow0 percentile, as well as that "sig68","fracSig68" are within fracLimNow1
           // -----------------------------------------------------------------------------------------------------------
-          frac_bias =  metricLowQuants["bias"][0]; frac_sig68 = metricLowQuants["sig68"][1]; frac_fracSig68 = metricLowQuants["fracSig68"][1];
+          frac_bias  = metricLowQuants["bias"] [0];
+          frac_sig68 = metricLowQuants["sig68"][1];
+          if(nMetrics == 3) frac_fracSig68 = metricLowQuants["fracSig68"][1];
+          else              frac_fracSig68 = mean_fracSig68+1;
+          
           if(mean_bias < frac_bias && mean_sigma68 < frac_sig68 && mean_fracSig68 < frac_fracSig68) {
             hasMetric["bias"] = true;
             bestMLMsPairs[nBinNow]["bias"].push_back(pair<int,double>(nMLMnow,mean_bias));
           }
-          // -----------------------------------------------------------------------------------------------------------
+          
           // check if "sig68" is within the top fracLimNow0 percentile, as well as that "bias","fracSig68" are within fracLimNow1
           // -----------------------------------------------------------------------------------------------------------
-          frac_bias =  metricLowQuants["bias"][1]; frac_sig68 = metricLowQuants["sig68"][0]; frac_fracSig68 = metricLowQuants["fracSig68"][1];
+          frac_bias  = metricLowQuants["bias"] [1];
+          frac_sig68 = metricLowQuants["sig68"][0];
+          if(nMetrics == 3) frac_fracSig68 = metricLowQuants["fracSig68"][1];
+          else              frac_fracSig68 = mean_fracSig68+1;
+
           if(mean_bias < frac_bias && mean_sigma68 < frac_sig68 && mean_fracSig68 < frac_fracSig68) {
             hasMetric["sig68"] = true;
             bestMLMsPairs[nBinNow]["sig68"].push_back(pair<int,double>(nMLMnow,mean_sigma68));
           }
-          // -----------------------------------------------------------------------------------------------------------
+          
           // check if "fracSig68" is within the top fracLimNow0 percentile, as well as that "bias","sig68" are within fracLimNow1
           // -----------------------------------------------------------------------------------------------------------
-          frac_bias =  metricLowQuants["bias"][1]; frac_sig68 = metricLowQuants["sig68"][1]; frac_fracSig68 = metricLowQuants["fracSig68"][0];
-          if(mean_bias < frac_bias && mean_sigma68 < frac_sig68 && mean_fracSig68 < frac_fracSig68) {
-            hasMetric["fracSig68"] = true;
-            bestMLMsPairs[nBinNow]["fracSig68"].push_back(pair<int,double>(nMLMnow,mean_fracSig68));
+          if(nMetrics == 3) {
+            frac_bias      = metricLowQuants["bias"]     [1];
+            frac_sig68     = metricLowQuants["sig68"]    [1];
+            frac_fracSig68 = metricLowQuants["fracSig68"][0];
+            if(mean_bias < frac_bias && mean_sigma68 < frac_sig68 && mean_fracSig68 < frac_fracSig68) {
+              hasMetric["fracSig68"] = true;
+              bestMLMsPairs[nBinNow]["fracSig68"].push_back(pair<int,double>(nMLMnow,mean_fracSig68));
+            }
           }
 
           if(nBinNow == -1) { if(hasMetric[optimCondReg]) nAcptBestMLMs++; }
@@ -662,18 +686,24 @@ void  ANNZ::getBestANNZ( map < int,vector<int> >    & zRegQnt_nANNZ,   map < int
       // -----------------------------------------------------------------------------------------------------------
       bestMLMs.clear();
       for(int nBinNow=-1; nBinNow<nBinsZ; nBinNow++) {
-        for(int nMetricNow=0; nMetricNow<3; nMetricNow++) {
+        for(int nMetricNow=0; nMetricNow<nMetrics; nMetricNow++) {
           TString metricName("");
-          if(nMetricNow == 0) metricName = "bias";  else if(nMetricNow == 1) metricName = "sig68"; else if(nMetricNow == 2) metricName = "fracSig68";
+          if     (nMetricNow == 0) metricName = "bias";
+          else if(nMetricNow == 1) metricName = "sig68";
+          else if(nMetricNow == 2) metricName = "fracSig68";
         
-          int nAcptANNZs = (int)bestMLMsPairs[nBinNow][metricName].size(); if(nAcptANNZs == 0) continue;
+          int nAcptANNZs = (int)bestMLMsPairs[nBinNow][metricName].size();
+          if(nAcptANNZs == 0) continue;
 
           // sort so that the smallest element is first
           sort(bestMLMsPairs[nBinNow][metricName].begin(),bestMLMsPairs[nBinNow][metricName].end(),sortFunctors::pairIntDouble_descendSecond); 
 
-          for(int nAcptANNZNow=0; nAcptANNZNow<nAcptANNZs; nAcptANNZNow++) {
-            bestMLMs[nBinNow][metricName].push_back(bestMLMsPairs[nBinNow][metricName][nAcptANNZNow].first);
-            // cout <<"aaa "<< metricName<<CT<< bestMLMsPairs[nBinNow][metricName][nAcptANNZNow].first <<CT<<bestMLMsPairs[nBinNow][metricName][nAcptANNZNow].second <<endl;
+          for(int nAcptANNZnow=0; nAcptANNZnow<nAcptANNZs; nAcptANNZnow++) {
+            bestMLMs[nBinNow][metricName].push_back(bestMLMsPairs[nBinNow][metricName][nAcptANNZnow].first);
+
+            aLOG(Log::DEBUG_2)<<coutPurple<<" - accepted list("<<nBinNow<<","<<nAcptANNZnow<<","<<metricName<<"): "
+                              <<CT<<coutGreen<<bestMLMsPairs[nBinNow][metricName][nAcptANNZnow].first
+                              <<CT<<coutRed<<bestMLMsPairs[nBinNow][metricName][nAcptANNZnow].second<<coutDef<<endl;
           }
           
         }
@@ -1387,7 +1417,7 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
   double fitTop    = hisIntgrZregV[0]->GetXaxis()->GetBinCenter(hisIntgrZregV[0]->GetXaxis()->FindBin(1-glob->GetOptF("excludeRangePdfModelFit")));
 
   int doConstFit(0), doMeanFit(1);
-  assert(doConstFit+doMeanFit == 1); // consistency check - can only set one of the two options
+  VERIFY(LOCATION,(TString)"can only set one of the two options",(doConstFit+doMeanFit == 1)); // consistency check
 
   aLOG(Log::DEBUG) <<coutLightBlue<<"----------------------------------------------------------------------------------------"<<coutDef<<endl;
   aLOG(Log::DEBUG) <<coutYellow   <<" - Fitting a constant to the zReg integrated-weights histogram (optimal result is 0.5)"  <<coutDef<<endl;
@@ -1916,6 +1946,7 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
   TString outDirNameFull    = glob->GetOptC("outDirNameFull");
   TString postTrainDirName  = glob->GetOptC("postTrainDirNameFull");
   TString addOutputVars     = glob->GetOptC("addOutputVars");
+  TString userWgtPlots      = glob->GetOptC("userWeights_metricPlots");
   int     maxNobj           = glob->GetOptI("maxNobj");
   TString indexName         = glob->GetOptC("indexName");
   TString treeName          = glob->GetOptC("treeName");
@@ -2116,6 +2147,8 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
     OptMaps * optMap = new OptMaps("localOptMap");
     TString          saveName_best("");
     vector <TString> optNames, saveName_pdf(nPDFs);
+
+    optNames.push_back(glob->versionTag()); optMap->NewOptC(glob->versionTag(), glob->GetOptC(glob->versionTag()));
 
     for(int nPDFnow=0; nPDFnow<nPDFs; nPDFnow++) {
       saveName_pdf[nPDFnow] = TString::Format("weightsPDF_%d",nPDFnow);
@@ -2444,6 +2477,22 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
       if(var_0->HasVar(zTrg) && find(addVarV.begin(),addVarV.end(),zTrg) == addVarV.end()) {
         addVarV.insert(addVarV.begin(),zTrg);
       }
+
+      // check if any user-requested weight variables for plotting (used in doMetricPlots()) are needed, but not already included
+      if(userWgtPlots != "" && userWgtPlots != "1") {
+        vector <TString> inBranchNameV;
+        utils->getTreeBranchNames(aChain,inBranchNameV);
+
+        for(int nVarNow=0; nVarNow<(int)inBranchNameV.size(); nVarNow++) {
+          TString varNameNow = inBranchNameV[nVarNow];
+
+          if(userWgtPlots.Contains(varNameNow) && (find(addVarV.begin(),addVarV.end(),varNameNow) == addVarV.end())) {
+            addVarV.push_back(varNameNow);
+          }
+        }
+        inBranchNameV.clear();
+      }
+
       for(int nVarsInNow=0; nVarsInNow<(int)addVarV.size(); nVarsInNow++) {
         TString addVarName = addVarV[nVarsInNow];
         VERIFY(LOCATION,(TString)"from addOutputVars - trying to use undefined variable (\""+addVarName+"\") ...",var_0->HasVar(addVarName));
@@ -2704,7 +2753,7 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
                   val /= nSmearUnf;
                   for(int nSmearUnfNow=0; nSmearUnfNow<nSmearUnf; nSmearUnfNow++) {
                     double rndVal = hisBiasCorV[nPDFnow][nBinXnow-1]->GetRandom();
-                    rndVal = min(max(rndVal,minValZ+EPS),maxValZ-EPS);
+                    // rndVal = min(max(rndVal,minValZ+EPS),maxValZ-EPS);
                     
                     hisPDF_w[nPDFnow]->Fill(rndVal,val);
                   }
@@ -2943,8 +2992,8 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
  *                     for which plots are generated.
  */
 // ===========================================================================================================
-void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV) {
-// =========================================================================
+void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV, TString addOutputVarsIn) {
+// ==================================================================================================
   if(!glob->GetOptB("doPlots")) {
     aLOG(Log::DEBUG) <<coutWhiteOnBlack<<coutPurple<<" - skipping ANNZ::doMetricPlots() ... "<<coutDef<<endl;
     return;
@@ -2955,9 +3004,10 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV) {
   aLOG(Log::INFO) <<coutWhiteOnBlack<<coutPurple<<" - starting ANNZ::doMetricPlots() ... "<<coutDef<<endl;
 
   TString outDirNameFull      = glob->GetOptC("outDirNameFull");
-  TString addOutputVars       = glob->GetOptC("addOutputVars");
   TString plotExt             = glob->GetOptC("printPlotExtension");
   TString basePrefix          = glob->GetOptC("basePrefix");
+  TString addOutputVars       = glob->GetOptC("addOutputVars");
+  TString alwaysPlotVars      = glob->GetOptC("alwaysPlotVars");
   TString baseName_regMLM_avg = glob->GetOptC("baseName_regMLM_avg");
   TString baseName_regPDF_max = glob->GetOptC("baseName_regPDF_max");
   TString baseName_regPDF_avg = glob->GetOptC("baseName_regPDF_avg");
@@ -2970,6 +3020,8 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV) {
   TString baseTag_v           = glob->GetOptC("baseTag_v");
   TString baseTag_e           = glob->GetOptC("baseTag_e");
   TString baseTag_w           = glob->GetOptC("baseTag_w");
+  TString userWgtPlots        = glob->GetOptC("userWeights_metricPlots");
+  TString noQuantileBinsStr   = glob->GetOptC("noQuantileBinsPlots");
   bool    defErrBySigma68     = glob->GetOptB("defErrBySigma68");
   bool    doGausSigmaRelErr   = glob->GetOptB("doGausSigmaRelErr");
   int     nPDFs               = glob->GetOptI("nPDFs");
@@ -2982,6 +3034,29 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV) {
 
   bool    plotWithSclBias     = glob->GetOptB("plotWithScaledBias");
   TString biasTitle           = plotWithSclBias ? (TString)"#delta/(1+"+glob->GetOptC("zTrgTitle")+")" : (TString)"#delta";
+
+  // added variables are plotted with equal-quintile binning instead of equal-width
+  // bins, if they are NOT included in this list
+  vector <TString> noQuantileBinsV = utils->splitStringByChar(noQuantileBinsStr, ';');
+
+  // combine a possible list of addOutputVars with that defined in the global variable
+  if(addOutputVarsIn != "") {
+    addOutputVarsIn.ReplaceAll(" ","").ReplaceAll(";;",";");
+
+    if(addOutputVars != "") addOutputVars += ";";
+    addOutputVars += addOutputVarsIn;
+  }
+  if(alwaysPlotVars != "") {
+    alwaysPlotVars.ReplaceAll(" ","").ReplaceAll(";;",";");
+
+    if(addOutputVars != "") addOutputVars += ";";
+    addOutputVars += alwaysPlotVars;
+  }
+  addOutputVars.ReplaceAll(" ","").ReplaceAll(";;",";");
+
+  // used for formula of user defined weights for the plots
+  bool    hasUserWgt(userWgtPlots != "" && userWgtPlots != "1");
+  TString userWgtFrm("userWgtFrm"); // some internal unique name
 
   TString hisName("");
   int     nBinsZ((int)zPlot_binC.size()), maxSigmaRelErrToPlot(10);
@@ -3143,24 +3218,39 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV) {
   VarMaps * var = new VarMaps(glob,utils,"treePlotVar");
   var->connectTreeBranches(aChain);
 
-  vector <TString> plotVars, plotVarForms, plotVarNames;
-  plotVarNames = utils->splitStringByChar(addOutputVars,';');
+  vector <TString> plotVars, plotVarForms, plotVarNames, addVarInV, alwaysPlotV;
+  plotVarNames = utils->splitStringByChar(addOutputVars,  ';');
+  addVarInV    = utils->splitStringByChar(addOutputVarsIn,';');
+  alwaysPlotV  = utils->splitStringByChar(alwaysPlotVars, ';');
   
   for(int nNameNow=0; nNameNow<(int)plotVarNames.size(); nNameNow++) {
     TString plotVarNameNow     = (TString)plotVarNames[nNameNow];
     TString plotVarFormNameNow = (TString)"form_"+plotVarNameNow;
 
+    // avoid empties
+    if(plotVarNameNow == "") continue;
+    // avoid double counting
+    if(find(plotVars.begin(),plotVars.end(),plotVarNameNow) != plotVars.end()) continue;
+
+    bool doPlotVar =    (find(addVarInV  .begin(),addVarInV  .end(),plotVarNameNow) != addVarInV  .end())
+                     || (find(alwaysPlotV.begin(),alwaysPlotV.end(),plotVarNameNow) != alwaysPlotV.end());
+
     if(var->HasVarF(plotVarNameNow) || var->HasVarI(plotVarNameNow)) {
       plotVars    .push_back(plotVarNameNow);
       plotVarForms.push_back(plotVarFormNameNow);
+    }
+    else if(doPlotVar) {
+      plotVars    .push_back(plotVarNameNow);
+      plotVarForms.push_back(utils->regularizeName(plotVarFormNameNow));
+
+      aLOG(Log::DEBUG_1)<<coutBlue<<" - Added plotting variable - "<<coutYellow<<plotVarNameNow<<coutBlue<<" ..."<<coutDef<<endl;
     }
     else {
       aLOG(Log::INFO)<<coutRed<<" - Requested variable ("<<coutYellow<<plotVarNameNow<<coutRed
                      <<") is not a float, and will not be plotted against..."<<coutDef<<endl;
     }
   }
-  plotVarNames.clear();
-
+  plotVarNames.clear(); addVarInV.clear(); alwaysPlotV.clear();
 
   // recreate the var with the requested plotting variables as NewForm()
   DELNULL(var);
@@ -3173,8 +3263,15 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV) {
     var->NewForm(plotVarFormNameNow,plotVarNameNow);
   }
 
-  var->connectTreeBranches(aChain);
+  // add formula for user defined weights for the plots
+  if(hasUserWgt) {
+    aLOG(Log::INFO)<<coutCyan<<" - detected user-requested weight expression for plotting [\"userWeights_metricPlots\" = "
+                   <<coutYellow<<userWgtPlots<<coutCyan<<"]"<<coutDef<<endl;
 
+    var->NewForm(userWgtFrm,getRegularStrForm(userWgtPlots,var));
+  }
+
+  var->connectTreeBranches(aChain);
 
   int nTypeBins = 2 + (int)plotVars.size();
 
@@ -3185,48 +3282,93 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV) {
 
     hisName = (TString)"his1_TMP";
 
-    // get the cuts (assume here that this function is used for "_valid" only, otherwise, would need to add a flag...)
-    TString treeCuts = (TString)getTrainTestCuts((TString)"_comn"+";"+getTagName(0)+"_valid",0,0,0,var);
+    // get the cuts
+    TString cutStr("_comn"), treeNamePostfix("");
+
+    if(((TString)aChain->GetName()).EndsWith("_valid")) treeNamePostfix = "_valid";
+    if(((TString)aChain->GetName()).EndsWith("_train")) treeNamePostfix = "_train";
+
+    int nMLMnowTag = max(0,glob->GetOptI("nMLMnow")); // needed for e.g., single-regression
+    if(treeNamePostfix != "") cutStr += ";"+getTagName(nMLMnowTag)+treeNamePostfix;
+
+    TString treeCuts = (TString)getTrainTestCuts(cutStr,nMLMnowTag,0,0,var);
 
     for(int nTypeBinNow=0; nTypeBinNow<nTypeBins-2; nTypeBinNow++) {
       TString drawExprs = (TString)plotVars[nTypeBinNow]+">>"+hisName;
 
+      bool useQuantileBins = (find(noQuantileBinsV.begin(),noQuantileBinsV.end(), plotVars[nTypeBinNow]) == noQuantileBinsV.end());
+
       TCanvas * tmpCnvs = new TCanvas("tmpCnvs","tmpCnvs");
-      int     nEvtPass  = aChain->Draw(drawExprs,treeCuts);
-      
+      int     nEvtPass  = aChain->Draw(drawExprs,treeCuts);  DELNULL(tmpCnvs);
+
       double minVal(1), maxVal(-1);
       if(nEvtPass > 0) {
         TH1 * his1 = (TH1F*)gDirectory->Get(hisName);
         if(dynamic_cast<TH1*>(his1)) {
           his1->BufferEmpty();
 
-          minVal  = his1->GetXaxis()->GetBinLowEdge(his1->GetXaxis()->GetFirst());
-          maxVal  = his1->GetXaxis()->GetBinUpEdge (his1->GetXaxis()->GetLast() );
+          if(useQuantileBins) {
+            vector <double> fracV;
+
+            fracV.resize(nBinsZ+1,1);
+            for(int nBinZnow=0; nBinZnow<nBinsZ; nBinZnow++) {
+              fracV[nBinZnow] = nBinZnow/double(nBinsZ);
+            }
+            useQuantileBins = (useQuantileBins && (utils->getQuantileV(fracV,varPlot_binE[nTypeBinNow],his1)));
+            fracV.clear();
+
+
+            fracV.resize(nBinsZ,1);
+            for(int nBinZnow=0; nBinZnow<nBinsZ; nBinZnow++) {
+              fracV[nBinZnow] = (nBinZnow+0.5)/double(nBinsZ);
+            }
+            useQuantileBins = (useQuantileBins && (utils->getQuantileV(fracV,varPlot_binC[nTypeBinNow],his1)));
+            fracV.clear();
+
+            // just in case, if the quantile search failes for some reason (!?!), try to use equal-spaced bins
+            if(!useQuantileBins) {
+              varPlot_binE[nTypeBinNow].resize(nBinsZ+1,0);
+              varPlot_binC[nTypeBinNow].resize(nBinsZ  ,0);
+            }
+          }
+
+          if(!useQuantileBins) {
+            minVal  = his1->GetXaxis()->GetBinLowEdge(his1->GetXaxis()->GetFirst());
+            maxVal  = his1->GetXaxis()->GetBinUpEdge (his1->GetXaxis()->GetLast() );
+          }
 
           DELNULL(his1);
         }
       }
-      if(maxVal <= minVal) { minVal = 0; maxVal = 1; }
 
-      DELNULL(tmpCnvs);
-
-      // double minVal = aChain->GetMinimum(plotVars[nTypeBinNow]);
-      // double maxVal = aChain->GetMaximum(plotVars[nTypeBinNow]);
-      // VERIFY(LOCATION,(TString)"Something is horribly wrong ?!?! ",(maxVal > minVal));
-
-      double binW = (maxVal - minVal)/double(nBinsZ);
-
-      aLOG(Log::DEBUG) <<coutGreen<<" - adding plotting variable "<<coutRed<<plotVars[nTypeBinNow]<<coutGreen<<" with "<<coutPurple
-                       <<nBinsZ<<coutGreen<<" bins with width ("<<binW<<") within ["<<minVal<<","<<maxVal<<"]"<<coutDef<<endl;
-      
-      for(int nBinZnow=0; nBinZnow<nBinsZ; nBinZnow++) {
-        double  binEdgeL  = minVal   + binW * nBinZnow;
-        double  binCenter = binEdgeL + binW * 0.5;
+      if(useQuantileBins) {
+        aLOG(Log::DEBUG) <<coutGreen<<" - adding plotting variable "<<coutRed<<plotVars[nTypeBinNow]<<coutGreen<<" with "<<coutPurple
+                         <<nBinsZ<<coutGreen<<" bins:"<<coutDef<<endl;
         
-        varPlot_binE[nTypeBinNow][nBinZnow] = binEdgeL;
-        varPlot_binC[nTypeBinNow][nBinZnow] = binCenter;
+        for(int nBinZnow=0; nBinZnow<nBinsZ; nBinZnow++) {
+          aLOG(Log::DEBUG) <<coutGreen<<"  -- bin "<<coutBlue<<nBinZnow<<coutGreen<<" with edgeLow,center,edgeHigh: [ "
+                           <<coutPurple<<varPlot_binE[nTypeBinNow][nBinZnow]  <<coutGreen<<" , "
+                           <<coutRed   <<varPlot_binC[nTypeBinNow][nBinZnow]  <<coutGreen<<" , "
+                           <<coutPurple<<varPlot_binE[nTypeBinNow][nBinZnow+1]<<coutGreen<<" ]"<<coutDef<<endl;
+        }
       }
-      varPlot_binE[nTypeBinNow][nBinsZ] = maxVal;
+      else {
+        if(maxVal <= minVal) { minVal = 0; maxVal = 1; }
+
+        double binW = (maxVal - minVal)/double(nBinsZ);
+
+        aLOG(Log::DEBUG) <<coutGreen<<" - adding plotting variable "<<coutRed<<plotVars[nTypeBinNow]<<coutGreen<<" with "<<coutPurple
+                         <<nBinsZ<<coutGreen<<" bins with width ("<<binW<<") within ["<<minVal<<","<<maxVal<<"]"<<coutDef<<endl;
+        
+        for(int nBinZnow=0; nBinZnow<nBinsZ; nBinZnow++) {
+          double  binEdgeL  = minVal   + binW * nBinZnow;
+          double  binCenter = binEdgeL + binW * 0.5;
+          
+          varPlot_binE[nTypeBinNow][nBinZnow] = binEdgeL;
+          varPlot_binC[nTypeBinNow][nBinZnow] = binCenter;
+        }
+        varPlot_binE[nTypeBinNow][nBinsZ] = maxVal;
+      }
     }
   }
 
@@ -3292,8 +3434,9 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV) {
 
     if((var->GetCntr("nObj")+1 % nObjectsToPrint == 0) || breakLoop) { var->printCntr(aChainName,Log::DEBUG); }
     if(breakLoop) break;
-    
-    double zTrg = var->GetVarF(zTrgName);
+
+    double usrWgt = hasUserWgt ? var->GetForm(userWgtFrm) : 1;
+    double zTrg   = var->GetVarF(zTrgName);
 
     // the only cut which is applied here... all the rest should meanifest themselves as [weight==0]
     if(zTrg < minValZ) { var->IncCntr((TString)zTrgName+" < "+utils->doubleToStr(minValZ)); continue; }
@@ -3305,7 +3448,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV) {
       TString typeName = nameV_MLM_v[nMLMinNow];
       double  zRegV    = var->GetVarF(nameV_MLM_v[nMLMinNow]);
       double  zRegE    = var->GetVarF(nameV_MLM_e[nMLMinNow]);
-      double  zRegW    = var->GetVarF(nameV_MLM_w[nMLMinNow]);  if(zRegW < EPS) continue;
+      double  zRegW    = var->GetVarF(nameV_MLM_w[nMLMinNow]) * usrWgt;  if(zRegW < EPS) continue;
 
       // if(zRegV < minValZ || zRegV > maxValZ) continue;
       zRegV = min(max(zRegV,minValZ),maxValZ);
@@ -3343,7 +3486,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV) {
     // -----------------------------------------------------------------------------------------------------------
     for(int nPDFinNow=0; nPDFinNow<nPDFsIn; nPDFinNow++) {
       TString typeName = nameV_PDF[nPDFinNow];
-      double  pdfWgt   = var->GetVarF(pdfTagWgtV[nPDFinNow]);  if(pdfWgt < EPS) continue;
+      double  pdfWgt   = var->GetVarF(pdfTagWgtV[nPDFinNow]) * usrWgt;  if(pdfWgt < EPS) continue;
       double  pdfErr   = var->GetVarF(pdfTagErrV[nPDFinNow]);
 
       his_regTrgZ[typeName][0]->Fill(zTrg,pdfWgt);
@@ -3411,7 +3554,6 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV) {
     else if(nMetricNow == 7) { metricNameV[nMetricNow] =  "sigmaRelErr"; metricTitleV[nMetricNow] = "#sigma_{68}(#delta/#sigma)"; }
     else if(nMetricNow == 8) { metricNameV[nMetricNow] =  "N_pois";      metricTitleV[nMetricNow] = "N_{pois}";                   }
     else if(nMetricNow == 9) { metricNameV[nMetricNow] =  "KS_test";     metricTitleV[nMetricNow] = "KS-test";                    }
-    else assert(0);
   }
 
   for(int nPlotType=0; nPlotType<2; nPlotType++) {
@@ -3433,7 +3575,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV) {
         TString xTitle("");
         if     (nTypeBinNow == 0) xTitle = zTrgTitle;
         else if(nTypeBinNow == 1) xTitle = zRegTitle;
-        else                      xTitle = plotVars[nTypeBinNow-2];
+        else                      xTitle = utils->regularizeName(plotVars[nTypeBinNow-2]);
 
         TString tagNow0(""), tagNow1("");
         tagNow0 = (TString)"all_"+xTitle;      tagNow1 = (TString)tagNow0+metricNameV[nMetricNow];
@@ -3458,7 +3600,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV) {
         mltGrphM[tagNow1] = new TMultiGraph(); mltGrphV[tagNow0].push_back(mltGrphM[tagNow1]);
         
         for(int nTypeBinNow=0; nTypeBinNow<nTypeBins-2; nTypeBinNow++) {
-          TString plotVarName =(TString)typeName+" , "+ utils->regularizeName(plotVars[nTypeBinNow]);
+          TString plotVarName = (TString)typeName+" , "+utils->regularizeName(plotVars[nTypeBinNow]);
 
           TString tagNow0(""), tagNow1("");
           tagNow0 = (TString)plotVarName+"plotVars"; tagNow1 = (TString)tagNow0+"_mean"; tagNow1.ReplaceAll(" , ","");
@@ -3500,7 +3642,6 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV) {
             TH1 * his1(NULL);
             if     (nPlotType == 0) his1 = his_clos  [typeName][nTypeBinNow][nBinZnow];
             else if(nPlotType == 1) his1 = his_relErr[typeName][nTypeBinNow][nBinZnow];
-            else assert(0);
 
             if(hisNameNow == "") { hisNameNow = his1->GetName();  hisTitleNow = his1->GetTitle(); }
 
@@ -3521,7 +3662,6 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV) {
             TH1 * hisSum(NULL);
             if     (nPlotType == 0) hisSum = his_clos  [typeName][nTypeBinNow][nBinsZ];
             else if(nPlotType == 1) hisSum = his_relErr[typeName][nTypeBinNow][nBinsZ];
-            else assert(0);
 
             utils->param->clearAll();
             utils->param->NewOptB("doFracLargerSigma" , true);
@@ -3568,7 +3708,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV) {
 
                 // store it in the sigmaRelErr position
                 int nMetricNow = nMetrics;
-                assert(metricNameV[nMetricNow] == "sigmaRelErr"); // sanity check that the nMetricNow is correct
+                VERIFY(LOCATION,(TString)"Sanity check",(metricNameV[nMetricNow] == "sigmaRelErr")); // sanity check that the nMetricNow is correct
 
                 graphAvg_Xv[nMetricNow][nTypesSoFar] = nTypesSoFar; graphAvg_Xe[nMetricNow][nTypesSoFar] = EPS;
                 graphAvg_Yv[nMetricNow][nTypesSoFar] = yVal;        graphAvg_Ye[nMetricNow][nTypesSoFar] = yErr;
@@ -3602,7 +3742,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV) {
             }
             else {
               plotVarName = plotVars[nTypeBinNow-2];
-              tagNow0     = (TString)plotVarName+"plotVars_";
+              tagNow0     = (TString)utils->regularizeName(plotVarName)+"plotVars_";
 
               grph->GetXaxis()->SetTitle(plotVarName);
               grph->SetTitle((TString)metricTitlesNow[nMetricNow]);  
@@ -3616,7 +3756,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV) {
             grph->GetXaxis()->SetTitle(xTitle);
             grph->SetTitle(hisTitleNow);
 
-            mltGrphM[(TString)"all_"+xTitle+metricNameV[nMetricNow]]->Add(grph);
+            mltGrphM[(TString)"all_"+utils->regularizeName(xTitle)+metricNameV[nMetricNow]]->Add(grph);
 
             xV.clear(); yV.clear(); xE.clear(); yE.clear();
           }
@@ -3649,7 +3789,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV) {
 
 
   // ----------------------------------------------------------------------------------------------------------- 
-  // calculate the nPoisson metric and the Kolmogorovt test of the distributions
+  // calculate the nPoisson metric and the Kolmogorov test of the distributions
   // ----------------------------------------------------------------------------------------------------------- 
   for(int nTypeMLMnow=0; nTypeMLMnow<2; nTypeMLMnow++) {
     int nTypeIn = (nTypeMLMnow == 0) ? nMLMsIn : nPDFsIn;
@@ -3668,12 +3808,12 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV) {
       double yVal = utils->param->GetOptF("nPoisson");
 
       int nMetricNow = nMetrics+1;
-      assert(metricNameV[nMetricNow] == "N_pois"); // sanity check that the nMetricNow is correct
+      VERIFY(LOCATION,(TString)"Sanity check",(metricNameV[nMetricNow] == "N_pois")); // sanity check that the nMetricNow is correct
 
       graphAvg_Xv[nMetricNow][nTypesSoFar] = nTypesSoFar; graphAvg_Xe[nMetricNow][nTypesSoFar] = EPS;
       graphAvg_Yv[nMetricNow][nTypesSoFar] = yVal;        graphAvg_Ye[nMetricNow][nTypesSoFar] = EPS;
 
-      // Kolmogorovt test
+      // Kolmogorov test
       // ----------------------------------------------------------------------------------------------------------- 
       utils->param->clearAll();
       utils->param->NewOptC("Kolmogorov_opt" , "prob_dist");
@@ -3681,7 +3821,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV) {
       yVal = utils->param->GetOptF("Kolmogorov_dist");
       
       nMetricNow++;
-      assert(metricNameV[nMetricNow] == "KS_test"); // sanity check that the nMetricNow is correct
+      VERIFY(LOCATION,(TString)"Sanity check",(metricNameV[nMetricNow] == "KS_test")); // sanity check that the nMetricNow is correct
 
       graphAvg_Xv[nMetricNow][nTypesSoFar] = nTypesSoFar; graphAvg_Xe[nMetricNow][nTypesSoFar] = EPS;
       graphAvg_Yv[nMetricNow][nTypesSoFar] = yVal;        graphAvg_Ye[nMetricNow][nTypesSoFar] = EPS;
@@ -3699,31 +3839,41 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV) {
     vector <int> nGrphV;
 
     if     (nMultGrphNow == 0) {
-      nMetricNow = 0; nGrphV.push_back(nMetricNow); assert(metricNameV[nMetricNow] == "mean"); // sanity check that the nMetricNow is correct
+      nMetricNow = 0; nGrphV.push_back(nMetricNow);
+      VERIFY(LOCATION,(TString)"Sanity check",(metricNameV[nMetricNow] == "mean")); // sanity check that the nMetricNow is correct
       yAxisTitle = (TString)"< "+biasTitle+" >";
     }
     else if(nMultGrphNow == 1) {
-      nMetricNow = 1; nGrphV.push_back(nMetricNow); assert(metricNameV[nMetricNow] == "sigma"); // sanity check that the nMetricNow is correct
-      nMetricNow = 2; nGrphV.push_back(nMetricNow); assert(metricNameV[nMetricNow] == "sigma_68"); // sanity check that the nMetricNow is correct
+      nMetricNow = 1; nGrphV.push_back(nMetricNow);
+      VERIFY(LOCATION,(TString)"Sanity check",(metricNameV[nMetricNow] == "sigma")); // sanity check that the nMetricNow is correct
+      nMetricNow = 2; nGrphV.push_back(nMetricNow);
+      VERIFY(LOCATION,(TString)"Sanity check",(metricNameV[nMetricNow] == "sigma_68")); // sanity check that the nMetricNow is correct
       yAxisTitle = "< #sigma >";
     }
     else if(nMultGrphNow == 2) {
-      nMetricNow = 3; nGrphV.push_back(nMetricNow); assert(metricNameV[nMetricNow] == "fracSigma_2"); // sanity check that the nMetricNow is correct
-      nMetricNow = 4; nGrphV.push_back(nMetricNow); assert(metricNameV[nMetricNow] == "fracSigma_3"); // sanity check that the nMetricNow is correct
-      nMetricNow = 5; nGrphV.push_back(nMetricNow); assert(metricNameV[nMetricNow] == "fracSig68_2"); // sanity check that the nMetricNow is correct
-      nMetricNow = 6; nGrphV.push_back(nMetricNow); assert(metricNameV[nMetricNow] == "fracSig68_3"); // sanity check that the nMetricNow is correct
+      nMetricNow = 3; nGrphV.push_back(nMetricNow);
+      VERIFY(LOCATION,(TString)"Sanity check",(metricNameV[nMetricNow] == "fracSigma_2")); // sanity check that the nMetricNow is correct
+      nMetricNow = 4; nGrphV.push_back(nMetricNow);
+      VERIFY(LOCATION,(TString)"Sanity check",(metricNameV[nMetricNow] == "fracSigma_3")); // sanity check that the nMetricNow is correct
+      nMetricNow = 5; nGrphV.push_back(nMetricNow);
+      VERIFY(LOCATION,(TString)"Sanity check",(metricNameV[nMetricNow] == "fracSig68_2")); // sanity check that the nMetricNow is correct
+      nMetricNow = 6; nGrphV.push_back(nMetricNow);
+      VERIFY(LOCATION,(TString)"Sanity check",(metricNameV[nMetricNow] == "fracSig68_3")); // sanity check that the nMetricNow is correct
       yAxisTitle = "< f >";
     }
     else if(nMultGrphNow == 3) {
-      nMetricNow = 7; nGrphV.push_back(nMetricNow); assert(metricNameV[nMetricNow] == "sigmaRelErr"); // sanity check that the nMetricNow is correct
+      nMetricNow = 7; nGrphV.push_back(nMetricNow);
+      VERIFY(LOCATION,(TString)"Sanity check",(metricNameV[nMetricNow] == "sigmaRelErr")); // sanity check that the nMetricNow is correct
       yAxisTitle = "#sigma(#delta/#sigma)";
     }
     else if(nMultGrphNow == 4) {
-      nMetricNow = 8; nGrphV.push_back(nMetricNow); assert(metricNameV[nMetricNow] == "N_pois"); // sanity check that the nMetricNow is correct
+      nMetricNow = 8; nGrphV.push_back(nMetricNow);
+      VERIFY(LOCATION,(TString)"Sanity check",(metricNameV[nMetricNow] == "N_pois")); // sanity check that the nMetricNow is correct
       yAxisTitle = metricTitleV[nMetricNow];
     }
     else if(nMultGrphNow == 5) {
-      nMetricNow = 9; nGrphV.push_back(nMetricNow); assert(metricNameV[nMetricNow] == "KS_test"); // sanity check that the nMetricNow is correct
+      nMetricNow = 9; nGrphV.push_back(nMetricNow);
+      VERIFY(LOCATION,(TString)"Sanity check",(metricNameV[nMetricNow] == "KS_test")); // sanity check that the nMetricNow is correct
       yAxisTitle = metricTitleV[nMetricNow];
     }
     else break;
@@ -3767,6 +3917,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV) {
   // create a plot of the distribution of the regression target, compared to all of the different solutions
   // first draw only the various PDF metrics vs the target distribution (nDrawNow<nPDFs), then draw all together
   // -----------------------------------------------------------------------------------------------------------
+  vector <TH1*> hisToDelV;
   for(int nDrawNow=0; nDrawNow<nPDFs+1; nDrawNow++) {
     TString nDrawNowStr = utils->intToStr(nDrawNow);
     if(nPDFs == 1 && nDrawNow > 0) continue;
@@ -3818,6 +3969,8 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV) {
       outputs->draw->NewOptC("axisTitleY"          , hisRegTrgV[0]->GetYaxis()->GetTitle());
       outputs->drawHis1dV(hisRegTrgV);
     }
+
+    for(int nHisNow=0; nHisNow<(int)hisRegTrgV.size(); nHisNow++) { hisToDelV.push_back(hisRegTrgV[nHisNow]); }
     hisRegTrgV.clear();
   }
 
@@ -3866,14 +4019,41 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV) {
   // TString mvCmnd        = (TString)"mv "+outDirNameNow+"*.C "+(hasPlotExt ? (TString)outDirNameNow+"*."+plotExt : "")+" "+plotDirName;
   // utils->exeShellCmndOutput(mvCmnd,true,true);
 
+
+  // -----------------------------------------------------------------------------------------------------------
   // cleanup
+  // -----------------------------------------------------------------------------------------------------------
+  for(map<TString,TH2*> ::iterator itr = his_corRegTrgZ.begin(); itr!=his_corRegTrgZ.end(); ++itr) {
+    TString typeName = itr->first;
+
+    for(int nTypeBinNow=0; nTypeBinNow<(int)his_clos[typeName].size(); nTypeBinNow++) {
+      for(int nBinZnow=0; nBinZnow<(int)his_clos[typeName][nTypeBinNow].size(); nBinZnow++) {
+        DELNULL(his_clos[typeName][nTypeBinNow][nBinZnow]);
+      }
+    }
+    
+    for(int nTypeBinNow=0; nTypeBinNow<(int)his_relErr[typeName].size(); nTypeBinNow++) {
+      for(int nBinZnow=0; nBinZnow<(int)his_relErr[typeName][nTypeBinNow].size(); nBinZnow++) {
+        DELNULL(his_relErr[typeName][nTypeBinNow][nBinZnow]);
+      }
+    }
+    
+    for(int nTypeBinNow=0; nTypeBinNow<(int)his_regTrgZ[typeName].size(); nTypeBinNow++) {
+      DELNULL(his_regTrgZ[typeName][nTypeBinNow]);
+    }
+
+    DELNULL(his_corRegTrgZ[typeName]);
+  }
+
+  for(int nHisNow=0; nHisNow<(int)hisToDelV.size(); nHisNow++) { DELNULL(hisToDelV[nHisNow]); }
+
   DELNULL(var);
   nameV_MLM_v.clear(); nameV_MLM_e.clear(); nameV_MLM_w.clear();
   titleV_MLM.clear(); titleV_PDF.clear(); nameV_PDF.clear(); nameV_PDF_b.clear();
   tagNameV.clear(); pdfTagWgtV.clear(); pdfTagErrV.clear();
   plotVars.clear(); plotVarForms.clear(); varPlot_binE.clear(); varPlot_binC.clear();
   typeTitleV.clear(); metricNameV.clear(); metricTitleV.clear();
-  graphAvg_Xv.clear(); graphAvg_Xe.clear(); graphAvg_Yv.clear(); graphAvg_Ye.clear();
+  graphAvg_Xv.clear(); graphAvg_Xe.clear(); graphAvg_Yv.clear(); graphAvg_Ye.clear(); hisToDelV.clear();
   mltGrphAvgV.clear(); his_regTrgZ.clear(); his_corRegTrgZ.clear(); his_clos.clear(); his_relErr.clear();
 
   return;

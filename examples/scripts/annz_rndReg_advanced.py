@@ -136,9 +136,17 @@ if glob.annz["doGenInputTrees"]:
   useWgtKNN = True
   if useWgtKNN:
     glob.annz["useWgtKNN"]             = True
-    glob.annz["minNobjInVol_wgtKNN"]   = 50
-    glob.annz["inAsciiFiles_wgtKNN"]   = "boss_dr10_colorCuts.csv"
-    glob.annz["inAsciiVars_wgtKNN"]    = glob.annz["inAsciiVars"]
+    glob.annz["minNobjInVol_wgtKNN"]   = 100
+    # glob.annz["inAsciiFiles_wgtKNN"]   = "boss_dr10_colorCuts.csv"
+    # glob.annz["inAsciiVars_wgtKNN"]    = "F:MAG_U;F:MAGERR_U;F:MAG_G;F:MAGERR_G;F:MAG_R;F:MAGERR_R;F:MAG_I;F:MAGERR_I;F:MAG_Z;F:MAGERR_Z;D:Z"
+    glob.annz["inAsciiFiles_wgtKNN"]   = "boss_dr10_0_large_magCut_noZ.csv"
+    glob.annz["inAsciiVars_wgtKNN"]    = "F:MAG_U;F:MAGERR_U;F:MAG_G;F:MAGERR_G;F:MAG_R;F:MAGERR_R;F:MAG_I;F:MAGERR_I;F:MAG_Z;F:MAGERR_Z"
+    
+    # some random weird choice for [weightInp_wgtKNN, weightRef_wgtKNN] in this example, just to get different
+    # distributions for the input and reference samples, so that we have something to calculate weights for...
+    glob.annz["weightInp_wgtKNN"]      = "1/pow(MAG_G*MAG_U*MAG_R*MAG_I, 5)"
+    glob.annz["weightRef_wgtKNN"]      = "1/MAGERR_G"
+
     glob.annz["weightVarNames_wgtKNN"] = "MAG_U;MAG_G;MAG_R;MAG_I;MAG_Z"
 
     # optional parameters (may leave empty as default value):
@@ -147,6 +155,7 @@ if glob.annz["doGenInputTrees"]:
     glob.annz["outAsciiVars_wgtKNN"]   = "MAG_U;MAG_G;MAGERR_U"                        # write out two additional variables to the output file
     glob.annz["weightRef_wgtKNN"]      = "(MAGERR_R<0.7)*1 + (MAGERR_R>=0.7)/MAGERR_R" # down-weight objects with high MAGERR_R
     glob.annz["cutRef_wgtKNN"]         = "MAGERR_U<200"                                # only use objects which have small MAGERR_U
+    glob.annz["doWidthRescale_wgtKNN"] = True
 
     # - trainTestTogether_wgtKNN
     #   by default, the weights are computed for the entire sample [trainTestTogether_wgtKNN = True].
@@ -156,7 +165,7 @@ if glob.annz["doGenInputTrees"]:
     #   with regards to [ref sample], and to separately get [test sample] with regards to [ref sample]. The latter
     #   is only recommended if the training and testing samples have different inpput-variable distributions.
     glob.annz["trainTestTogether_wgtKNN"] = False
-    
+
     # example for using a root file as input, instead of an ascii input:
     useRootInputFile = False
     if useRootInputFile:
@@ -288,6 +297,37 @@ if glob.annz["doTrain"]:
       glob.annz["userCuts_train"]    = glob.annz["userCuts_valid"]    = ""
       glob.annz["userWeights_train"] = glob.annz["userWeights_valid"] = ""
 
+    # --------------------------------------------------------------------------------------------------
+    # bias-correction procedure on MLMs -
+    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    #   - doBiasCorMLM      - whether or not to perform the correction for MLMs (during training)
+    #   - biasCorMLMopt     - MLM configuration options for the bias-correction for MLMs - simple structures are recommended !!!
+    #                         - can take the same format as userMLMopts (e.g., [biasCorMLMopt="ANNZ_MLM=BDT:VarTransform=N:NTrees=100"])
+    #                         - can be empty (then the job options will be automatically generated, same as is setting [userMLMopts=""])
+    #                         - can be set as [biasCorMLMopt="same"], then the same configuration options as for the nominal MLM
+    #                           for which the bias-correction is applied are used
+    #                       - simple MLMs are recommended, e.g.: 
+    #                         - BDT with around 50-100 trees:
+    #                           "ANNZ_MLM=BDT:VarTransform=N:NTrees=100:BoostType=AdaBoost"
+    #                         - ANN with a simple layer structure, not too many NCycles etc.:
+    #                           "ANNZ_MLM=ANN::HiddenLayers=N,N+5:VarTransform=N,P:TrainingMethod=BFGS:TestRate=5:NCycles=500:UseRegulator=True"
+    #   - biasCorMLMwithInp - add the nominal MLM as an input variable for the new MLM of the bias-correction (not necessary, as it
+    #                         may just add noise)
+    #   - alwaysKeepBiasCor - whether or not to not check the KS-test and N_poiss metrics for improvement in order to
+    #                         possibly reject the bias correction (check performed if [alwaysKeepBiasCor] is set to True)
+    # - example use:
+    # -----------------------------------------------------------------------------------------------------------
+    doBiasCorMLM = True
+    if doBiasCorMLM:
+      glob.annz["doBiasCorMLM"]      = True
+      glob.annz["biasCorMLMwithInp"] = False
+      glob.annz["alwaysKeepBiasCor"] = False
+      # as an example, a couple of choices of MLM options (this shouldn't matter much though...)
+      if nMLMnow % 2 == 0:
+        glob.annz["biasCorMLMopt"]   = "ANNZ_MLM=BDT:VarTransform=N:NTrees=50:BoostType=AdaBoost"
+      else:
+        glob.annz["biasCorMLMopt"]   = "ANNZ_MLM=ANN:HiddenLayers=N+5:VarTransform=N,P:TrainingMethod=BFGS:NCycles=500:UseRegulator=True"
+
     # run ANNZ with the current settings
     runANNZ()
 
@@ -375,7 +415,7 @@ if glob.annz["doOptim"] or glob.annz["doEval"]:
 
   # --------------------------------------------------------------------------------------------------
   # max_sigma68_PDF, max_bias_PDF, max_frac68_PDF
-  #   - if max_sigma68_PDF,max_bias_PDF are positive, they put thresholds on the maximal value of
+  #   - if max_sigma68_PDF, max_bias_PDF are positive, they put thresholds on the maximal value of
   #     the scatter (max_sigma68_PDF), bias (max_bias_PDF) or outlier-fraction (max_frac68_PDF) of an
   #     MLM which may be included in the PDF created in randomized regression
   # --------------------------------------------------------------------------------------------------
@@ -439,5 +479,5 @@ if glob.annz["doOptim"] or glob.annz["doEval"]:
     # run ANNZ with the current settings
     runANNZ()
 
-log.info(whtOnBlck(" - "+time.strftime("%d/%m/%y %H:%M:%S")+" - finished runing ANNZ !"))
+log.info(whtOnBlck(" - "+time.strftime("%d/%m/%y %H:%M:%S")+" - finished running ANNZ !"))
 

@@ -34,7 +34,7 @@ void ANNZ::Init() {
 
   // special case where we just create KNN weight trees
   // -----------------------------------------------------------------------------------------------------------
-  if(glob->GetOptB("doGenInputTrees")) return;
+  if(glob->GetOptB("doGenInputTrees") && !glob->GetOptB("doOnlyKnnErr")) return;
 
   // -----------------------------------------------------------------------------------------------------------
   // TMVA stuff
@@ -81,10 +81,11 @@ void ANNZ::Init() {
   factoryFlags += (TString)((glob->GetOptC("transANNZ") == "")  ? ""                  : (TString)":Transformations="+glob->GetOptC("transANNZ"));
   factoryFlags += (TString)( glob->GetOptB("useCoutCol")        ? ":Color"            : ":!Color");
   factoryFlags += (TString)( glob->GetOptB("isBatch")           ? ":!DrawProgressBar" : ":DrawProgressBar");
-  factoryFlags += (TString)( inLOG(Log::DEBUG_1)                ? ":!Silent"          : ":Silent");
+  factoryFlags += (TString)( inLOG(Log::DEBUG_1)                ? ":!Silent:V"        : ":Silent:!V");
 
   glob->NewOptC("factoryFlags" ,factoryFlags);
-  glob->NewOptC("trainFlagsMLM",(TString)(inLOG(Log::DEBUG_2) ? ":!H:V": ":!H:!V"));
+  glob->NewOptC("trainFlagsMLM","");
+  // glob->NewOptC("trainFlagsMLM",(TString)(inLOG(Log::DEBUG_2) ? ":!H": ":!H"));
 
   if(glob->GetOptB("doTrain") && !glob->GetOptB("isBatch")) {
     aLOG(Log::WARNING) <<coutGreen<<" - training progress bar is active - if using a log file, it will become very large... (Can set "
@@ -108,8 +109,29 @@ void ANNZ::Init() {
 
   optNames.clear();
 
+  // -----------------------------------------------------------------------------------------------------------
+  // check the versionTag from the generated input trees
+  // -----------------------------------------------------------------------------------------------------------
+  OptMaps * optMap = new OptMaps("localOptMap");
+
+  optNames.push_back(glob->versionTag()); optMap->NewOptC(glob->versionTag(), glob->GetOptC(glob->versionTag()));
+
+  utils->optToFromFile(&optNames,optMap,glob->GetOptC("userOptsFile_genInputTrees"),"READ","SILENT_KeepFile",inLOG(Log::DEBUG));
+
+  if(utils->getCodeVersionDiff(optMap->GetOptC(glob->versionTag())) != 0) {
+    aLOG(Log::WARNING) <<coutWhiteOnBlack<<" - Got \"versionTag\" = "<<coutPurple<<optMap->GetOptC(glob->versionTag())
+                       <<coutWhiteOnBlack<<" from "<<coutYellow<<glob->GetOptC("userOptsFile_genInputTrees")
+                       <<coutWhiteOnBlack<<", while the current running version is "
+                       <<coutPurple<<glob->GetOptC(glob->versionTag())<<coutWhiteOnBlack
+                       <<" - we can go on, but please consider generating this directory from scratch ..." <<coutDef<<endl;
+  }
+
+  DELNULL(optMap);
+  optNames.clear();
+
+
   int nSplit(glob->GetOptI("nSplit"));
-  if(!glob->GetOptB("doEval")) {
+  if(!glob->GetOptB("doEval") && !glob->GetOptB("doOnlyKnnErr")) {
     VERIFY(LOCATION,(TString)"Cant run with [\"nSplit\" = "+utils->intToStr(nSplit)+"] ..."
                             +" Must set to 2 when generating the input trees !",(nSplit == 2));
   }
@@ -178,7 +200,7 @@ void ANNZ::Init() {
   VERIFY(LOCATION,(TString)"Must set (nMLMs>0)"      ,(glob->GetOptI("nMLMs") > 0));
   VERIFY(LOCATION,(TString)"Must set (nMLMnow<nMLMs)",(glob->GetOptI("nMLMs") > glob->GetOptI("nMLMnow")));
 
-  if(glob->GetOptB("doRegression")) {
+  if(glob->GetOptB("doRegression") && !glob->GetOptB("doOnlyKnnErr")) {
     VERIFY(LOCATION,(TString)"Must set (minValZ < maxValZ)",(glob->GetOptF("minValZ") < glob->GetOptF("maxValZ")));
   }
 
@@ -270,8 +292,12 @@ void ANNZ::Init() {
   // no PDFs currently defined for classification
   else                                  { glob->SetOptI("nPDFs", 0                                    ); }
 
-  if(glob->GetOptB("doRegression") && !glob->GetOptB("doTrain")) {
+  if(glob->GetOptB("doRegression") && !glob->GetOptB("doTrain") && !glob->GetOptB("doOnlyKnnErr")) {
     aLOG(Log::INFO) <<coutBlue<<" - Will generate "<<coutYellow<<glob->GetOptI("nPDFs")<<coutBlue<<" PDFs ... "<<coutDef<<endl;
+
+    // set this to true, so that we always look for bis-correction
+    // MLMs (if these are not found, nothing bad happens...)
+    glob->SetOptB("doBiasCorMLM",true);
   }
 
   if(glob->GetOptB("doRegression")) {
@@ -375,8 +401,15 @@ void ANNZ::Init() {
   if(nErrINP % 2 == 1)  nErrINP++;
   glob->SetOptI("nErrINP",nErrINP);
 
-  // set the size of the vector which holds the MLM types
+  // set the size of the vectors which holds the MLM types
   typeMLM.resize(glob->GetOptI("nMLMs"),TMVA::Types::kVariable);
+
+  // set the size of the vector which holds the option for each MLM in single/randomized
+  // regression to include the nominal MLM as an input parameter for the MLM bias correction
+  // (for training, we initialize here from the global variable. otherwise, we load this
+  // option per-MLM as part of loadOptsMLM())
+  // -----------------------------------------------------------------------------------------------------------
+  hasBiasCorMLMinp.resize(glob->GetOptI("nMLMs"), glob->GetOptB("biasCorMLMwithInp"));
 
   // internal base-names for PDFs generated by TMVA - These should not be changed unless some convention
   // changes in TMVA - These are not to be confused with the PDFs which are computed by ANNZ !!!
@@ -455,7 +488,7 @@ void ANNZ::Init() {
       aLOG(Log::INFO) <<coutGreen<<" -- Nothing to be done... (can force re-training with \"overwriteExistingTrain\")"<<coutDef<<endl;
     }
   }
-  if(!glob->GetOptB("doTrain")) {
+  if(!glob->GetOptB("doTrain") && !glob->GetOptB("doOnlyKnnErr")) {
     aLOG(Log::INFO) <<coutPurple<<LINE_FILL('-',56)                   <<coutDef<<endl;
     aLOG(Log::INFO) <<coutBlue  <<" - All ACCEPTED MLMs: "<<allMLMsIn <<coutDef<<endl;
     aLOG(Log::INFO) <<coutBlue  <<" - All REJECTED MLMs: "<<allMLMsOut<<coutDef<<endl;
@@ -467,6 +500,8 @@ void ANNZ::Init() {
     VERIFY(LOCATION,(TString)"No trained MLMs found ... Please re-run training !",(nFoundMLMs > 0));
   }
 
+  if(glob->GetOptB("doOnlyKnnErr")) trainingNeeded = false;
+  
   // initialize the outputs with the training directory and reset it
   if(trainingNeeded) {
     outputs->InitializeDir(glob->GetOptC("outDirNameFull"),glob->GetOptC("baseName"));
@@ -516,24 +551,27 @@ void ANNZ::setTags() {
   TString baseTag_PDF_a  = "_PDF_a";  glob->NewOptC("baseTag_PDF_avg",baseTag_PDF_a);
   TString baseTag_PDF_m  = "_PDF_m";  glob->NewOptC("baseTag_PDF_max",baseTag_PDF_m);
   TString baseTag_errKNN = "_dzTrg";  glob->NewOptC("baseTag_errKNN", baseTag_errKNN);
-
+  
+  mlmBaseTag  .clear();
   mlmTagName  .resize(nMLMs); mlmTagErr   .resize(nMLMs); mlmTagErrKNN.resize(nMLMs);
   mlmTagWeight.resize(nMLMs); mlmTagClsVal.resize(nMLMs); mlmTagIndex .resize(nMLMs);
+  mlmTagBias  .resize(nMLMs);
 
   inErrTag.resize(nMLMs,vector<TString>(0,"")); // the internal length is set in setNominalParams()
   
   for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) {
-    TString MLMname       = (TString)glob->GetOptC("basePrefix")+utils->intToStr(nMLMnow); // format of "ANNZ_0"
+    TString MLMname = (TString)glob->GetOptC("basePrefix")+utils->intToStr(nMLMnow); // format of "ANNZ_0"
 
-    mlmTagName  [nMLMnow] = (TString)MLMname;
-    mlmTagWeight[nMLMnow] = (TString)MLMname+baseTag_w;
-    mlmTagClsVal[nMLMnow] = (TString)MLMname+"_clsVal";
-    mlmTagIndex [nMLMnow] = (TString)MLMname+"_index";
-    mlmTagErrKNN[nMLMnow] = (TString)MLMname+baseTag_errKNN;
+    mlmTagName  [nMLMnow]  = (TString)MLMname;                 mlmBaseTag[mlmTagName  [nMLMnow]]   = MLMname;
+    mlmTagWeight[nMLMnow]  = (TString)MLMname+baseTag_w;       mlmBaseTag[mlmTagWeight[nMLMnow]]   = MLMname;
+    mlmTagBias  [nMLMnow]  = (TString)MLMname+"_bias";         mlmBaseTag[mlmTagBias  [nMLMnow]]   = MLMname;
+    mlmTagClsVal[nMLMnow]  = (TString)MLMname+"_clsVal";       mlmBaseTag[mlmTagClsVal[nMLMnow]]   = MLMname;
+    mlmTagIndex [nMLMnow]  = (TString)MLMname+"_index";        mlmBaseTag[mlmTagIndex [nMLMnow]]   = MLMname;
+    mlmTagErrKNN[nMLMnow]  = (TString)MLMname+baseTag_errKNN;  mlmBaseTag[mlmTagErrKNN[nMLMnow]]   = MLMname;
 
-    mlmTagErr[nMLMnow]["N"] = (TString)MLMname+baseTag_e+"N";
-    mlmTagErr[nMLMnow][""]  = (TString)MLMname+baseTag_e    ;
-    mlmTagErr[nMLMnow]["P"] = (TString)MLMname+baseTag_e+"P";
+    mlmTagErr[nMLMnow]["N"] = (TString)MLMname+baseTag_e+"N";  mlmBaseTag[mlmTagErr[nMLMnow]["N"]] = MLMname;
+    mlmTagErr[nMLMnow][""]  = (TString)MLMname+baseTag_e    ;  mlmBaseTag[mlmTagErr[nMLMnow][""] ] = MLMname;
+    mlmTagErr[nMLMnow]["P"] = (TString)MLMname+baseTag_e+"P";  mlmBaseTag[mlmTagErr[nMLMnow]["P"]] = MLMname;
   }
 
   if(nPDFs > 0) {
@@ -567,6 +605,13 @@ void ANNZ::setTags() {
 
   return;
 }
+
+// ===========================================================================================================
+TString ANNZ::getBaseTagName(TString MLMname) {
+// ============================================
+  VERIFY(LOCATION,(TString)"(MLMname = \""+MLMname+"\") has unsupported format",(mlmBaseTag.find(MLMname) != mlmBaseTag.end()));
+  return mlmBaseTag[MLMname];
+}
 // ===========================================================================================================
 TString ANNZ::getTagName(int nMLMnow) {
 // ====================================
@@ -585,6 +630,12 @@ TString ANNZ::getTagWeight(int nMLMnow) {
 // ======================================
   VERIFY(LOCATION,(TString)"(nMLMnow = "+utils->intToStr(nMLMnow)+") out of range ?!?",(nMLMnow >= 0 && nMLMnow < glob->GetOptI("nMLMs")));
   return mlmTagWeight[nMLMnow];
+}
+// ===========================================================================================================
+TString ANNZ::getTagBias(int nMLMnow) {
+// ====================================
+  VERIFY(LOCATION,(TString)"(nMLMnow = "+utils->intToStr(nMLMnow)+") out of range ?!?",(nMLMnow >= 0 && nMLMnow < glob->GetOptI("nMLMs")));
+  return mlmTagBias[nMLMnow];
 }
 // ===========================================================================================================
 TString ANNZ::getTagClsVal(int nMLMnow) {
@@ -671,7 +722,9 @@ TString ANNZ::getKeyWord(TString MLMname, TString sequence, TString key) {
   // -----------------------------------------------------------------------------------------------------------
   if(sequence == "trainXML") {
     // -----------------------------------------------------------------------------------------------------------
-    TString trainDirNameFullNow = glob->GetOptC("trainDirNameFull") + (TString)((glob->GetOptB("doTrain")) ? "" : MLMname+"/" );
+    TString trainDirNameFullNow = glob->GetOptC("trainDirNameFull");
+    if(!glob->GetOptB("doTrain")) trainDirNameFullNow += (TString)getBaseTagName(MLMname)+"/";
+
     TString outFileDirTrain     = trainDirNameFullNow+MLMname+"_weights/";
     TString outXmlFileName      = outFileDirTrain+glob->GetOptC("typeANNZ")+"_"+MLMname+".weights.xml";
     TString configSaveFileName  = outFileDirTrain+"saveTrainOpt_"+MLMname+".txt";
@@ -787,15 +840,28 @@ TString ANNZ::getRegularStrForm(TString strIn, VarMaps * var, TChain * aChain) {
  *           cuts for binned-classification etc.
  */
 // ===========================================================================================================
-void  ANNZ::loadOptsMLM() {
-// ========================
+void ANNZ::loadOptsMLM() {
+// =======================
   aLOG(Log::DEBUG_1) <<coutWhiteOnBlack<<coutYellow<<" - starting ANNZ::loadOptsMLM() ... "<<coutDef<<endl;
 
   int     nMLMs     = glob->GetOptI("nMLMs");
   TString weightKNN = glob->GetOptC("baseName_wgtKNN");
 
+  // general initializations
   inNamesVar.resize(nMLMs); inNamesErr.resize(nMLMs); inVarsScaleFunc.resize(nMLMs);
 
+  for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) {
+    TString MLMname = getTagName(nMLMnow);
+
+    userCutsM[        "_sig"]   = ""; userCutsM[        "_bck"]   = "";
+    userCutsM[MLMname+"_sig"]   = ""; userCutsM[MLMname+"_bck"]   = "";
+    userCutsM[MLMname+"_train"] = ""; userCutsM[MLMname+"_valid"] = "";
+    userWgtsM[MLMname+"_train"] = ""; userWgtsM[MLMname+"_valid"] = "";
+  }
+
+  // -----------------------------------------------------------------------------------------------------------
+  // training
+  // -----------------------------------------------------------------------------------------------------------
   if(glob->GetOptB("doTrain")) {
     int     nMLMnow = glob->GetOptI("nMLMnow");
     TString MLMname = getTagName(nMLMnow);
@@ -817,12 +883,15 @@ void  ANNZ::loadOptsMLM() {
           userWgtsM[MLM_trainValid] = weightKNN;
         }
         else {
-          userWgtsM[MLM_trainValid] = (TString)weightKNN+"*("+userWgtsM[MLM_trainValid]+")";
+          userWgtsM[MLM_trainValid] = (TString)"("+weightKNN+")*("+userWgtsM[MLM_trainValid]+")";
         }
       }
     }
 
   }
+  // -----------------------------------------------------------------------------------------------------------
+  // optimization, validation and evaluation
+  // -----------------------------------------------------------------------------------------------------------
   else {
     map <TString, map<TString,bool> > modCW;
     // -----------------------------------------------------------------------------------------------------------
@@ -873,6 +942,7 @@ void  ANNZ::loadOptsMLM() {
     OptMaps          * optMap = new OptMaps("localOptMap");
     TString          saveName = "";
     vector <TString> optNames;
+    saveName = glob->versionTag();  optNames.push_back(saveName); optMap->NewOptC(saveName);
     saveName = "configSave_name";   optNames.push_back(saveName); optMap->NewOptC(saveName);
     saveName = "configSave_type";   optNames.push_back(saveName); optMap->NewOptC(saveName);
     saveName = "inputVariables";    optNames.push_back(saveName); optMap->NewOptC(saveName);
@@ -889,6 +959,10 @@ void  ANNZ::loadOptsMLM() {
     saveName = "binCls_nBins";      optNames.push_back(saveName); optMap->NewOptI(saveName);
     saveName = "binCls_clsBins";    optNames.push_back(saveName); optMap->NewOptC(saveName);
     saveName = "binCls_maxBinW";    optNames.push_back(saveName); optMap->NewOptF(saveName);
+
+    if(glob->GetOptB("doRegression") && !glob->GetOptB("doBinnedCls")) {
+      saveName = "biasCorMLMwithInp"; optNames.push_back(saveName); optMap->NewOptB(saveName);
+    }
 
     // store general information
     // -----------------------------------------------------------------------------------------------------------
@@ -924,6 +998,14 @@ void  ANNZ::loadOptsMLM() {
                                "\", but expected to be \""+MLMname+"\") from file ("+configSaveFileName+")",
                                (optMap->GetOptC("configSave_name") == MLMname));
 
+      if(utils->getCodeVersionDiff(optMap->GetOptC(glob->versionTag())) != 0) {
+        aLOG(Log::WARNING) <<coutWhiteOnBlack<<" - Got \"versionTag\" = "<<coutPurple<<optMap->GetOptC(glob->versionTag())
+                           <<coutWhiteOnBlack<<" from "<<coutYellow<<configSaveFileName
+                           <<coutWhiteOnBlack<<", while the current running version is "
+                           <<coutPurple<<glob->GetOptC(glob->versionTag())<<coutWhiteOnBlack
+                           <<" - we can go on, but please consider generating this directory from scratch ..." <<coutDef<<endl;
+      }
+
       // for binned classification
       if(glob->GetOptB("doBinnedCls")) {
         userCutsM[MLMname+"_sig"] = (TCut)optMap->GetOptC(MLMname+"_sig");
@@ -933,6 +1015,9 @@ void  ANNZ::loadOptsMLM() {
         optNames.erase(std::remove(optNames.begin(), optNames.end(), MLMname+"_bck"), optNames.end()); optMap->DelOptC(MLMname+"_bck");
       }
 
+      if(glob->GetOptB("doRegression") && !glob->GetOptB("doBinnedCls")) {
+        hasBiasCorMLMinp[nMLMnow] = optMap->GetOptB("biasCorMLMwithInp");
+      }
 
       // isDynBinCls - avoid direct comparison of the binCls_clsBins string, since different machines
       // may have slightly different quantile/floating point calculation, and so while the derived bins may
@@ -1044,7 +1129,7 @@ void  ANNZ::loadOptsMLM() {
           wgtFinal_valid = weightKNN;
         }
         else if(!(wgtFinal_valid.Contains(weightKNN))) {
-          wgtFinal_valid = (TString)weightKNN+"*("+wgtFinal_valid+")";
+          wgtFinal_valid = (TString)"("+weightKNN+")*("+wgtFinal_valid+")";
         }
       }
       userWgtsM[MLMname+"_valid"] = utils->cleanWeightExpr(wgtFinal_valid);
@@ -1147,8 +1232,8 @@ void ANNZ::setMethodCuts(VarMaps * var, int nMLMnow, bool verbose) {
   TString MLMname = getTagName(nMLMnow);
   VERIFY(LOCATION,(TString)"Memory leak ?! ",(dynamic_cast<VarMaps*>(var)));
 
-  bool debug = inLOG(Log::DEBUG_1) && verbose;
-  if(debug) aLOG(Log::DEBUG_1) <<coutYellow<<"  var->printCut("<<coutLightBlue<<MLMname<<coutYellow<<") ... : "<<coutDef<<endl;
+  bool debug = inLOG(Log::DEBUG_2) || (inLOG(Log::DEBUG_1) && verbose);
+  if(debug) aLOG(Log::DEBUG_1) <<coutYellow<<" - var->printCut("<<coutLightBlue<<MLMname<<coutYellow<<") ... : "<<coutDef<<endl;
 
   for(int nCutNow=0; nCutNow<100; nCutNow++) {
     TString cutName("");
@@ -1190,8 +1275,8 @@ TCut ANNZ::getTrainTestCuts(TString cutType, int nMLMnow, int split0, int split1
     if(cutTypeNow == "_comn") {
       if(glob->GetOptB("hasTruth") && !glob->GetOptB("doClassification")) {
         if(glob->GetOptB("useCutsMinMaxZ")) {
-          treeCuts += (TCut)(glob->GetOptC("zTrg")+TString::Format(" > %f",glob->GetOptF("minValZ")));
-          treeCuts += (TCut)(glob->GetOptC("zTrg")+TString::Format(" < %f",glob->GetOptF("maxValZ")));
+          treeCuts += (TCut)(glob->GetOptC("zTrg")+TString::Format(" >= %f",glob->GetOptF("minValZ")));
+          treeCuts += (TCut)(glob->GetOptC("zTrg")+TString::Format(" <= %f",glob->GetOptF("maxValZ")));
         }
       }
     }

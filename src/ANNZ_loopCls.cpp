@@ -459,8 +459,10 @@ void ANNZ::optimCls() {
   OptMaps * optMap = new OptMaps("localOptMap");
   TString          saveName("");
   vector <TString> optNames;
-  saveName = "optimMLMs_PRB"; optNames.push_back(saveName); optMap->NewOptC(saveName, orderedMLMs["PRB"]);
-  saveName = "optimMLMs_CLS"; optNames.push_back(saveName); optMap->NewOptC(saveName, orderedMLMs["CLS"]);
+
+  saveName = glob->versionTag();  optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(glob->versionTag()));
+  saveName = "optimMLMs_PRB";     optNames.push_back(saveName); optMap->NewOptC(saveName, orderedMLMs["PRB"]);
+  saveName = "optimMLMs_CLS";     optNames.push_back(saveName); optMap->NewOptC(saveName, orderedMLMs["CLS"]);
 
   utils->optToFromFile(&optNames,optMap,saveFileName,"WRITE");
 
@@ -525,10 +527,12 @@ void  ANNZ::doEvalCls() {
   aLOG(Log::INFO)<<coutYellow<<" - Getting optimization results from "<<coutGreen<<saveFileName<<coutYellow<<" ..."<<coutDef<<endl;
 
   OptMaps * optMap = new OptMaps("localOptMap");
-  TString          saveNameP(""), saveNameC(""), optimMLMs("");
+  TString          saveName(""), saveNameP(""), saveNameC(""), optimMLMs("");
   vector <TString> optNames;
-  saveNameP = "optimMLMs_PRB"; optNames.push_back(saveNameP); optMap->NewOptC(saveNameP);
-  saveNameC = "optimMLMs_CLS"; optNames.push_back(saveNameC); optMap->NewOptC(saveNameC);
+
+  saveName  = glob->versionTag(); optNames.push_back(saveName);  optMap->NewOptC(saveName);
+  saveNameP = "optimMLMs_PRB";    optNames.push_back(saveNameP); optMap->NewOptC(saveNameP);
+  saveNameC = "optimMLMs_CLS";    optNames.push_back(saveNameC); optMap->NewOptC(saveNameC);
 
   utils->optToFromFile(&optNames,optMap,saveFileName,"READ","SILENT_KeepFile",inLOG(Log::DEBUG_2));
 
@@ -736,7 +740,7 @@ void  ANNZ::doEvalCls() {
       int     nMLMnow   = getTagNow(MLMname);    TString MLMname_e = getTagError(nMLMnow);
       TString MLMname_w = getTagWeight(nMLMnow); TString MLMname_v = getTagClsVal(nMLMnow);
 
-      double  clasVal = getReader(var_0,ANNZ_readType::CLS,true ,nMLMnow);
+      double  clasVal = getReader(var_0,ANNZ_readType::CLS,true,nMLMnow);
       double  clsPrb  = getReader(var_0,ANNZ_readType::PRB,false,nMLMnow);
       double  clsWgt  = var_0->GetForm(MLMname_w);
 

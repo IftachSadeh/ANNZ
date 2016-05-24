@@ -45,7 +45,10 @@ void ANNZ::createTreeErrKNN(int nMLMnow) {
 
   // prepare the chain and input variables
   TChain * aChain = new TChain(inTreeName,inTreeName); aChain->SetDirectory(0); aChain->Add(inFileName); 
-  aLOG(Log::DEBUG) <<coutRed<<" - added chain "<<coutGreen<<inTreeName<<"("<<aChain->GetEntries()<<")"<<" from "<<coutBlue<<inFileName<<coutDef<<endl;
+  aLOG(Log::DEBUG) <<coutRed<<" - added chain "<<coutGreen<<inTreeName<<"("<<aChain->GetEntries()<<")"
+                   <<" from "<<coutBlue<<inFileName<<coutDef<<endl;
+
+  var_0->connectTreeBranchesForm(aChain,&readerInptV);
 
   // setup cuts for the vars we loop on for sig/bck determination in case of classification
   if(isCls) {
@@ -59,8 +62,6 @@ void ANNZ::createTreeErrKNN(int nMLMnow) {
     var_0->setTreeCuts("_sig",sigCuts);
     var_0->setTreeCuts("_bck",bckCuts);
   }
-
-  var_0->connectTreeBranchesForm(aChain,&readerInptV);
 
   var_1->NewVarF(MLMname); var_1->NewVarF(errKNNname); var_1->NewVarI(MLMname_i);
   if(isCls) var_1->NewVarI(sigBckTypeName); else var_1->NewVarF(zTrgName);
@@ -97,21 +98,21 @@ void ANNZ::createTreeErrKNN(int nMLMnow) {
       if     (!var_0->hasFailedTreeCuts("_bck")) { sigBckType = 0; errKNN =   clsPrb; }
       else if(!var_0->hasFailedTreeCuts("_sig")) { sigBckType = 1; errKNN = 1-clsPrb; }
 
-      var_1->SetVarF(MLMname,clsPrb);
-      var_1->SetVarF(errKNNname,errKNN);
-      var_1->SetVarI(sigBckTypeName,sigBckType);
+      var_1->SetVarF(MLMname,        clsPrb);
+      var_1->SetVarF(errKNNname,     errKNN);
+      var_1->SetVarI(sigBckTypeName, sigBckType);
     }
     else {
       double zTrg   = var_0->GetVarF(zTrgName);
-      double regVal = getReader(var_0,ANNZ_readType::REG,true ,nMLMnow);
+      double regVal = getReader(var_0,ANNZ_readType::REG,true,nMLMnow);
       
       // the error of each object wrt its own true value
       // see: http://arxiv.org/abs/0810.2991 - Estimating the Redshift Distribution of Photometric Galaxy... - Sect. 4.2
       double errKNN = regVal - zTrg;
       
-      var_1->SetVarF(MLMname,regVal);
+      var_1->SetVarF(MLMname,   regVal);
       var_1->SetVarF(errKNNname,errKNN);
-      var_1->SetVarF(zTrgName,zTrg);
+      var_1->SetVarF(zTrgName,  zTrg);
     }
 
     var_1->fillTree();

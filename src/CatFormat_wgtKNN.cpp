@@ -718,14 +718,15 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TChain *
         else          { var_0->IncCntr("Did not find good weight");                         }
       }
       // -----------------------------------------------------------------------------------------------------------
-      // derive the weight from the approximated density estimation of near objects from the reference sample, if needed
+      // derive the weight from the approximated density estimation of near objects
+      // from the reference sample, if needed
       // -----------------------------------------------------------------------------------------------------------
       else {
         // find the closest object in the reference chain
         knnErrModule[1][0]->Find(evtNow,1);
         const TMVA::kNN::List & knnListInp = knnErrModule[1][0]->GetkNNList();
 
-        // must make a sanith check before using the pointer to GetEvent()
+        // must make a sanity check before using the pointer to GetEvent()
         VERIFY(LOCATION,(TString)"could not find any near neighbours for objects ... Something is horribly wrong ?!?",(knnListInp.size() > 0));
 
         const TMVA::kNN::Event evtRef(knnListInp.back().first->GetEvent());
@@ -738,8 +739,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TChain *
 
         // find the minNobjInVol near objects in the reference chain, compared to the initial reference object. The number
         // of objects is estimated as the sum of their weights, scaled by the weight of the original refrence object. If weighs
-        // are not defined, then the sum of weights will be exactly minNobjInVol. Otherwise, several searches with increasing
-        // NN numbers may be needed...
+        // are not defined, then the sum of weights will be exactly minNobjInVol. Otherwise, several searches may be needed...
         // -----------------------------------------------------------------------------------------------------------
         bool   foundDist(false);
         double dist_Ref0_RefNear(0);
@@ -966,8 +966,9 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TChain *
           TString weightNow("1"), hisTitle("");
           TChain  * aChain(NULL);
           if     (nChainNow == 0) { aChain = aChainRef;    hisTitle = "Reference"; }
-          else if(nChainNow == 1) { aChain = aChainInpEvl; hisTitle = "Original";  }
-          else if(nChainNow == 2) { aChain = aChainOut;    hisTitle = "Weighted";  }
+          else if(nChainNow == 1) { aChain = aChainInpEvl; hisTitle = "Original"; }
+          else if(nChainNow == 2) { aChain = aChainOut;    hisTitle = "Weighted ("+typePostfix+")"; }
+          hisTitle.ReplaceAll("_","");
 
           if(nChainNow == 2 && wgtKNNname != weightName) weightNow = wgtKNNname;
 

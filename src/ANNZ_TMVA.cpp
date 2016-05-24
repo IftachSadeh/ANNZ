@@ -24,26 +24,45 @@
  * @param factory  - pointer to the TMVA::Factory which is set-up.
  */
 // ===========================================================================================================
-void ANNZ::prepFactory(int nMLMnow, TMVA::Factory * factory) {
-// ===========================================================
-  // TString MLMname = getTagName(nMLMnow);
+void ANNZ::prepFactory(int nMLMnow, TMVA::Factory * factory, bool isBiasMLM) {
+// ===========================================================================
+  TString MLMname  = getTagName(nMLMnow);
+  TString biasName = getTagBias(nMLMnow);
 
   // if(!dynamic_cast<TMVA::Factory*>(factory)) return;
   VERIFY(LOCATION,(TString)"Memory leak ?! ",(dynamic_cast<TMVA::Factory*>(factory)));
 
   // since all variables are read-in from TTreeFormula, we define them as floats ("F") in the factory
-  for(int nVarNow=0; nVarNow<(int)inNamesVar[nMLMnow].size(); nVarNow++) {
+  int nVars = (int)inNamesVar[nMLMnow].size();
+  for(int nVarNow=0; nVarNow<nVars; nVarNow++) {
     factory->AddVariable(inNamesVar[nMLMnow][nVarNow],inNamesVar[nMLMnow][nVarNow],"",'F');
+
+    aLOG(Log::DEBUG) <<coutPurple<<" -- Adding input variable ("<<coutGreen
+                     <<nVarNow<<coutPurple<<") - "<<coutCyan<<inNamesVar[nMLMnow][nVarNow]<<coutDef<<endl;
   }
+  // the bias correction also take the original regression value as an input - the order of
+  // defining the input variables is important, so take care !!
+  if(isBiasMLM && hasBiasCorMLMinp[nMLMnow]) {
+    factory->AddVariable(MLMname,MLMname,"",'F');
+
+    aLOG(Log::DEBUG) <<coutPurple<<" -- Adding input variable ("<<coutGreen
+                     <<nVars<<coutPurple<<") - "<<coutCyan<<MLMname<<coutDef<<endl;
+  }
+
   // add regression target if needed
   if(glob->GetOptB("doRegression") && !glob->GetOptB("doBinnedCls")) {
-    factory->AddTarget(glob->GetOptC("zTrg"), glob->GetOptC("zTrgTitle")); 
+    if(isBiasMLM) {
+      factory->AddTarget(biasName, (TString)MLMname+" - "+glob->GetOptC("zTrgTitle")); 
+    }
+    else {
+      factory->AddTarget(glob->GetOptC("zTrg"), glob->GetOptC("zTrgTitle")); 
+    }
   }
 
   // let TMVA know the name of the XML file
   // (the directory must be re-set each time a new factory is defined, sometime before the training)
-  TString MLMname = getTagName(nMLMnow);
-  (TMVA::gConfig().GetIONames()).fWeightFileDir = getKeyWord(MLMname,"trainXML","outFileDirTrain");
+  TString mlmBiasName = (TString)(isBiasMLM ?  biasName : MLMname);
+  (TMVA::gConfig().GetIONames()).fWeightFileDir = getKeyWord(mlmBiasName,"trainXML","outFileDirTrain");
 
   return;
 }
@@ -90,10 +109,16 @@ void ANNZ::clearReaders(Log::LOGtypes logLevel) {
 
     DELNULL_(LOCATION,regReaders[nMLMnow],(TString)"regReaders["+utils->intToStr(nMLMnow)+"]",verb);
   }
+  for(int nMLMnow=0; nMLMnow<(int)biasReaders.size(); nMLMnow++) {
+    bool verb = (biasReaders[nMLMnow] && inLOG(Log::DEBUG_1));
+
+    DELNULL_(LOCATION,biasReaders[nMLMnow],(TString)"biasReaders["+utils->intToStr(nMLMnow)+"]",verb);
+  }
 
   for(int nMLMnow=0; nMLMnow<(int)hisClsPrbV.size(); nMLMnow++) DELNULL(hisClsPrbV[nMLMnow]);
 
-  regReaders.clear(); readerInptV.clear(); readerInptIndexV.clear(); anlysTypes.clear(); hisClsPrbV.clear();
+  regReaders.clear();  biasReaders.clear();      hisClsPrbV.clear();
+  readerInptV.clear(); readerInptIndexV.clear(); anlysTypes.clear(); readerBiasInptV.clear();
 
   return;
 }
@@ -115,14 +140,19 @@ void ANNZ::loadReaders(map <TString,bool> & mlmSkipNow, bool needMcPRB) {
 // ======================================================================
   aLOG(Log::DEBUG_1) <<coutWhiteOnBlack<<coutYellow<<" - starting ANNZ::loadReaders() ... "<<coutDef<<endl;
   
-  int  nMLMs    = glob->GetOptI("nMLMs");
-  bool isBinCls = glob->GetOptB("doBinnedCls");
+  int  nMLMs             = glob->GetOptI("nMLMs");
+  bool isBinCls          = glob->GetOptB("doBinnedCls");
+  bool doBiasCorMLM      = glob->GetOptB("doBiasCorMLM");
+  int  maxMsg            = inLOG(Log::DEBUG_1) ? nMLMs+1 : 5;
 
   // cleanup containers before initializing new readers
   clearReaders(Log::DEBUG_2);
 
-  readerInptV.clear(); regReaders.resize(nMLMs,NULL); readerInptIndexV.resize(nMLMs);
-  anlysTypes.resize(nMLMs,TMVA::Types::kNoAnalysisType);  hisClsPrbV.resize(glob->GetOptI("nMLMs"),NULL);
+  regReaders.resize(nMLMs,NULL); biasReaders.resize(nMLMs,NULL); hisClsPrbV.resize(nMLMs,NULL);
+  readerInptV.clear();           readerInptIndexV.resize(nMLMs); anlysTypes.resize(nMLMs,TMVA::Types::kNoAnalysisType);
+  
+  // for the bias correction, we only need one parameter (will be filled in manually)
+  readerBiasInptV.resize(nMLMs,0);
 
   // -----------------------------------------------------------------------------------------------------------
   // initialize readerInptV and add all required variables by input variables (formulae) - using
@@ -158,66 +188,110 @@ void ANNZ::loadReaders(map <TString,bool> & mlmSkipNow, bool needMcPRB) {
   // -----------------------------------------------------------------------------------------------------------
   int nReadIn(0);
   for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) {
-    TString      MLMname   = getTagName(nMLMnow);    if(mlmSkipNow[MLMname]) continue;
-    TString      verb      = "!Color";               if(inLOG(Log::DEBUG_2)) verb += ":!Silent"; else verb += ":Silent";
-    regReaders[nMLMnow]    = new TMVA::Reader(verb);    
+    TString      MLMname      = getTagName(nMLMnow);    if(mlmSkipNow[MLMname]) continue;
+    TString      verb         = "!Color";               if(inLOG(Log::DEBUG_2)) verb += ":!Silent"; else verb += ":Silent";
 
-    int nInVar = (int)inNamesVar[nMLMnow].size();
-    readerInptIndexV[nMLMnow].resize(nInVar,0);
+    for(int nReaderType=0; nReaderType<2; nReaderType++) {
+      if(!doBiasCorMLM && nReaderType == 1) break;
 
-    for(int nReaderInputNow=0; nReaderInputNow<nInVar; nReaderInputNow++) {
-      int     readerInptIndex = -1;
-      TString inVarNameNow    = inNamesVar[nMLMnow][nReaderInputNow];
+      TString mlmBiasName = (TString)((nReaderType == 0) ?  getTagName(nMLMnow) : getTagBias(nMLMnow));
 
-      // find the position in readerInptV of the current variable and add it
-      for(int nVarNow=0; nVarNow<(int)readerInptV.size(); nVarNow++) {
-        if(readerInptV[nVarNow].first == inVarNameNow) { readerInptIndex = nVarNow; break; }
-      }
-      VERIFY(LOCATION,(TString)"Adding reader-var which does not exist in readerInptV... Something is horribly wrong... ?!?",(readerInptIndex >= 0));
+      TMVA::Reader * aRegReader = new TMVA::Reader(verb);    
 
-      regReaders[nMLMnow]->AddVariable(inVarNameNow,&(readerInptV[readerInptIndex].second));
-      readerInptIndexV[nMLMnow][nReaderInputNow] = readerInptIndex;
-    }
+      int nInVar = (int)inNamesVar[nMLMnow].size();
+      readerInptIndexV[nMLMnow].resize(nInVar,0);
 
-    // book the reader
-    TString outXmlFileName = getKeyWord(MLMname,"trainXML","outXmlFileName");
-    cout << coutPurple; regReaders[nMLMnow]->BookMVA(MLMname,outXmlFileName); cout << coutDef;
+      for(int nReaderInputNow=0; nReaderInputNow<nInVar; nReaderInputNow++) {
+        int     readerInptIndex = -1;
+        TString inVarNameNow    = inNamesVar[nMLMnow][nReaderInputNow];
 
-    bool foundReader = (dynamic_cast<TMVA::MethodBase*>(regReaders[nMLMnow]->FindMVA(MLMname)));
+        // find the position in readerInptV of the current variable and add it
+        for(int nVarNow=0; nVarNow<(int)readerInptV.size(); nVarNow++) {
+          if(readerInptV[nVarNow].first == inVarNameNow) { readerInptIndex = nVarNow; break; }
+        }
+        VERIFY(LOCATION,(TString)"Adding reader-var which does not exist in readerInptV... "
+                                +"Something is horribly wrong... ?!?",(readerInptIndex >= 0));
 
-    if(foundReader) {
-      TString           methodName = (dynamic_cast<TMVA::MethodBase*>(regReaders[nMLMnow]->FindMVA(MLMname)))->GetMethodTypeName();
-      TMVA::Types::EMVA methodType = (dynamic_cast<TMVA::MethodBase*>(regReaders[nMLMnow]->FindMVA(MLMname)))->GetMethodType();
-      anlysTypes[nMLMnow]          = (dynamic_cast<TMVA::MethodBase*>(regReaders[nMLMnow]->FindMVA(MLMname)))->GetAnalysisType();
-
-      VERIFY(LOCATION,(TString)"Found inconsistent settings (configSave_type = \""+typeToNameMLM[typeMLM[nMLMnow]]
-                              +"\" from the settings file, but "+MLMname+" is of type \""+typeToNameMLM[methodType]+"\""
-                              ,(typeMLM[nMLMnow] == methodType));
-
-      // load the classification response histogram for Multiclass readers
-      if(needMcPRB && (isBinCls || anlysTypes[nMLMnow] == TMVA::Types::kMulticlass)) {
-        TString hisClsPrbFileName = getKeyWord(MLMname,"postTrain","hisClsPrbFile");
-        TString hisName           = getKeyWord(MLMname,"postTrain","hisClsPrbHis");
-
-        TFile * hisClsPrbFile = new TFile(hisClsPrbFileName,"READ");
-
-        hisClsPrbV[nMLMnow] = dynamic_cast<TH1*>(hisClsPrbFile->Get(hisName));
-        VERIFY(LOCATION,(TString)"Could not find hisClsPrbV[nMLMnow = "+utils->intToStr(nMLMnow)+"] in "
-                                 +hisClsPrbFileName+" ?!",(dynamic_cast<TH1*>(hisClsPrbV[nMLMnow])));
-
-        hisClsPrbV[nMLMnow] = (TH1*)hisClsPrbV[nMLMnow]->Clone((TString)hisName+"_cln");
-        hisClsPrbV[nMLMnow]->SetDirectory(0);
-
-        hisClsPrbFile->Close(); DELNULL(hisClsPrbFile);
+        aRegReader->AddVariable(inVarNameNow,&(readerInptV[readerInptIndex].second));
+        readerInptIndexV[nMLMnow][nReaderInputNow] = readerInptIndex;
       }
 
-      if(nReadIn  < 5) aLOG(Log::DEBUG) <<coutYellow<<" - Found   "<<methodName<<" Reader("<<coutRed<<nMLMnow<<coutYellow<<") ... "<<coutDef<<endl;
-      if(nReadIn == 5) aLOG(Log::DEBUG) <<coutYellow<<" - Suppressing further messages ... "<<coutDef<<endl;
-      nReadIn++;
-    }
-    else {
-      mlmSkipNow[MLMname] = true;
-      aLOG(Log::WARNING) <<coutYellow<<" - Missing     Reader("<<coutRed<<nMLMnow<<coutYellow<<") skipping MLM ... "<<coutDef<<endl;
+      // the last variable of the reader (the order matters!) is for the original regression target
+      if(nReaderType == 1 && hasBiasCorMLMinp[nMLMnow]) {
+        aRegReader->AddVariable(MLMname,&(readerBiasInptV[nMLMnow]));
+      }
+
+      // book the reader if the xml exists
+      TString outXmlFileName = getKeyWord(mlmBiasName,"trainXML","outXmlFileName");
+
+      bool          foundReader = false;
+      std::ifstream * testFile  = new std::ifstream(outXmlFileName);
+      if(testFile) {
+        if(testFile->good()) {
+          cout << coutPurple; aRegReader->BookMVA(mlmBiasName,outXmlFileName); cout << coutDef;
+
+          foundReader = (dynamic_cast<TMVA::MethodBase*>(aRegReader->FindMVA(mlmBiasName)));
+        }
+      }
+      DELNULL(testFile);
+
+      if(foundReader) {
+        TString           methodName = (dynamic_cast<TMVA::MethodBase*>(aRegReader->FindMVA(mlmBiasName)))->GetMethodTypeName();
+        TMVA::Types::EMVA methodType = (dynamic_cast<TMVA::MethodBase*>(aRegReader->FindMVA(mlmBiasName)))->GetMethodType();
+        if(nReaderType == 0) {
+          anlysTypes[nMLMnow]        = (dynamic_cast<TMVA::MethodBase*>(aRegReader->FindMVA(mlmBiasName)))->GetAnalysisType();
+        }
+
+        TMVA::Types::EMVA typeNow = typeMLM[nMLMnow];//(nReaderType == 0) ? typeMLM[nMLMnow] : typeBiasMLM[nMLMnow];
+
+        if(nReaderType == 0) {
+          VERIFY(LOCATION,(TString)"Found inconsistent settings (configSave_type = \""+typeToNameMLM[typeNow]
+                                  +"\" from the settings file, but "+mlmBiasName+" is of type \""+typeToNameMLM[methodType]+"\""
+                                  ,(typeNow == methodType));
+        }
+
+        // load the classification response histogram for Multiclass readers
+        if((nReaderType == 0) && needMcPRB && (isBinCls || anlysTypes[nMLMnow] == TMVA::Types::kMulticlass)) {
+          TString hisClsPrbFileName = getKeyWord(MLMname,"postTrain","hisClsPrbFile");
+          TString hisName           = getKeyWord(MLMname,"postTrain","hisClsPrbHis");
+
+          TFile * hisClsPrbFile = new TFile(hisClsPrbFileName,"READ");
+
+          hisClsPrbV[nMLMnow] = dynamic_cast<TH1*>(hisClsPrbFile->Get(hisName));
+          VERIFY(LOCATION,(TString)"Could not find hisClsPrbV[nMLMnow = "+utils->intToStr(nMLMnow)+"] in "
+                                   +hisClsPrbFileName+" ?!",(dynamic_cast<TH1*>(hisClsPrbV[nMLMnow])));
+
+          hisClsPrbV[nMLMnow] = (TH1*)hisClsPrbV[nMLMnow]->Clone((TString)hisName+"_cln");
+          hisClsPrbV[nMLMnow]->SetDirectory(0);
+
+          hisClsPrbFile->Close(); DELNULL(hisClsPrbFile);
+        }
+
+        if(nReadIn  < maxMsg) {
+          aLOG(Log::DEBUG) <<coutYellow<<" - Found   "<<methodName<<" Reader("<<coutRed<<mlmBiasName<<coutYellow<<") ... "<<coutDef<<endl;
+        }
+        else if(nReadIn == maxMsg && nReaderType == 0) {
+          aLOG(Log::DEBUG) <<coutYellow<<" - Suppressing further messages ... "<<coutDef<<endl;
+        }
+
+        if(nReaderType == 0)  nReadIn++;
+      }
+      else {
+        if(nReaderType == 0) {
+          mlmSkipNow[MLMname] = true;
+          
+          aLOG(Log::DEBUG) <<coutYellow<<" - Missing     Reader("<<coutRed<<mlmBiasName<<coutYellow<<") skipping MLM ... "<<coutDef<<endl;
+        }
+      }
+
+      if(nReaderType == 0) {
+        if(regReaders[nMLMnow])  DELNULL(regReaders [nMLMnow]);
+        if(foundReader)          regReaders [nMLMnow] = aRegReader;
+      }
+      else {
+        if(biasReaders[nMLMnow]) DELNULL(biasReaders[nMLMnow]);
+        if(foundReader)          biasReaders[nMLMnow] = aRegReader;
+      }
     }
   }
 
@@ -261,10 +335,23 @@ double ANNZ::getReader(VarMaps * var, ANNZ_readType readType, bool forceUpdate, 
     else VERIFY(LOCATION,(TString)"un-supported readType (\""+utils->intToStr((int)readType)+"\") ...",false);
   }
   else {  
-    if     (readType == ANNZ_readType::REG) readVal = (regReaders[nMLMnow]->EvaluateRegression(MLMname))[0];
+
+    if(readType == ANNZ_readType::REG) {
+      readVal = (regReaders[nMLMnow]->EvaluateRegression(MLMname))[0];
+
+      if(dynamic_cast<TMVA::Reader*>(biasReaders[nMLMnow])) {
+        // first update the value of the regression target in the variable which is connected to the
+        // reader (this is not updated as part of the nominal loop, since this variable is not in the input tree)
+        readerBiasInptV[nMLMnow] = readVal;
+
+        // now evaluate the bias-correction MLM and update the output variable
+        readVal -= (biasReaders[nMLMnow]->EvaluateRegression(getTagBias(nMLMnow)))[0];
+      }
+    }
     else if(readType == ANNZ_readType::PRB) readVal = max(min(regReaders[nMLMnow]->GetProba(MLMname),1.),0.);
     else if(readType == ANNZ_readType::CLS) readVal = regReaders[nMLMnow]->EvaluateMVA(MLMname);
     else VERIFY(LOCATION,(TString)"un-supported readType (\""+utils->intToStr((int)readType)+"\") ...",false);
+
   }
 
   return readVal;

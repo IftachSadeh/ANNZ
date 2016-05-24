@@ -89,6 +89,8 @@ public:
   inline TString  floatToStr (double            input, TString format = "%f"   ) { return TString::Format(format,input); };
   inline TString  doubleToStr(double            input, TString format = "%.10g") { return TString::Format(format,input); };
 
+  inline TString  getRndStr(TString format = "%.20f") { return doubleToStr(rnd->Rndm(),format); };
+
   Int_t     strToInt   (TString input);
   Long64_t  strToLong  (TString input);
   UInt_t    strToUint  (TString input);
@@ -96,6 +98,9 @@ public:
   Float_t   strToFloat (TString input);
   Double_t  strToDouble(TString input);
   Bool_t    strToBool  (TString input);
+
+  void            getCodeVersionV(vector <ULong64_t> & strV, TString versStrIn = "");
+  int             getCodeVersionDiff(TString compVers);
 
   inline TString  getFilePath(TString fileName) { return (TString)fileName(0,fileName.Last('/'))+"/"; };
 

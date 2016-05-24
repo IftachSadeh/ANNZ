@@ -74,6 +74,10 @@ def generalSettings():
   #   procedure in randomized regression. The default value is False.
   #   glob.annz["optimWithMAD"] = True
 
+  # turn on or off the PDF bias correction, which is applied during optimization/verification
+  # during single/randomized regression and binned classification (set to True by default)
+  # glob.annz["doBiasCorPDF"] = False
+  
   # number of random MLM weighting schemes to generate as part of getRndMethodBestPDF()
   # glob.annz["nRndPdfWeightTries"] = 50
 
@@ -107,6 +111,14 @@ def generalSettings():
 
   # maximal number of objects in a tree/output ascii file
   # glob.annz["nObjectsToWrite"] = 1e6
+
+  # possible list of variables which will always be plotted (that is, no safety checks
+  # on variable type will be performed)
+  # glob.annz["alwaysPlotVars"] = "(MAG_R-MAG_I);(MAG_I-MAG_Z)"
+
+  # possible list of variables for which we will NOT use quantile bins for plotting (i.e., performance plots will
+  # contain equal-width bins for these, and not bins defined such that the number of objects/bin is constant)
+  # glob.annz["noQuantileBinsPlots"] = "inTrainFlag;MAG_U"
 
   return
 

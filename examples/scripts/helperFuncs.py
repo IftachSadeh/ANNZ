@@ -35,7 +35,8 @@ def initParse():
   parser.add_argument("--binnedClassification", action='store_true')
   parser.add_argument("--singleClassification", action='store_true')
   parser.add_argument("--randomClassification", action='store_true')
-  parser.add_argument("--inTrainFlag"         , action='store_true')
+  parser.add_argument("--onlyKnnErr",           action='store_true')
+  parser.add_argument("--inTrainFlag",          action='store_true')
   parser.add_argument("--truncateLog",          action='store_true')
   parser.add_argument("--isBatch",              action='store_true')
   parser.add_argument("--fitsToAscii",          action='store_true')
@@ -63,13 +64,15 @@ def initParse():
   if glob.pars["singleRegression"]:     nSetups += 1
   if glob.pars["randomRegression"]:     nSetups += 1
   if glob.pars["binnedClassification"]: nSetups += 1
+  if glob.pars["onlyKnnErr"]:           nSetups += 1
   if glob.pars["inTrainFlag"]:          nSetups += 1
   if glob.pars["fitsToAscii"]:          nSetups += 1
   if glob.pars["asciiToFits"]:          nSetups += 1
 
   if not ((nSetups == 1) or (nSetups == 0 and (glob.pars["genInputTrees"] or hasMake or glob.pars["qsub"]))):
-    log.warning("Should define exactly one of --singleClassification --randomClassification , --singleRegression " \
-         +"--randomRegression, --binnedClassification, --fitsToAscii, --asciiToFits !")
+    log.warning("Possibly missing/conflicting job-options... Did you define: --singleClassification" \
+                + " --randomClassification , --singleRegression --randomRegression, --binnedClassification, " \
+                +"--onlyKnnErr, --inTrainFlag, --fitsToAscii, --asciiToFits .... ?")
 
   if nSetups == 1:
     if glob.pars["genInputTrees"]: nModes += 1
@@ -77,12 +80,13 @@ def initParse():
     if glob.pars["optimize"]:      nModes += 1
     if glob.pars["verify"]:        nModes += 1
     if glob.pars["evaluate"]:      nModes += 1
+    if glob.pars["onlyKnnErr"]:    nModes += 1
     if glob.pars["inTrainFlag"]:   nModes += 1
     if glob.pars["fitsToAscii"]:   nModes += 1
     if glob.pars["asciiToFits"]:   nModes += 1
 
     if not (nModes == 1 or hasMake):
-      log.warning("Should define exactly one of --genInputTrees --train , --optimize --verify, --evaluate, --inTrainFlag, --fitsToAscii, --asciiToFits !")
+      log.warning("Should define exactly one of --genInputTrees --train , --optimize --verify, --evaluate, --onlyKnnErr, --inTrainFlag, --fitsToAscii, --asciiToFits !")
 
   glob.pars["onlyMake"] = (((nSetups == 0) or (nModes == 0)) and hasMake and (not glob.pars["genInputTrees"]))
 
@@ -104,6 +108,7 @@ def initParse():
   glob.annz["doOptim"]          = glob.pars["optimize"]
   glob.annz["doVerif"]          = glob.pars["verify"]
   glob.annz["doEval"]           = glob.pars["evaluate"]
+  glob.annz["doOnlyKnnErr"]     = glob.pars["onlyKnnErr"]
   glob.annz["doInTrainFlag"]    = glob.pars["inTrainFlag"]
 
   glob.annz["doRegression"]     = glob.annz["doSingleReg"] or glob.annz["doRandomReg"] or glob.annz["doBinnedCls"]

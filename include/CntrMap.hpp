@@ -65,7 +65,8 @@ public:
     // size_t pos = std::string(dateTimeNow).find("CEST"); std::string choped = std::string(dateTimeNow).substr(0,pos);
     // dateTimeNow = (TString)choped; dateTimeNow.ReplaceAll("  "," "); dateTimeNow.ReplaceAll("\n","");
     // aLOG(logLevel)<<glob->coutPurple<<"Counters ("<<dateTimeNow<<"):"<<glob->coutDef<<endl;
-    aLOG(logLevel)<<glob->coutPurple<<"-- Counters -----------------------------------------------------------------------------------------------"<<glob->coutDef<<endl;
+    aLOG(logLevel)<<glob->coutPurple<<" -- COUNTERS ----------------------------------------"
+                  <<"--------------------------------------"<<glob->coutDef<<endl; //-----------------
 
     int     maxLength = 0;
     TString baseName  = (TString)((nameTag == "") ? glob->OptOrNullC("baseName") : nameTag);
@@ -79,12 +80,14 @@ public:
       TString cutNameNow  = cutCounterItr->first;
       int     cutCountNow = cutCounterItr->second;
 
-      aLOG(logLevel)  <<" - "<<std::setw(35)<<std::left<<std::setfill('.')<<TString(glob->coutBlue+baseName+" "+glob->coutPurple)<<""
-                             <<std::setw(maxLength)<<std::setfill('.')<<std::right
-                             <<TString(glob->coutYellow)+TString::Format(" %d ",cutCountNow)<<std::setfill(' ')
-                             <<" "<<glob->coutGreen<<cutNameNow<<glob->coutDef<<endl;
+      aLOG(logLevel)  <<glob->coutPurple<<" -- "<<std::setw(35)<<std::left<<std::setfill('.')
+                      <<TString(glob->coutBlue+baseName+" "+glob->coutPurple)<<""
+                      <<std::setw(maxLength)<<std::setfill('.')<<std::right
+                      <<TString(glob->coutYellow)+TString::Format(" %d ",cutCountNow)<<std::setfill(' ')
+                      <<" "<<glob->coutGreen<<cutNameNow<<glob->coutDef<<endl;
     }
-    aLOG(logLevel)<<glob->coutPurple<<"-----------------------------------------------------------------------------------------------------------"<<glob->coutDef<<endl;
+    aLOG(logLevel)<<glob->coutPurple<<" ----------------------------------------------------"
+                  <<"-------------------------------------------------------"<<glob->coutDef<<endl;
     
     return;
   };

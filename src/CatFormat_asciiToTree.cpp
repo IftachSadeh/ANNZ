@@ -706,12 +706,14 @@ void CatFormat::inputToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
   OptMaps          * optMap = new OptMaps("localOptMap");
   TString          saveName = "";
   vector <TString> optNames;
-  saveName = "nSplit";        optNames.push_back(saveName); optMap->NewOptI(saveName, glob->GetOptI(saveName));
-  saveName = "treeName";      optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(saveName));
-  saveName = "indexName";     optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(saveName));
-  // saveName = "splitName";     optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(saveName)); // deprecated
-  // saveName = "testValidType"; optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(saveName)); // deprecated
-  saveName = "useWgtKNN";     optNames.push_back(saveName); optMap->NewOptB(saveName, glob->GetOptB(saveName));
+
+  saveName = glob->versionTag(); optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(glob->versionTag()));
+  saveName = "nSplit";           optNames.push_back(saveName); optMap->NewOptI(saveName, glob->GetOptI(saveName));
+  saveName = "treeName";         optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(saveName));
+  saveName = "indexName";        optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(saveName));
+  // saveName = "splitName";        optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(saveName)); // deprecated
+  // saveName = "testValidType";    optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(saveName)); // deprecated
+  saveName = "useWgtKNN";        optNames.push_back(saveName); optMap->NewOptB(saveName, glob->GetOptB(saveName));
 
   if(storeOrigFileName) { saveName = "origFileName";  optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(saveName)); }
 

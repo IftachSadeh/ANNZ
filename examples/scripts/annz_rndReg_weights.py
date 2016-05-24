@@ -40,7 +40,7 @@ init()
 # --------------------------------------------------------------------------------------------------
 log.info(whtOnBlck(" - "+time.strftime("%d/%m/%y %H:%M:%S")+" - starting ANNZ"))
 
-# glob.annz["logLevel"]      = "DEBUG_2"
+# glob.annz["logLevel"] = "DEBUG_2"
 
 # --------------------------------------------------------------------------------------------------
 # general options which are the same for all stages
@@ -113,14 +113,17 @@ if glob.annz["doGenInputTrees"]:
     # glob.annz["inAsciiVars_wgtKNN"]    = "F:MAG_U;F:MAGERR_U;F:MAG_G;F:MAGERR_G;F:MAG_R;F:MAGERR_R;F:MAG_I;F:MAGERR_I;F:MAG_Z;F:MAGERR_Z;D:Z"
     glob.annz["inAsciiFiles_wgtKNN"]   = glob.annz["inAsciiFiles"]
     glob.annz["inAsciiVars_wgtKNN"]    = glob.annz["inAsciiVars"]
+
+    # some random weird choice for [weightInp_wgtKNN, weightRef_wgtKNN] in this example, just to get different
+    # distributions for the input and reference samples, so that we have something to calculate weights for...
     glob.annz["weightInp_wgtKNN"]      = "1/pow(MAG_G*MAG_U*MAG_R*MAG_I, 5)"
     glob.annz["weightRef_wgtKNN"]      = "1/MAGERR_G"
 
     glob.annz["weightVarNames_wgtKNN"] = "MAG_U;MAG_G;MAG_R;MAG_I;MAG_Z"
 
     # optional parameters (may leave empty as default value):
-    glob.annz["sampleFracInp_wgtKNN"]  = 0.85                                          # fraction of dataset to use (positive number, smaller or equal to 1)
-    glob.annz["sampleFracRef_wgtKNN"]  = 0.90                                          # fraction of dataset to use (positive number, smaller or equal to 1)
+    glob.annz["sampleFracInp_wgtKNN"]  = 0.385                                          # fraction of dataset to use (positive number, smaller or equal to 1)
+    glob.annz["sampleFracRef_wgtKNN"]  = 0.390                                          # fraction of dataset to use (positive number, smaller or equal to 1)
     glob.annz["outAsciiVars_wgtKNN"]   = "MAG_U;MAG_G;MAGERR_U"                        # write out two additional variables to the output file
     glob.annz["weightRef_wgtKNN"]      = "(MAGERR_R<0.7)*1 + (MAGERR_R>=0.7)/MAGERR_R" # down-weight objects with high MAGERR_R
     glob.annz["cutRef_wgtKNN"]         = "MAGERR_U<200"                                # only use objects which have small MAGERR_U
@@ -174,7 +177,7 @@ if glob.annz["doInTrainFlag"]:
   # --------------------------------------------------------------------------------------------------
   glob.annz["addInTrainFlag"]           = True
   glob.annz["minNobjInVol_inTrain"]     = 100
-  glob.annz["maxRelRatioInRef_inTrain"] = 0.1
+  glob.annz["maxRelRatioInRef_inTrain"] = -1
   glob.annz["weightVarNames_inTrain"]   = "MAG_U;MAG_G;MAG_R;MAG_I;MAG_Z"
   glob.annz["outAsciiVars_inTrain"]     = "MAG_G;MAG_R" 
   glob.annz["doWidthRescale_inTrain"]   = True
@@ -182,5 +185,5 @@ if glob.annz["doInTrainFlag"]:
   # run ANNZ with the current settings
   runANNZ()
 
-log.info(whtOnBlck(" - "+time.strftime("%d/%m/%y %H:%M:%S")+" - finished runing ANNZ !"))
+log.info(whtOnBlck(" - "+time.strftime("%d/%m/%y %H:%M:%S")+" - finished running ANNZ !"))
 

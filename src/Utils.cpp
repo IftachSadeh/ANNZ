@@ -458,7 +458,12 @@ void Utils::optToFromFile(vector<TString> * optNames, OptMaps * optMap, TString 
 
   VERIFY(LOCATION,(TString)"Trying to use optToFromFile() with invalid pointer to optNames" ,dynamic_cast<vector<TString>*>(optNames));
 
-  TString timeStrPrefix = "# time(";
+  TString timeStrPrefix  = "# time(";
+  
+  // 
+  vector < TString > alwaysOverWriteV;
+  alwaysOverWriteV.push_back(glob->versionTag());
+
   // -----------------------------------------------------------------------------------------------------------
   // write the options given in optNames to fileName in a format like:
   //   nSplit="3";splitType="serial";maxValZ="-1";copyCodeToOutDir="TRUE"
@@ -543,6 +548,8 @@ void Utils::optToFromFile(vector<TString> * optNames, OptMaps * optMap, TString 
 
     int nOpts = (int)inputLineV.size();
     for(int nOptNow=0; nOptNow<nOpts; nOptNow++) {
+      bool overWriteNow(overWrite);
+
       // derive the option-name and the value from each input line
       bool    checkOptFormat(false), isInOptNames(false), isSameOpt(false);
       TString subStr0(""), subStr1("");
@@ -560,9 +567,11 @@ void Utils::optToFromFile(vector<TString> * optNames, OptMaps * optMap, TString 
         }
       }
 
-      for(int nOptNameNow=0; nOptNameNow<(int)optNames->size(); nOptNameNow++) {
-        if(optNames->at(nOptNameNow) == subStr0) { isInOptNames = true; break; }
+      if(find(alwaysOverWriteV.begin(),alwaysOverWriteV.end(),subStr0) != alwaysOverWriteV.end()) {
+        overWriteNow = true;
       }
+
+      isInOptNames = (find(optNames->begin(),optNames->end(),subStr0) != optNames->end());
 
       if(!isInOptNames) {
         if(debug) aCustomLOG("optFile") <<coutYellow<<" - For \""<<inputLineV[nOptNow]<<"\""
@@ -583,7 +592,7 @@ void Utils::optToFromFile(vector<TString> * optNames, OptMaps * optMap, TString 
         if(debug) aCustomLOG("optFile") <<coutYellow<<" - Got(B) "<<optNameNow<<" -> \""<<valBol<<"\" compared to existing \""
                                         <<optMap->GetOptB(optNameNow)<<"\" --> isSame = "<<isSameOpt<<coutDef<<endl;
         
-        if(overWrite) optMap->SetOptB(optNameNow,valBol);
+        if(overWriteNow) optMap->SetOptB(optNameNow,valBol);
         
         VERIFY(LOCATION,(TString)"Found wrong format of option: "+optNameNow+"=\""+optValStrNow+"\" , should be \"TRUE\" or \"FALSE\" ...",
                                  (optValStrNow == "TRUE" || optValStrNow == "FALSE"));
@@ -596,7 +605,7 @@ void Utils::optToFromFile(vector<TString> * optNames, OptMaps * optMap, TString 
         if(debug) aCustomLOG("optFile") <<coutYellow<<" - Got(I) "<<optNameNow<<" -> \""<<valInt<<"\" compared to existing \""
                                         <<optMap->GetOptI(optNameNow)<<"\" --> isSame = "<<isSameOpt<<coutDef<<endl;
         
-        if(overWrite) optMap->SetOptI(optNameNow,valInt);
+        if(overWriteNow) optMap->SetOptI(optNameNow,valInt);
       }
       else if(optTypeNow == "F") {
         double valDbl = strToDouble(optValStrNow);
@@ -611,7 +620,7 @@ void Utils::optToFromFile(vector<TString> * optNames, OptMaps * optMap, TString 
                                         <<optMap->GetOptF(optNameNow)<<"\" --> isSame = "<<isSameOpt
                                         <<"  (relative numerical difference is "<<relDif<<")"<<coutDef<<endl;
         
-        if(overWrite) optMap->SetOptF(optNameNow,valDbl);
+        if(overWriteNow) optMap->SetOptF(optNameNow,valDbl);
       }
       else if(optTypeNow == "C") {
         isSameOpt  = ( optValStrNow == optMap->GetOptC(optNameNow) );
@@ -620,7 +629,7 @@ void Utils::optToFromFile(vector<TString> * optNames, OptMaps * optMap, TString 
         if(debug) aCustomLOG("optFile") <<coutYellow<<" - Got(C) "<<optNameNow<<" -> \""<<optValStrNow<<"\" compared to existing \""
                                         <<optMap->GetOptC(optNameNow)<<"\" --> isSame = "<<isSameOpt<<coutDef<<endl;
         
-        if(overWrite) optMap->SetOptC(optNameNow,optValStrNow);
+        if(overWriteNow) optMap->SetOptC(optNameNow,optValStrNow);
       }
 
       // -----------------------------------------------------------------------------------------------------------
@@ -634,8 +643,8 @@ void Utils::optToFromFile(vector<TString> * optNames, OptMaps * optMap, TString 
         
         if(assertSame) { aLOG(Log::ERROR) <<message<<endl; VERIFY(LOCATION,"",false); }
 
-        if(overWrite)  message += (TString)coutRed+" Setting value from file !!!"+coutDef;
-        if(keepOrig)   message += (TString)coutRed+" Keeping original value  !!!"+coutDef;
+        if(overWriteNow) message += (TString)coutRed+" Setting value from file !!!"+coutDef;
+        if(keepOrig)     message += (TString)coutRed+" Keeping original value  !!!"+coutDef;
 
         if(!noWarning) aLOG(Log::WARNING) <<message<<endl;
       }
@@ -643,6 +652,7 @@ void Utils::optToFromFile(vector<TString> * optNames, OptMaps * optMap, TString 
     inputLineV.clear();
   }
 
+  alwaysOverWriteV.clear();
   return;
 }
 
@@ -694,6 +704,54 @@ void Utils::addTCuts(TCut & aCut0, TCut & aCut1) {
   aCut0 += aCut1;
 
   return;
+}
+
+// ===========================================================================================================
+void Utils::getCodeVersionV(vector <ULong64_t> & strV, TString versStrIn) {
+// ==================================================================
+  strV.clear();
+
+  TString versStr((TString)((versStrIn == "") ? glob->GetOptC(glob->versionTag()) : versStrIn));
+  versStr.ReplaceAll(glob->basePrefix(),"");
+
+  vector <TString> versV = splitStringByChar(versStr,'.');
+  for(int nVersOrder=0; nVersOrder<(int)versV.size(); nVersOrder++) {
+    strV.push_back( strToUlong(versV[nVersOrder]) );
+  }
+  versV.clear();
+  
+  return;
+}
+
+// ===========================================================================================================
+// return [1] if compVers is of a higher version, [0] if the same and [-1] if of a lower version
+// ===========================================================================================================
+int Utils::getCodeVersionDiff(TString compVers) {
+// ==============================================  
+  vector <ULong64_t> currentVersV, compVersV;
+  getCodeVersionV(currentVersV);
+  getCodeVersionV(compVersV,compVers);
+
+  VERIFY(LOCATION,(TString)"Found incompatible version numbers - Current version is ["
+                          +(glob->GetOptC(glob->versionTag())).ReplaceAll(glob->basePrefix(),"")
+                          +"] and compared version is ["
+                          +compVers.ReplaceAll(glob->basePrefix(),"")+"] ..."
+                          ,(currentVersV.size() == compVersV.size()));
+
+  int versDiff(0);
+  for(int nVersOrder=0; nVersOrder<(int)currentVersV.size(); nVersOrder++) {
+    if(compVersV[nVersOrder] > currentVersV[nVersOrder]) {
+      versDiff = 1;
+      break;
+    }
+    else if(compVersV[nVersOrder] < currentVersV[nVersOrder]) {
+      versDiff = -1;
+      break;
+    }
+  }
+
+  currentVersV.clear(); compVersV.clear();
+  return versDiff;
 }
 
 // ===========================================================================================================
@@ -1314,8 +1372,12 @@ void Utils::getKolmogorov(double * data0, double * data1) {
   }
 
   double  prob(0), dist(0);
-  if(param->GetOptC("Kolmogorov_opt").Contains("prob")) prob = TMath::KolmogorovTest(param->GetOptI("nArrEntries"),sortedData0,param->GetOptI("nArrEntries"),sortedData1,"");
-  if(param->GetOptC("Kolmogorov_opt").Contains("dist")) dist = TMath::KolmogorovTest(param->GetOptI("nArrEntries"),sortedData0,param->GetOptI("nArrEntries"),sortedData1,"M");
+  if(param->GetOptC("Kolmogorov_opt").Contains("prob")) {
+    prob = TMath::KolmogorovTest(param->GetOptI("nArrEntries"),sortedData0,param->GetOptI("nArrEntries"),sortedData1,"");
+  }
+  if(param->GetOptC("Kolmogorov_opt").Contains("dist")) {
+    dist = TMath::KolmogorovTest(param->GetOptI("nArrEntries"),sortedData0,param->GetOptI("nArrEntries"),sortedData1,"M");
+  }
 
   param->NewOptF("Kolmogorov_prob",prob);
   param->NewOptF("Kolmogorov_dist",dist);

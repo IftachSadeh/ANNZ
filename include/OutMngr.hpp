@@ -44,6 +44,7 @@ public:
   void     SetOutDirName(TString outDirNameNow);
   void     SetOutFileName(TString outFileNameNow);
   TString  GetOutDirName();
+  TString  GetOutPlotDirName();
   TString  GetOutFileName();
 
   void     SetMyStyle();
@@ -106,7 +107,7 @@ public:
 	map < TString , TTree * >::iterator	      TreeMapItr;
 
 private:
-  TString	 outputRootFileName, outDirName, outFileName;
+  TString	 outputRootFileName, outDirName, outPlotDirName, outFileName;
   
 };
 

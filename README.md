@@ -1,4 +1,4 @@
-# ANNZ 2.1.2
+# ANNZ v2.2.0
 
 ## Introduction
 ANNZ uses both regression and classification techniques for estimation of single-value photo-z (or any regression problem) solutions and PDFs. In addition it is suitable for classification problems, such as star/galaxy classification.
@@ -346,6 +346,34 @@ Signal and background objects may be defined by using at least one pair of varia
     glob.annz["inpFiles_bck"] = "sgCatalogue_star_0.txt"
     ```
 
+#### Bias correction for regression
+
+There are two bias correction options for regression, one for MLMs (applied during the training stage) and one for PDFs (applied during the optimization/verification phase). The former may be used for single/randomized regression, and the latter for single/randomized regression and for binned classification.
+The MLM correction may be turned on/off by setting `glob.annz["doBiasCorMLM"]`, while the PDF correction my be used with `glob.annz["doBiasCorPDF"]`. An example for the relevant job options is given in `scripts/annz_rndReg_advanced.py`.
+
+##### MLM bias correction
+
+Following training of the *nominal MLM*, a second one is trained, the *bias-MLM*.
+For the following, let's assume we train a single MLM, using `python scripts/annz_singleReg_quick.py --singleRegression --train` or using `python scripts/annz_rndReg_quick.py --randomRegression --train --trainIndex=0`. The output of this is a regression estimator, designated `ANNZ_0`.
+
+The settings of the bias-MLM are defined using the `biasCorMLMopt` parameter, which uses the same syntax as `userMLMopts`.
+The inputs for the bias-MLM are the same as for the nominal, where it is also possible to add the output of the nominal MLM as an input. For instance, if the nominal MLM is trained with `glob.annz["inputVariables"] = "MAG_U;MAG_G;MAG_R"`, then the bias-MLM can be trained with either `MAG_U;MAG_G;MAG_R` or `MAG_U;MAG_G;MAG_R;ANNZ_0` as inputs. 
+The regression target of the bias-MLM is the difference between the target value and the regression estimator of the nominal MLM. For our example, the target of the nominal may be `glob.annz["zTrg"] = "Z"`. In this case, the regression target for training for the bias-MLM would be `(ANNZ_0 - Z)`.
+
+The bias correction is used by evaluating for each object the difference between the nominal MLM estimator, and the estimator of the bias correction MLM. That is, for each object we will have `de-biased estimator := MLM(nominal) - MLM(bias)`. This is applied internally in the code. The user therefore only gets the de-biased estimator as an output - this output replaces the nominal MLM solution, and has the same designation. For our example, the designation `ANNZ_0` for the output of the regression will therefore refer to the de-biased estimator. 
+
+The MLM bias correction must be enabled during training. If using randomized regression, it is possible to use it for only a subset of the trained MLMs, by changing the value of `glob.annz["doBiasCorMLM"]` in the training loop. One should use simple MLM structures to avoid slowing down training and evaluation. For instance: `glob.annz["biasCorMLMopt"] = "ANNZ_MLM=BDT:NTrees=50"` or `glob.annz["biasCorMLMopt"] = "ANNZ_MLM=ANN::HiddenLayers=N,N+5:VarTransform=N,P:TrainingMethod=BFGS:NCycles=500:UseRegulator=True"` are reasonable baseline choices, which will not result in significant overhead - BDTs are recommended, as they are usually faster to train.
+
+Following derivation of the bias-MLM, a simple Kolmogorov-Smirnov test is performed, comparing the performance of the nominal MLM with the de-biased MLM. If the bias correction procedure resulted in degraded performance, it is rejected; the nominal MLM is then used as the estimator instead.
+
+
+##### PDF bias correction
+
+The bias correction for PDFs may be chained after the MLM bias correction, or just used on it's own. The PDF correction is computed as part of the optimization/verification phase, and does not need to be defined during training.
+
+The correction is applied as a simplified unfolding of the regression solution with regards to the target. This is done by calculating the correlation for each bin of the PDF, between the target value and the position of the bin. The correlation is computed for each object in the training sample, so that the average per-bin correlation may be derived for the entire training sample. The correction is applied on the evaluated PDF. The is done by re-weighting each bin of the PDF according to the average estimated value of the regression target. The procedure is equivalent to multiplying the PDF (bin-by-bin) by the relation between the derived regression estimator (photo-z) and the target value (true redshift), as derived using the training sample.
+
+
 #### Running on a batch farm
 
 It is advisable to run ANNZ on a batch farm, especially during the training phase. An example of how this may be done is given in `scripts/annz_qsub.py`. Please note that this only serves as a guideline, and should probably be customized for a particular cluster.
@@ -357,6 +385,49 @@ The nominal input/output of ANNZ is in the format of ascii files. In order to av
 python scripts/annz_fits_quick.py --fitsToAscii
 python scripts/annz_fits_quick.py --asciiToFits
 ```
+
+#### Independent derivation of KNN error estimates
+
+There is the option to generate error estimation (using the KNN method) for a general input dataset.
+The evaluated dataset does not need to be created using `ANNZ`. That is, one can estimate photo-zs (or any other type of regression problem) using external software. `ANNZ` can then be used to derive errors, so long as one provides the corresponding reference dataset.
+
+Some specifics:
+
+  - The reference dataset must include the true value of the evaluated object, as well as a list of variables which are used for the KNN-search.
+  
+  - The errors are computed by finding the near neighbours of the evaluated object. We compute
+    the distribution of errors, defined for a given object as `ERR == (eval_value - true_value)`.
+  
+  - The final error is derived as the width of the distribution of `ERR`. `ANNZ` provides both a symmetric error, and error estimates in the negative and in the positive directions (towards lower and higher values of the regression variable).
+  
+See `scripts/annz_rndReg_knnErr.py` for a complete example script. For illustration, the following job-options:
+  
+  - We define the evaluated variable and it's respective true value as e.g.,
+  ```python
+  glob.annz["zReg_onlyKnnErr"] = "myPhotoZ"
+  glob.annz["zTrg"]            = "Z"
+  ```
+  where in this case, `myPhotoZ` is a photo-z estimator and `Z` is the true redshift.
+  
+  - The reference dataset may include the following variables:
+  ```python
+  glob.annz["inAsciiVars"] = "D:Z;F:myPhotoZ;F:MAG_U;F:MAG_G;F:MAG_R;F:MAG_I;F:MAG_Z"
+  ```
+  where the rest of the variables, besides `myPhotoZ` and `Z`, are auxiliary variables.
+  
+  - The KNN errors will be conducted using e.g., 
+  ```python
+  glob.annz["knnVars_onlyKnnErr"] = "MAG_U;MAG_G;(MAG_G-MAG_R);(MAG_R-MAG_I);(MAG_I-MAG_Z)"
+  ```
+  or any other functional combinations of the auxiliary variables.
+  
+  - An evaluated dataset, for which we derive the KNN errors, should then, in this example, include the following parameters:
+  ```python
+  glob.annz["inAsciiVars"] = "F:MAG_U;F:MAG_G;F:MAG_R;F:MAG_I;F:MAG_Z"
+  ```
+  That is, at the very least, the evaluated dataset must include all of the parameters listed in `glob.annz["knnVars_onlyKnnErr"]`, but it does not need to include either `myPhotoZ` or `Z`. (It is also allowed to include here other variables which are not used at all; these can then be copied over to the output catalogue using `glob.annz["addOutputVars"]`.)
+  
+  - The output catalogue will be stored in this example at `./output/test_knnErr/onlyKnnErr/eval/ANNZ_onlyKnnErr_0000.csv`. It will contain the variables, `F:myPhotoZ_err;F:myPhotoZ_errN;F:myPhotoZ_errP`, as well as any requested observer variables from the original dataset. Here `myPhotoZ_err` is the symmetric error estimated for `myPhotoZ`, and `myPhotoZ_errN`/`myPhotoZ_errP` the estimates for errors in the negative/positive directions, respectively.
 
 
 ## The outputs of ANNZ
@@ -428,8 +499,6 @@ glob.annz["addInTrainFlag"] = True
 
   - It is recommended to first generate a floating-point estimate of `inTrainFlag` and to study the distribution. One could e.g., decide to discard objects with a low value of `inTrainFlag`, based on how the bias or scatter increase as `inTrainFlag` decreases. Them, once a proper cut value for `maxRelRatioInRef_inTrain` is determined, `inTrainFlag` may be set to produce a binary decision.
 
-If the regression target is detected as part of the evaluated dataset, performance plots are created as well, found e.g., at `output/test_randReg_quick/regres/eval/plots/`. This is useful if, for instance, one wants to easily check the performance on a dataset which was not used for training/testing.
-The plots will also include the dependence of the performance on any added variable in the evaluated dataset. For instance, if one sets `glob.annz["addOutputVars"] = "MAG_Z"`, then the dependence of the bias, scatter etc. on `MAG_Z` wil be plotted. This is particularly useful for assessing the dependence of the performance on the `inTrainFlag` parameter, in order to decide on a cut value for the latter.
 
 ### Single regression
 
@@ -460,6 +529,24 @@ It is possible to also generate an uncertainty estimator for the classification,
 glob.annz["addClsKNNerr"] = True
 ```
 
+### Performance plots for regression
+
+Performance plots are created during optimization/validation (possibly also during evaluation).
+
+The plots can take into account weights, if the `userWeights_metricPlots` is set. Numerical and logical expressions are allowed. As an example, let's assume we set the following during evaluation:
+```python
+glob.annz["userWeights_metricPlots"] = "((MAGERR_U <= 0.2) && (MAGERR_R < 1)) * ( (MAGERR_G<0.5)*6 + (MAGERR_G>=0.5)*1 )"
+```
+The result would be that all objects with `(MAGERR_U > 0.2)` or `(MAGERR_R >= 1)` will not be included in the plots (zero weight), and that all objects with `(MAGERR_G<0.5)` will have 6 times the weight compared to objects with `(MAGERR_G>=0.5)`.
+The weights thus derived will also be included in the output of the evaluation (i.e., as part of `output/test_singleReg_quick/regres/optim/eval/ANNZ_singleReg_0000.csv` for single regression), under the corresponding variable-weight name (`ANNZ_best_wgt` for single regression, or the other `*_wgt` variables for MLMs and PDFs).
+The content of `userWeights_metricPlots` can only include mathematical expressions using the variables defined in `inAsciiVars` for the corresponding evaluated sample. In addition, one may use the `inTrainFlag` parameter as a weight (if the user chooses to generate it as part of the pipeline). 
+
+For optimization and validation, the `userWeights_train` and/or `userWeights_valid` weight expressions are also included by default (assuming these were defined during training). In addition, the KNN-weights (if `useWgtKNN` was set) are also automatically taken into account. (The combination of all of these are used in addition to `userWeights_metricPlots`.)
+
+If the regression target is detected as part of the evaluated dataset, plots are created. These are found e.g., at `output/test_randReg_quick/regres/eval/plots/`. This is useful if, for instance, one wants to easily check the performance on a dataset which was not used for training/testing.
+
+The plots will also include the dependence of the performance on any added variable in the evaluated dataset. For instance, if one sets `glob.annz["addOutputVars"] = "MAG_Z"`, then the dependence of the bias, scatter etc. on `MAG_Z` will be plotted. This is particularly useful for assessing the dependence of the performance on the `inTrainFlag` parameter, in order to decide on a cut value for the latter.
+
 ### Interpretation of estimator-weights
 
 The weights for the different estimators which were mentioned above (`ANNZ_8_wgt`, `ANNZ_best_wgt`, `ANNZ_MLM_avg_0_wgt` etc.) serve two purposes:
@@ -480,6 +567,7 @@ A few notes:
   - The cut variables, `userCuts_train` and `userCuts_valid`, are binary, in the sense that they define the conditions for an object to be accepted for training or validation. On the other hand, the weight variables, `userWeights_train` and `userWeights_valid`, can serve as either cuts or weights; a zero-weight is equivalent to a cut, as it effectively excludes an objects. Therefore it is possible to compose weight expressions which have "boolean" components (such as `(MAGERR_I > 1)`) which are numerically equivalent to `0` or `1`. In principle, we can therefore do everything with `userWeights_train` and `userWeights_valid`. However, due to performance considerations, it is recommended to use `userCuts_train` and `userCuts_valid` for well defined rejection criteria; then use the weight variables for everything else.
 
   - The plots provided following optimization or verification all take into account the respective weights of the different estimators.
+
 
 ## General comments
 

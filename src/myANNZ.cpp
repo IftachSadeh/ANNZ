@@ -110,7 +110,10 @@ int main(int argc, char * argv[]){
   // -----------------------------------------------------------------------------------------------------------
   if     (aMyMain->glob->GetOptB("doGenInputTrees")) aMyMain->GenerateInputTrees(); // create catalogue trees
   else if(aMyMain->glob->GetOptB("doInTrainFlag"))   aMyMain->doInTrainFlag();      // inTrainFlag calculation, without the need for MLMs
-  else                                               aMyMain->DoANNZ();             // training, validation and evaluation modes
+  else if(!aMyMain->glob->GetOptB("doOnlyKnnErr"))   aMyMain->DoANNZ();             // training, validation and evaluation modes
+
+  // knn-error calculation, without the need for MLMs
+  if(aMyMain->glob->GetOptB("doOnlyKnnErr")) aMyMain->doOnlyKnnErr();
   
   DELNULL(aMyMain);
   cout<<endl;
@@ -151,6 +154,7 @@ myANNZ::myANNZ() {
   glob->NewOptB("doOptim"        ,false); // run ANNZ in validation mode
   glob->NewOptB("doVerif"        ,false); // run ANNZ in binned classification mode and check that training is complete
   glob->NewOptB("doEval"         ,false); // run ANNZ in evaluation mode
+  glob->NewOptB("doOnlyKnnErr"   ,false); // run only the KNN error estimator
   glob->NewOptB("doInTrainFlag"  ,false); // run only the KNN weight flag
 
 
@@ -160,7 +164,7 @@ myANNZ::myANNZ() {
   glob->NewOptC("inAsciiFiles" ,"");        // list of input files (if no seperate inputs for training,testing,validting)
   glob->NewOptC("inAsciiVars"  ,"");        // list of input variables and variable-types as they appear in inAsciiFiles
   glob->NewOptC("addOutputVars","");        // list of input variables which will be added to the ascii output
-  glob->NewOptB("storeOrigFileName",false); // wether to store the name of the original file for each object
+  glob->NewOptB("storeOrigFileName",false); // whether to store the name of the original file for each object
   // inpFiles_sig, inpFiles_bck -
   //   optional lists of input files defining if an object is of type signal or background
   glob->NewOptC("inpFiles_sig","");
@@ -201,9 +205,9 @@ myANNZ::myANNZ() {
   glob->NewOptI("knnFracFact_wgtKNN"   ,3);
   // by default, the weights are computed for the entire sample. That is, the training and the testing samples
   // are used together - we calculate the difference between the distribution of input-variables between [train+test samples]
-  // and [ref sample]. However, it is possible to decide to comput the weights for each separately. That is, to calculate
-  // wegiths for [train sample] with regards to [ref sample], and to separately get [test sample] with regards to [ref sample]. The
-  // latter is only recommended if the training and testing samples have different inpput-variable distributions.
+  // and [ref sample]. However, it is possible to decide to compute the weights for each separately. That is, to calculate
+  // weights for [train sample] with regards to [ref sample], and to separately get [test sample] with regards to [ref sample]. The
+  // latter is only recommended if the training and testing samples have different input-variable distributions.
   glob->NewOptB("trainTestTogether_wgtKNN",true);
 
   // input files (given by splitTypeTrain, splitTypeTest and inAsciiFiles) may also be root files, containing
@@ -211,7 +215,13 @@ myANNZ::myANNZ() {
   glob->NewOptC("inTreeName"     ,"");
   // if root input is given in inAsciiFiles_wgtKNN, the corresponding tree name is defined in treeName_wgtKNN
   glob->NewOptC("inTreeName_wgtKNN"     ,"");
-  
+
+  // independent KNN error estimation for an external dataset
+  // -----------------------------------------------------------------------------------------------------------
+  glob->NewOptC("zReg_onlyKnnErr"    ,"");  // name of variable for which the error is estimated
+  glob->NewOptC("knnVars_onlyKnnErr" ,"");  // name of variable which corresponds to the true value of "zReg_onlyKnnErr"
+  glob->NewOptC("cuts_onlyKnnErr"    ,"");  // possible cut expression applied to the KNN error estimator
+  glob->NewOptC("weights_onlyKnnErr" ,"");  // possible weight expression applied to the KNN error estimator
 
   // addInTrainFlag, minNobjInVol_inTrain, maxRelRatioInRef_inTrain -
   // -----------------------------------------------------------------------------------------------------------
@@ -382,6 +392,9 @@ myANNZ::myANNZ() {
   // -----------------------------------------------------------------------------------------------------------
   glob->NewOptC("optimCondReg","sig68");
 
+  // force the MLM ranking alg to take the outlier fraction into account (not recommended)
+  glob->NewOptB("optimWithFracSig68",false); 
+
   // use MAD (median absolute deviation) instead of sigma_86 for randomized regression optimization
   glob->NewOptB("optimWithMAD",false); 
 
@@ -397,13 +410,14 @@ myANNZ::myANNZ() {
   // -----------------------------------------------------------------------------------------------------------
   // user-defined cuts and weights
   // -----------------------------------------------------------------------------------------------------------
-  glob->NewOptB("useCutsMinMaxZ"   ,true);  // reject objects with regression target outside of range in training/optimization
-  glob->NewOptC("userCuts_train"   ,"");    // cuts applied only on training   sample
-  glob->NewOptC("userCuts_valid"   ,"");    // cuts applied only on validation sample
-  glob->NewOptC("userCuts_sig"     ,"");    // expression defining the signal     sample for classification
-  glob->NewOptC("userCuts_bck"     ,"");    // expression defining the background sample for classification
-  glob->NewOptC("userWeights_train","1");   // weights applied on training   sample
-  glob->NewOptC("userWeights_valid","1");   // weights applied on validation sample
+  glob->NewOptB("useCutsMinMaxZ"         ,true);  // reject objects with regression target outside of range in training/optimization
+  glob->NewOptC("userCuts_train"         ,"");    // cuts applied only on training   sample
+  glob->NewOptC("userCuts_valid"         ,"");    // cuts applied only on validation sample
+  glob->NewOptC("userCuts_sig"           ,"");    // expression defining the signal     sample for classification
+  glob->NewOptC("userCuts_bck"           ,"");    // expression defining the background sample for classification
+  glob->NewOptC("userWeights_train"      ,"1");   // weights applied on training   sample
+  glob->NewOptC("userWeights_valid"      ,"1");   // weights applied on validation sample
+  glob->NewOptC("userWeights_metricPlots","1");   // weights applied on plotting during doMetricPlots()
 
   // if userCuts_valid (userWeights_valid) is set to a different value during optimization compared to its
   // value during training, then modify_userCuts_valid (modify_userWeights_valid) will determine what is
@@ -429,8 +443,6 @@ myANNZ::myANNZ() {
   // a lower acceptance bound to check if too few MLMs are trained or if something went wrong with the optimization procedure
   // (e.g., not enough trained MLMs have 'good' combinations of scatter, bias and outlier-fraction metrics).
   glob->NewOptI("minAcptMLMsForPDFs",5);
-  // wether or not to perform a bias-correction on PDFs
-  glob->NewOptB("doBiasCorPDF"      ,true);
   // number of random smearing to perform for the PDF bias-correction
   glob->NewOptI("nSmearUnf"         ,100);
   // add calculation of maximum of PDF to output
@@ -442,6 +454,29 @@ myANNZ::myANNZ() {
   glob->NewOptF("max_bias_PDF"      ,-1); // maximal value of the bias             of an MLM included in the PDF
   glob->NewOptF("max_frac68_PDF"    ,-1); // maximal value of the outlier-fraction of an MLM included in the PDF
   
+  // bias-correction procedure on MLMs and/or PDFs
+  //   doBiasCorPDF      - whether or not to perform the correction for PDFs (during optimization)
+  //   doBiasCorMLM      - whether or not to perform the correction for MLMs (during training)
+  //   biasCorMLMopt     - MLM configuration options for the bias-correction for MLMs
+  //                       - can take the same format as userMLMopts (e.g., [biasCorMLMopt="ANNZ_MLM=BDT:VarTransform=N:NTrees=100"])
+  //                       - can be empty (then the job options will be automatically generated, same as is setting [userMLMopts=""])
+  //                       - can be set as [biasCorMLMopt="same"], then the same configuration options as for the nominal MLM
+  //                         for which the bias-correction is applied are used
+  //                       - simple MLMs are recommended, e.g.: 
+  //                          - BDT with around 50-100 trees:
+  //                            "ANNZ_MLM=BDT:VarTransform=N:NTrees=100:BoostType=AdaBoost"
+  //                          - ANN with a simple layer structure, not too many NCycles etc.:
+  //                            "ANNZ_MLM=ANN::HiddenLayers=N,N+5:VarTransform=N,P:TrainingMethod=BFGS:NCycles=500:UseRegulator=True"
+  //   biasCorMLMwithInp - add the nominal MLM as an input variable for the new MLM of the bias-correction (not strictly necessary)
+  //   alwaysKeepBiasCor - whether or not to not check the KS-test and N_poiss metrics for improvement in order to
+  //                       possibly reject the bias correction (check performed if [alwaysKeepBiasCor] is set to true)
+  // -----------------------------------------------------------------------------------------------------------
+  glob->NewOptB("doBiasCorPDF"      ,true);
+  glob->NewOptB("doBiasCorMLM"      ,true);
+  glob->NewOptB("biasCorMLMwithInp" ,false);
+  glob->NewOptB("alwaysKeepBiasCor" ,false);
+  glob->NewOptC("biasCorMLMopt"     ,"ANNZ_MLM=BDT:VarTransform=N:NTrees=50:BoostType=AdaBoost");
+
   // -----------------------------------------------------------------------------------------------------------
   // general stuff
   // -----------------------------------------------------------------------------------------------------------
@@ -454,13 +489,17 @@ myANNZ::myANNZ() {
   glob->NewOptC("evalDirPostfix"  ,"");        // add this to the name of the evaluation directory
   glob->NewOptI("nObjectsToWrite" ,(int)5e5);  // maximal number of objects in a tree/output ascii file
   glob->NewOptI("nObjectsToPrint" ,(int)1e4);  // frequency for printing loop counter status
-  glob->NewOptB("doPlots"         ,true);      // wether or not to generate performance and control plots
+  glob->NewOptB("doPlots"         ,true);      // whether or not to generate performance and control plots
   glob->NewOptC("zTrgTitle"       ,"Z_{trg}"); // title of regression target   (for plots)
   glob->NewOptC("zRegTitle"       ,"Z_{reg}"); // title of regression variable (for plots)
   glob->NewOptF("zPlotBinWidth"   ,-1);        // width of bins to perform the plotting
   glob->NewOptI("nDrawBins_zTrg"  ,-1);        // number of bins in zTrg for plotting
   // typical width in the regression variable for plotting, e.g., for 10 plotting bins, set zClosBinWidth = (maxValZ-minValZ)/10.
   glob->NewOptF("zClosBinWidth"   ,-1);
+  // possible list of variables which will always be plotted (that is, no safety checks on variable type will be performed)
+  glob->NewOptC("alwaysPlotVars"  ,"");
+  // possible list of variables for which we do not use quantile bins for plotting - e.g., set as "inTrainFlag;MAG_U"
+  glob->NewOptC("noQuantileBinsPlots"  ,"inTrainFlag");
 
   // format for plotting (in addition to generated root scripts, which may be run with [root -l script.C]
   // availabe formats (leave empty [glob->NewOptC("printPlotExtension","")] to prevent plotting):
@@ -483,7 +522,7 @@ myANNZ::myANNZ() {
   glob->NewOptB("doGausSigmaRelErr",true);
 
   glob->NewOptI("nErrKNN",100);                // number of near-neighbours to use for the KNN error estimation, see setupKdTreeKNN().
-  glob->NewOptB("doWidthRescale_errKNN",true); // wether or not to rescale the input parameters of the knn-err search to the range [-1,1]
+  glob->NewOptB("doWidthRescale_errKNN",true); // whether or not to rescale the input parameters of the knn-err search to the range [-1,1]
 
   // if propagating input-errors - nErrINP is the number of randomly generated MLM values used to propagate
   // the uncertainty on the input parameters to the MLM-estimator. See getRegClsErrINP()
@@ -552,6 +591,11 @@ myANNZ::myANNZ() {
 // ===========================================================================================================
 void myANNZ::Init() {
 // ==================
+  // -----------------------------------------------------------------------------------------------------------
+  // current version-tag for the code (always go one tag up for Master version)
+  // -----------------------------------------------------------------------------------------------------------
+  TString basePrefix("ANNZ_"), versionTag("2.2.0");
+  // -----------------------------------------------------------------------------------------------------------
 
   // check user string-input
   vector <TString> optNames;
@@ -566,8 +610,8 @@ void myANNZ::Init() {
   // -----------------------------------------------------------------------------------------------------------
   // names of index parameters in trees
   // -----------------------------------------------------------------------------------------------------------
-  TString basePrefix("ANNZ_");
   glob->NewOptC("basePrefix"          ,basePrefix);             // base tag for all MLM names
+  glob->NewOptC(glob->versionTag()    ,basePrefix+versionTag);  // version-tag
   glob->NewOptC("baseName_inVarErr"   ,basePrefix+"inVarErr_"); // base tag for all PDF names
   glob->NewOptC("baseName_nPDF"       ,basePrefix+"PDF_");      // base tag for all PDF names
   glob->NewOptC("baseName_wgtKNN"     ,basePrefix+"KNN_w");     // KNN weight variable
@@ -580,6 +624,8 @@ void myANNZ::Init() {
   glob->NewOptC("baseName_regPDF_max" ,basePrefix+"PDF_max_");  // base-name for the peak of the pdf solution (and its error) in randomized regression
   glob->NewOptC("baseName_regPDF_avg" ,basePrefix+"PDF_avg_");  // base-name for the average pdf solution (and its error) in randomized regression
   glob->NewOptC("baseName_knnErr"     ,"_knnErr");        // name-postfix of error variable derived with the KNN estimator 
+  // internal name for the onlyKnnErr option
+  glob->NewOptC("baseName_onlyKnnErr" ,"_onlyKnnErr");
   // name of an optional output parameter in evaluation (is it "safe" to use the result for an evaluated object)
   glob->NewOptC("baseName_inTrain"    ,"inTrainFlag");
   // optional parameter to mark if an object is of type signal (1), background (0) or undefined (-1), based on the name of the original input file
@@ -597,6 +643,17 @@ void myANNZ::Init() {
   glob->NewOptC("evalTreePostfix"   ,(TString)"_"+glob->GetOptC("evalDirName")); // postfix for evaluation trees
   glob->NewOptC("inTrainFlagDirName","inTrainFlag");                             // name of sub-dir for the inTrainFlag
   glob->NewOptC("postTrainName"     ,"postTrain");                               // name of sub-dir for MLM input trees
+  
+  // -----------------------------------------------------------------------------------------------------------
+  // special setup for the doOnlyKnnErr mode so that we can safely run ANNZ
+  // -----------------------------------------------------------------------------------------------------------
+  if(glob->GetOptB("doOnlyKnnErr")) {
+    glob->SetOptB("doRegression", true);
+    glob->SetOptB("doSingleReg",  true);
+    glob->SetOptI("nSplit",       1);
+    glob->SetOptI("nMLMs",        1);
+    glob->SetOptI("nMLMnow",      0);
+  }
 
   // -----------------------------------------------------------------------------------------------------------
   // update/finalize glob-> paramters after user inputs and initialize utils and outputs
@@ -607,13 +664,19 @@ void myANNZ::Init() {
   // initialize the logger
   Log::theLog::ReportingLevel() = Log::theLog::FromString((std::string)glob->GetOptC("logLevel"));
 
-  aLOG(Log::INFO)<<glob->coutWhiteOnBlack<<glob->coutBlue<<" - starting myANNZ::Init() ..."<<glob->coutDef<<endl;
+  aLOG(Log::INFO)<<glob->coutGreen<<" ----------------------------------------------"       <<glob->coutDef<<endl;
+  aLOG(Log::INFO)<<glob->coutGreen<<" - Welcome to ANNZ v"<<versionTag<<" !"                <<glob->coutDef<<endl;
+  aLOG(Log::INFO)<<glob->coutGreen<<" -----------------------------------------------------"
+                                  <<"------------------------------------------------------"<<glob->coutDef<<endl;
 
   // -----------------------------------------------------------------------------------------------------------
   // analysis type (used for directory naming)
   // -----------------------------------------------------------------------------------------------------------
   TString analysisPrefix("");
-  if(glob->GetOptB("doRegression")) {
+  if     (glob->GetOptB("doOnlyKnnErr")) {
+    analysisPrefix = "onlyKnnErr";
+  }
+  else if(glob->GetOptB("doRegression")) {
     if(glob->GetOptB("doBinnedCls")) analysisPrefix = "binCls";
     else                             analysisPrefix = "regres";
   }
@@ -656,7 +719,6 @@ void myANNZ::Init() {
   glob->NewOptC("verifDirNameFull",      (TString)glob->GetOptC("outDirNamePath")+glob->GetOptC("verifDirName"));
   glob->NewOptC("evalDirNameFull",       (TString)glob->GetOptC("outDirNamePath")+glob->GetOptC("evalDirName"));
   glob->NewOptC("inTrainFlagDirNameFull",(TString)glob->GetOptC("outDirNamePath")+glob->GetOptC("inTrainFlagDirName"));
-
 
   if     (glob->GetOptB("doGenInputTrees")) glob->NewOptC("outDirNameFull", glob->GetOptC("inputTreeDirName"));
   else if(glob->GetOptB("doTrain"))         glob->NewOptC("outDirNameFull", glob->GetOptC("trainDirNameFull"));
@@ -709,13 +771,27 @@ void myANNZ::Init() {
   bool hasGoodOpt =   glob->GetOptB("doGenInputTrees") || 
                    ( !glob->GetOptB("doGenInputTrees")  && (   glob->GetOptB("doTrain")       || glob->GetOptB("doOptim")
                                                             || glob->GetOptB("doVerif")       || glob->GetOptB("doEval")  
-                                                            || glob->GetOptB("doInTrainFlag")                             ) );
-  if(!hasGoodOpt) VERIFY(LOCATION,(TString)"Configuration problem... Did not find \"doGenInputTrees\", \"doTrain\", "+
-                                                  "\"doOptim\", \"doVerif\", \"doEval\" or \"doInTrainFlag\" options ...",false);
+                                                            || glob->GetOptB("doInTrainFlag") ) );
+  VERIFY(LOCATION,(TString)"Configuration problem... Did not find \"doGenInputTrees\", \"doTrain\", "+
+                           "\"doOptim\", \"doVerif\", \"doEval\" or \"doInTrainFlag\" options ..."
+                           ,hasGoodOpt);
 
   if(glob->GetOptB("useWgtKNN") && glob->GetOptB("doGenInputTrees")) {
     VERIFY(LOCATION,(TString)"Configuration problem... Can not set \"useWgtKNN\""
                             +" without setting corresponding input files in \"inAsciiFiles_wgtKNN\"",(glob->GetOptC("inAsciiFiles_wgtKNN") != ""));
+  }
+
+  if(glob->GetOptB("doOnlyKnnErr")) {
+    bool hasGoodOpt  = ( glob->GetOptB("doGenInputTrees") || glob->GetOptB("doEval") );
+
+    VERIFY(LOCATION,(TString)"Configuration problem... Did not find \"doGenInputTrees\" or \"doEval\" options ...", hasGoodOpt);
+
+    bool hasOtherOpt = (   glob->GetOptB("doTrain") || glob->GetOptB("doOptim")
+                        || glob->GetOptB("doVerif") || glob->GetOptB("doInTrainFlag") );
+
+    VERIFY(LOCATION,(TString)"Configuration problem... \"doOnlyKnnErr\" can not be run with any of the following options: \"doTrain\", "+
+                             "\"doOptim\", \"doVerif\" or \"doInTrainFlag\" !"
+                             ,!hasOtherOpt);
   }
 
   // check the tadaset division (full, or split into training/testing). make sure that the 
@@ -748,7 +824,6 @@ void myANNZ::Init() {
                          <<" Will ignore the latter three... "<<coutDef<<endl;
     }
   }
-
 
 
   if(glob->GetOptI("initSeedRnd") < 0) glob->SetOptI("initSeedRnd",0);
@@ -790,7 +865,7 @@ void myANNZ::Init() {
 
   // print out final init parameters
   if(inLOG(Log::DEBUG)) { glob->printOpts(2,30); cout<<endl; }
- 
+
   return;
 }
 
@@ -828,6 +903,47 @@ void myANNZ::GenerateInputTrees() {
 
   return;
 }
+
+
+
+// ===========================================================================================================
+/**
+ * @brief    - Calculate the knn-error estimator for a general input dataset.
+ */
+// ===========================================================================================================
+void myANNZ::doOnlyKnnErr() {
+// ==========================
+
+  VERIFY(LOCATION,(TString)"Can not define both \"doGenInputTrees\" and \"doEval\" at the same time ... run \"doGenInputTrees\" "
+                          +"separately first, then \"doEval\"", !(glob->GetOptB("doGenInputTrees") && glob->GetOptB("doEval")));
+
+  // -----------------------------------------------------------------------------------------------------------
+  // create trees from the evaluated dataset
+  // -----------------------------------------------------------------------------------------------------------
+  if(glob->GetOptB("doEval")) {
+    // initialize the inTrainFlag directory
+    outputs->InitializeDir(glob->GetOptC("outDirNameFull"),glob->GetOptC("baseName"));
+
+    // create the trees
+    CatFormat * aCatFormat = new CatFormat("aCatFormat",utils,glob,outputs);
+
+    aCatFormat->inputToFullTree(glob->GetOptC("inAsciiFiles"),glob->GetOptC("inAsciiVars"),"_full");
+    
+    DELNULL(aCatFormat);
+  }
+
+  // -----------------------------------------------------------------------------------------------------------
+  // calculate the knn errors
+  // -----------------------------------------------------------------------------------------------------------
+  ANNZ * aANNZ = new ANNZ("aANNZ",utils,glob,outputs);
+  
+  aANNZ->KnnErr();
+  
+  DELNULL(aANNZ);
+
+  return;
+}
+
 
 
 // ===========================================================================================================

@@ -626,12 +626,11 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
     if(isCls)                   { var_1->NewVarF(MLMname_v);  var_1->NewVarI(sigBckTypeName);                       }
     if(!isCls || needBinClsErr) { var_1->NewVarF(MLMname_eN); var_1->NewVarF(MLMname_e); var_1->NewVarF(MLMname_eP);}
 
-    // setup cuts for the vars we loop on for sig/bck determination in case of classification
-    setMethodCuts(var_0,nMLMnow);
-
     // connect the input vars to the tree before looping
     // -----------------------------------------------------------------------------------------------------------
     var_0->connectTreeBranchesForm(aChain,&readerInptV);
+
+    setMethodCuts(var_0,nMLMnow);
 
     // create the output tree and connect it to the output vars
     // -----------------------------------------------------------------------------------------------------------
@@ -686,7 +685,7 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
 
       // fill the output tree
       if(isCls) {
-        double  clsVal = getReader(var_0,ANNZ_readType::CLS,true ,nMLMnow);
+        double  clsVal = getReader(var_0,ANNZ_readType::CLS,true,nMLMnow);
         double  clsPrb = getReader(var_0,ANNZ_readType::PRB,false,nMLMnow);
         double  clsWgt = var_0->GetForm(MLMname_w) * (passCuts?1:0);
 
@@ -696,7 +695,7 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
         var_1->SetVarF(MLMname_v,clsVal); var_1->SetVarF(MLMname,clsPrb); var_1->SetVarF(MLMname_w,clsWgt);
       }
       else {
-        double  regVal  = getReader(var_0,ANNZ_readType::REG,true ,nMLMnow);
+        double  regVal  = getReader(var_0,ANNZ_readType::REG,true,nMLMnow);
         double  regWgt  = var_0->GetForm(MLMname_w) * (passCuts?1:0);
 
         // sanity check that weights are properly defined
@@ -709,7 +708,8 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
         if     (isErrKNNnow) getRegClsErrKNN(var_0,knnErrModule,trgIndexV,nMLMv,!isCls,regErrV);
         else if(isErrINPnow) getRegClsErrINP(var_0,!isCls,nMLMnow,&seed,&(regErrV[nMLMnow]));
 
-        var_1->SetVarF(MLMname_eN,regErrV[nMLMnow][0]); var_1->SetVarF(MLMname_e,regErrV[nMLMnow][1]); var_1->SetVarF(MLMname_eP,regErrV[nMLMnow][2]);
+        var_1->SetVarF(MLMname_eN,regErrV[nMLMnow][0]); var_1->SetVarF(MLMname_e,regErrV[nMLMnow][1]);
+        var_1->SetVarF(MLMname_eP,regErrV[nMLMnow][2]);
       }
 
       var_1->fillTree();
@@ -758,7 +758,7 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
           // if(trainCut != "") cutExprs += (TString)" && ("+trainCut+")"; // deprecated
           
           int     nEvtPass   = aChainOut->Draw(drawExprs,cutExprs);
-          if(nEvtPass > 0) his_all = (TH1F*)gDirectory->Get(hisName); his_all->BufferEmpty();
+          if(nEvtPass > 0) { his_all = (TH1F*)gDirectory->Get(hisName); his_all->BufferEmpty(); }
         }
         if(!his_all) continue;
 
@@ -822,6 +822,7 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
   TString cut_valid = (TString)(getTrainTestCuts((TString)"_comn"+";"+MLMname+"_valid",nMLMnow));
   
   vector <TString> optNames;
+  saveName = glob->versionTag();  optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(glob->versionTag()));
   saveName = "userCuts_train";    optNames.push_back(saveName); optMap->NewOptC(saveName, cut_train);
   saveName = "userCuts_valid";    optNames.push_back(saveName); optMap->NewOptC(saveName, cut_valid);
   saveName = "userWeights_train"; optNames.push_back(saveName); optMap->NewOptC(saveName, userWgtsM[MLMname+"_train"]);
@@ -950,32 +951,36 @@ void ANNZ::deriveHisClsPrb(int nMLMnow) {
   TChain * aChain = new TChain(inTreeName,inTreeName); aChain->SetDirectory(0); aChain->Add(inFileName); 
   aLOG(Log::DEBUG) <<coutRed<<" - added chain "<<coutGreen<<inTreeName<<"("<<aChain->GetEntries()<<")"<<" from "<<coutBlue<<inFileName<<coutDef<<endl;
 
-  // setup cuts for the vars we loop on for sig/bck determination
-  setMethodCuts(var_0,nMLMnow);
-
-  // override signal/background cuts, just in case...
-  TCut sigCuts = (userCutsM["_sig"] != "") ? userCutsM["_sig"] : userCutsM[MLMname+"_sig"];
-  TCut bckCuts = (userCutsM["_bck"] != "") ? userCutsM["_bck"] : userCutsM[MLMname+"_bck"];
-
-  VERIFY(LOCATION,(TString)"Could not determine the signal-cut ... Something is horribly wrong !!!",(sigCuts != ""));
-  VERIFY(LOCATION,(TString)"Could not determine the signal-cut ... Something is horribly wrong !!!",(bckCuts != ""));
-
-  var_0->setTreeCuts("_sig",sigCuts);
-  var_0->setTreeCuts("_bck",bckCuts);
-
   // create MLM-weight formulae for the input variables
   TString wgtStr = getRegularStrForm(userWgtsM[MLMname+"_train"],var_0);
   var_0->NewForm(MLMname_w,wgtStr);
 
   var_0->connectTreeBranchesForm(aChain,&readerInptV);
 
+  // setup cuts for the vars we loop on for sig/bck determination
+  setMethodCuts(var_0,nMLMnow);
+
+  // override signal/background cuts, just in case for classification; required for
+  // binned-classification where userCutsM[MLMname+"_sig"] and userCutsM[MLMname+"_bck"] hold the bin-cuts
+  TCut sigCuts = userCutsM["_sig"] + userCutsM[MLMname+"_sig"];
+  TCut bckCuts = userCutsM["_bck"] + userCutsM[MLMname+"_bck"];
+
+  VERIFY(LOCATION,(TString)"Could not determine the signal-cut ... Something is horribly wrong !!!",    (sigCuts != ""));
+  VERIFY(LOCATION,(TString)"Could not determine the background-cut ... Something is horribly wrong !!!",(bckCuts != ""));
+
+  var_0->setTreeCuts("_sig",sigCuts);
+  var_0->setTreeCuts("_bck",bckCuts);
+
   // create signla/background histograms
   TString               hisName("");
   vector < TMVA::PDF* > pdfV(2);
   map < TString, TH1* > hisM;
 
-  hisName = "sig_0"; hisM[hisName] = new TH1F(hisName,hisName,nBinsHis,1,-1); hisM[hisName]->SetDefaultBufferSize(bufSize); hisM[hisName]->SetDirectory(0);
-  hisName = "bck_0"; hisM[hisName] = (TH1*)hisM["sig_0"]->Clone(hisName);     hisM[hisName]->SetDefaultBufferSize(bufSize); hisM[hisName]->SetDirectory(0);
+  hisName = "sig_0"; hisM[hisName] = new TH1F(hisName,hisName,nBinsHis,1,-1);
+  hisM[hisName]->SetDefaultBufferSize(bufSize); hisM[hisName]->SetDirectory(0);
+
+  hisName = "bck_0"; hisM[hisName] = (TH1*)hisM["sig_0"]->Clone(hisName);
+  hisM[hisName]->SetDefaultBufferSize(bufSize); hisM[hisName]->SetDirectory(0);
 
   // -----------------------------------------------------------------------------------------------------------
   // loop over the tree
@@ -996,6 +1001,9 @@ void ANNZ::deriveHisClsPrb(int nMLMnow) {
     bool sigBckType(-1);
     if     (!var_0->hasFailedTreeCuts("_bck")) sigBckType = 0;
     else if(!var_0->hasFailedTreeCuts("_sig")) sigBckType = 1;
+    
+    if     (sigBckType == 0) var_0->IncCntr("nObj_bck");
+    else if(sigBckType == 1) var_0->IncCntr("nObj_sig");
     else continue;
 
     double clsVal = getReader(var_0,ANNZ_readType::CLS,true,nMLMnow);
@@ -1006,6 +1014,9 @@ void ANNZ::deriveHisClsPrb(int nMLMnow) {
 
   }
   if(!breakLoop) { var_0->printCntr(inTreeName,Log::DEBUG); }
+
+  VERIFY(LOCATION,(TString)"Found no background objects... Something is horribly wrong ?!?", (var_0->GetCntr("nObj_bck") > 0));
+  VERIFY(LOCATION,(TString)"Found no signal objects... Something is horribly wrong ?!?",     (var_0->GetCntr("nObj_sig") > 0));
 
   DELNULL(var_0); DELNULL(aChain);
 
@@ -1044,8 +1055,9 @@ void ANNZ::deriveHisClsPrb(int nMLMnow) {
       hisM[tag_1]->SetBinError(nBin1,err01);
     }
 
-    double intgr = hisM[tag_1]->Integral();  VERIFY(LOCATION,(TString)"Got empty "+tag_1+" histogram ... Something is horribly wrong ?!?", (intgr > 0));
-    hisM[tag_1]->Scale(1/intgr);             intgrSigBck[nHisNow] = intgr;
+    double intgr = hisM[tag_1]->Integral();
+    VERIFY(LOCATION,(TString)"Got empty "+tag_1+" histogram ... Something is horribly wrong ?!?", (intgr > 0));
+    hisM[tag_1]->Scale(1/intgr);  intgrSigBck[nHisNow] = intgr;
   }
   intgrSigBck[2] = intgrSigBck[0] / (intgrSigBck[0] + intgrSigBck[1]);
 
@@ -1124,13 +1136,15 @@ void ANNZ::deriveHisClsPrb(int nMLMnow) {
  * @param acceptV               - If [acceptV != NULL], it will act as a list of variables which will be added to the merged tree.
  * @param rejectV               - If [rejectV != NULL], it will act as a list of variables which will be excluded from the merged tree.
  * @param aCut                  - If [aCut != ""], it will serve as a cut on objects which will be excluded from the merged tree.
+ * @param addFormV              - If [addFormV != NULL], it contain a list of formulae which will be added as variables to the merged tree.
  * 
  * @return                      - The newly-created merged chain.
  */
 // ===========================================================================================================
 TChain * ANNZ::mergeTreeFriends(TChain * aChain, TChain * aChainFriend, vector<TString> * chainFriendFileNameV,
-                                vector <TString> * acceptV, vector <TString> * rejectV, TCut aCut) {
-// =================================================================================================
+                                vector <TString> * acceptV, vector <TString> * rejectV, TCut aCut,
+                                vector< pair<TString,TString> > * addFormV) {
+// ==========================================================================
   aLOG(Log::INFO) <<coutWhiteOnBlack<<coutCyan<<" - starting ANNZ::mergeTreeFriends() ... "<<coutDef<<endl;
 
   VERIFY(LOCATION,(TString)"Memory leak ?! ",(dynamic_cast<TChain*>(aChain)));
@@ -1162,14 +1176,43 @@ TChain * ANNZ::mergeTreeFriends(TChain * aChain, TChain * aChainFriend, vector<T
   TTree * mergedTree = new TTree(inTreeName,inTreeName); mergedTree->SetDirectory(0);
   outputs->TreeMap[inTreeName] = mergedTree;
 
-  vector < pair<TString,TString> > varTypeNameV;
+  // if defined, setup formula from var_0 (will be unpdated every time a new tree entry is loaded)
+  // and then setup a new variable for var_1, the output VarMaps
+  // -----------------------------------------------------------------------------------------------------------
+  int nForms(0);
+  vector < vector<TString> > formNameV;
+  if(dynamic_cast<vector< pair<TString,TString> >*>(addFormV)) {
+    nForms = (int)addFormV->size();
+    formNameV.resize(nForms,vector<TString>(2,""));
+
+    for(int nFormNow=0; nFormNow<nForms; nFormNow++) {
+      formNameV[nFormNow][0] = (TString)addFormV->at(nFormNow).first;
+      formNameV[nFormNow][1] = (TString)formNameV[nFormNow][0]+"_FRM"; 
+
+      VERIFY(LOCATION,(TString)"Found non-regularized variable name ["+formNameV[nFormNow][0]+"] ... something is "
+                              +"horribly wrong ?!?",(formNameV[nFormNow][0] == utils->regularizeName(formNameV[nFormNow][0])));
+
+      var_0->NewForm(formNameV[nFormNow][1] , addFormV->at(nFormNow).second);
+      var_1->NewVarF(formNameV[nFormNow][0]);
+
+      aLOG(Log::DEBUG) <<coutYellow<<" - will add new variable \""<<coutGreen<<formNameV[nFormNow][0]<<coutYellow
+                       <<"\" from expression ("<<coutGreen<<addFormV->at(nFormNow).second<<coutYellow<<") ..."<<coutDef<<endl;
+    }
+  }
 
   var_0->connectTreeBranches(aChain);
-  var_1->varStruct(var_0,acceptV,rejectV,&varTypeNameV); var_1->createTreeBranches(mergedTree); 
+
+  vector < pair<TString,TString> > varTypeNameV;
+  
+  var_1->varStruct(var_0,acceptV,rejectV,&varTypeNameV);
+  var_1->createTreeBranches(mergedTree); 
   var_1->setDefaultVals();
 
   bool hasCut = (aCut != "");
-  if(hasCut) var_0->setTreeCuts("aCut",aCut);
+  if(hasCut) {
+    var_0->setTreeCuts("aCut",aCut);
+    aLOG(Log::DEBUG) <<coutYellow<<" - will use cuts: "<<coutGreen<<aCut<<coutYellow<<" ..."<<coutDef<<endl;
+   }
 
   bool  breakLoop(false), mayWriteObjects(false);
   int   nObjectsToWrite(glob->GetOptI("nObjectsToWrite"));
@@ -1186,6 +1229,12 @@ TChain * ANNZ::mergeTreeFriends(TChain * aChain, TChain * aChainFriend, vector<T
     if(hasCut) { if(var_0->hasFailedTreeCuts("aCut")) continue; }
 
     var_1->copyVarData(var_0,&varTypeNameV);
+
+    // if defined, set the added variables from the list formulae (after the copy from var_0!)
+    for(int nFormNow=0; nFormNow<nForms; nFormNow++) {
+      var_1->SetVarF(formNameV[nFormNow][0] , var_0->GetForm(formNameV[nFormNow][1]));
+    }
+
     var_1->fillTree();
 
     var_0->IncCntr("nObj"); mayWriteObjects = true;
@@ -1196,14 +1245,14 @@ TChain * ANNZ::mergeTreeFriends(TChain * aChain, TChain * aChainFriend, vector<T
 
   for(int nFriendNow=0; nFriendNow<(int)aChainFriendV.size(); nFriendNow++) DELNULL(aChainFriendV[nFriendNow]);
   aChainFriendV.clear();
+  formNameV.clear();
 
   DELNULL(mergedTree); outputs->TreeMap.erase(inTreeName);
 
-  aLOG(Log::DEBUG) <<coutRed<<"Created new chain (using added friend trees)  "<<coutGreen<<inTreeName
+  aLOG(Log::DEBUG) <<coutRed<<" - Created new chain (using added friend trees)  "<<coutGreen<<inTreeName
                    <<coutRed<<"  from  "<<coutBlue<<inFileName<<coutDef<<endl;
 
   TChain * aChainOut = new TChain(inTreeName,inTreeName); aChainOut->SetDirectory(0);  aChainOut->Add(inFileName);
-
   return aChainOut;
 }
 

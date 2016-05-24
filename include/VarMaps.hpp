@@ -90,9 +90,9 @@ public:
   inline void     setTreeCutStatus(bool cutStatus) { areCutsEnabled = cutStatus; return; }
   inline bool     getTreeCutStatus()               { return areCutsEnabled; }
   void            addTreeCuts(TString cutType, TCut aCut);
-  void            setTreeCuts(TString cutType, TCut aCut);
-  void            getTreeCutsM(map <TString,TCut> & aTreeCutsM);
-  void            setTreeCutsM(map <TString,TCut> & aTreeCutsM);
+  void            setTreeCuts(TString cutType, TCut aCut, bool checkTreeRead = true);
+  void            getTreeCutsM(map <TString, TCut> & aTreeCutsM);
+  void            setTreeCutsM(map <TString, TCut> & aTreeCutsM, bool checkTreeRead = true);
   TCut            getTreeCuts(TString cutType = "");
   void            updateReaderFormulae(vector < pair<TString,Float_t> > & readerInptV, bool forceUpdate = false);
   void            addReaderFormulae(vector < pair<TString,Float_t> > & readerInptV);
