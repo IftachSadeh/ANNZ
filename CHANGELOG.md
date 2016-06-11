@@ -1,6 +1,9 @@
 # Changelog
 
-<!-- ## Master version (21/3/2016) -->
+## Master version (11/6/2016)
+
+- Modified the `Makefile` to explicitly include `rpath` in `LDFLAGS`, which may be needed for pre-compiled versions of ROOT.
+
 ## ANNZ v2.2.0 (24/5/2016)
 
 - Added a bias correction procedure for MLMs, which may be switched off using `glob.annz["doBiasCorMLM"] = False`. (See `README.md` and `scripts/annz_rndReg_advanced.py` for details.)
@@ -117,7 +120,7 @@ glob.annz["addMaxPDF"] = True
 
 ## ANNZ v2.1.0 (08/10/2015)
 
-- Removed unnecessary dictionary generation from Makefile.
+- Removed unnecessary dictionary generation from the `Makefile`.
 
 - Changed `std::map` to `std::unordered_map` in main containers of the `OptMaps()` and `VarMaps()` classes (constitutes a slight performance boost).
 

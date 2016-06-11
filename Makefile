@@ -33,6 +33,12 @@ endif
 -include ../MyConfig.mk
 
 # ---------------------------------------------------------------------------------------------------
+# add rpath to LDFLAGS, which may be needed for precompiled root versions
+# ---------------------------------------------------------------------------------------------------
+ROOTLIB := $(wildcard $(shell $(RC) --libdir))
+LDFLAGS += -Wl,-rpath,$(ROOTLIB)
+
+# ---------------------------------------------------------------------------------------------------
 # search path for included files and files-to-make; included ROOT libraries
 # ---------------------------------------------------------------------------------------------------
 CXXFLAGS += -g -I../ -I./ -I../src/ -I../include/
