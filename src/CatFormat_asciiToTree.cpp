@@ -209,7 +209,7 @@ void CatFormat::inputToFullTree(TString inAsciiFiles, TString inAsciiVars, TStri
         var->SetVarF(weightName,1);
         
         // fill the tree with the current variables
-        treeOut->Fill();
+        var->fillTree();
 
         if(inLOG(Log::DEBUG_3)) {
           int nPrintRow(4), width(14);
@@ -254,7 +254,7 @@ void CatFormat::inputToFullTree(TString inAsciiFiles, TString inAsciiVars, TStri
         var->SetVarF(weightName,1);
         
         // fill the tree with the current variables
-        treeOut->Fill();
+        var->fillTree();
 
         if(inLOG(Log::DEBUG_3)) {
           int nPrintRow(4), width(14);
@@ -284,13 +284,13 @@ void CatFormat::inputToFullTree(TString inAsciiFiles, TString inAsciiVars, TStri
  * 
  * @details              - For training and testing/validation the input is divided into two (test,train) or into three (test,train,valid)
  *                         sub-samples.
- *                       - The user needs to define the number of sub-samples (e.g., nSplit = 1,2 or 3) and the way to divide the
+ *                       - The user needs to define the number of sub-samples (e.g., nSplit = 1 or 2) and the way to divide the
  *                         inputs in one of 4 ways (e.g., splitType = "serial", "blocks", "random" or "byInFiles" (default)):
  *                           - serial: -> test;train;valid;test;train;valid;test;train;valid;test;train;valid...
  *                           - blocks: -> test;test;test;test;train;train;train;train;valid;valid;valid;valid...
  *                           - random: -> valid;test;test;train;valid;test;valid;valid;test;train;valid;train...
  *                           - separate input files. Must supplay at least one file in splitTypeTrain and one in splitTypeTest.
- *                             In this case, [nSplit = 2]. Optionally can set [nSplit = 3] and provide a list of files in "splitTypeValid" as well.
+ *                             In this case, [nSplit = 2].
  * 
  * @param inAsciiFiles   - semicolon-separated list of input ascii files
  * @param inAsciiVars    - semicolon-separated list of input parameter names, corresponding to columns in the input files
@@ -311,8 +311,8 @@ void CatFormat::inputToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
   int     nSplit            = glob->GetOptI("nSplit");
   TString splitType         = glob->GetOptC("splitType");
   TString indexName         = glob->GetOptC("indexName");
-  TString splitName         = glob->GetOptC("splitName");
-  TString testValidType     = glob->GetOptC("testValidType");
+  // TString splitName         = glob->GetOptC("splitName");     // deprecated
+  // TString testValidType     = glob->GetOptC("testValidType"); // deprecated
   TString weightName        = glob->GetOptC("baseName_wgtKNN");
   bool    doPlots           = glob->GetOptB("doPlots");
   TString plotExt           = glob->GetOptC("printPlotExtension");
@@ -324,8 +324,8 @@ void CatFormat::inputToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
   TString inpFiles_bck      = glob->GetOptC("inpFiles_bck");
   bool    addSigBckInp      = (inpFiles_sig != "" || inpFiles_bck != "");
   
-  VERIFY(LOCATION,(TString)"found unsupported number of splittings ("+utils->intToStr(nSplit)+"). Allowed values are: 1,2,3"
-                  ,(nSplit >= 1 && nSplit <= 3));
+  VERIFY(LOCATION,(TString)"found unsupported number of splittings ("+utils->intToStr(nSplit)+"). Allowed values are: 1 or 2"
+                  ,(nSplit == 1 || nSplit == 2));
 
   // random number generator for the (splitType == "random") option
   TRandom * rnd = new TRandom3(glob->GetOptI("splitSeed"));
@@ -345,18 +345,20 @@ void CatFormat::inputToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
   // -----------------------------------------------------------------------------------------------------------
   // input files - if diffrent for each type
   // -----------------------------------------------------------------------------------------------------------
-  if(splitType == "byInFiles" && nSplit > 1) {
+  if(splitType == "byInFiles" && nSplit == 2) {
     vector <TString> inFileNameV_now;
     for(int nSplitNow=0; nSplitNow<nSplit; nSplitNow++) {
       TString splitTypeNow("");
       if     (nSplitNow == 0) splitTypeNow = "splitTypeTrain";
       else if(nSplitNow == 1) splitTypeNow = "splitTypeTest";
-      else if(nSplitNow == 2) splitTypeNow = "splitTypeValid";
       else VERIFY(LOCATION,"How did we get here... ?!?",false);
 
       inFileNameV_now = utils->splitStringByChar((glob->GetOptC(splitTypeNow)).ReplaceAll(" ",""),';');
       nInFiles        = (int)inFileNameV_now.size();
-      VERIFY(LOCATION,(TString)"found no input files defined in "+splitTypeNow+" (nSplitNow = "+utils->intToStr(nSplitNow)+") ?!?",(nInFiles > 0));
+
+      VERIFY(LOCATION,(TString)"found no input files defined in \""+splitTypeNow+"\" ... either set \"splitTypeTrain\""
+                              +" and \"splitTypeTest\" together with [\"splitType\"=byInFiles], or set \"inAsciiFiles\""
+                              +" together with [\"splitType\"=\"serial\", \"blocks\" or \"random\"]",(nInFiles > 0));
 
       for(int nInFileNow=0; nInFileNow<nInFiles; nInFileNow++) {
         inFileNameV_now[nInFileNow] = glob->GetOptC("inDirName")+inFileNameV_now[nInFileNow];        
@@ -425,8 +427,8 @@ void CatFormat::inputToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
   // clear tree objects and reserve variables which are not part of the input file
   VarMaps * var = new VarMaps(glob,utils,"treeVars");  //var->printMapOpt(nPrintRow,width); cout<<endl;
   
-  var->NewVarI(indexName);     var->NewVarI(splitName);
-  var->NewVarI(testValidType); var->NewVarF(weightName);
+  // var->NewVarI(testValidType); var->NewVarI(splitName); // deprecated
+  var->NewVarI(indexName); var->NewVarF(weightName);
   if(storeOrigFileName) var->NewVarC(origFileName);
   if(addSigBckInp)      var->NewVarI(sigBckInpName);
 
@@ -436,14 +438,13 @@ void CatFormat::inputToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
 
   // create the output tree(s) now thah all the variables are defined
   // -----------------------------------------------------------------------------------------------------------
-  int nTrees = min(nSplit,2);
-  vector <TTree *> treeOut  (nTrees); 
-  vector <TString> treeNames(nTrees);
+  vector <TTree *> treeOut  (nSplit); 
+  vector <TString> treeNames(nSplit);
 
-  if(nTrees == 1) { treeNames[0] = (TString)treeName+"_full";                                             }
+  if(nSplit == 1) { treeNames[0] = (TString)treeName+"_full";                                             }
   else            { treeNames[0] = (TString)treeName+"_train"; treeNames[1] = (TString)treeName+"_valid"; }
 
-  for(int nTreeNow=0; nTreeNow<nTrees; nTreeNow++) {
+  for(int nTreeNow=0; nTreeNow<nSplit; nTreeNow++) {
     TString treeNameNow = treeNames[nTreeNow];
     treeOut[nTreeNow]   = new TTree(treeNameNow,treeNameNow);
     treeOut[nTreeNow]->SetDirectory(0); outputs->TreeMap[treeNameNow] = treeOut[nTreeNow];
@@ -453,13 +454,13 @@ void CatFormat::inputToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
 
   // loop control-variables (outside the for() of file-names)
   // -----------------------------------------------------------------------------------------------------------
-  var->NewCntr("nObj",0);   var->NewCntr("nLine",0);
-  var->NewCntr("nTrain",0); var->NewCntr("nTest",0); var->NewCntr("nValid",0);
+  var->NewCntr("nObj",0);   var->NewCntr("nLine",0); var->NewCntr("index",0);
+  var->NewCntr("nTrain",0); var->NewCntr("nTest",0); // var->NewCntr("nValid",0); // deprecated
 
   int   nSplitType(0);
   bool  breakLoop(false), mayWriteObjects(false);
 
-  if(nSplit > 1) {
+  if(nSplit == 2) {
     if     (splitType == "serial")    nSplitType = 0;
     else if(splitType == "blocks")    nSplitType = 1;
     else if(splitType == "random")    nSplitType = 2;
@@ -634,7 +635,7 @@ void CatFormat::inputToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
   // some histograms of the input branches
   // -----------------------------------------------------------------------------------------------------------
   if(doPlots) {
-    for(int nTreeNow=0; nTreeNow<nTrees; nTreeNow++) {
+    for(int nTreeNow=0; nTreeNow<nSplit; nTreeNow++) {
       // create the chain from the output of the above
       TString treeNameNow = treeNames[nTreeNow];
       TString fileNameNow = (TString)outDirNameFull+treeNameNow+"*.root";
@@ -654,8 +655,8 @@ void CatFormat::inputToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
         TString branchName = branchNameV_0[nBranchNow];
         TString branchType = var->GetVarType(branchName);
 
-        if(branchType == "C" || branchType == "FM")               continue;
-        if(branchName.BeginsWith(glob->GetOptC("baseName_ANNZ"))) continue;
+        if(branchType == "C" || branchType == "FM")            continue;
+        if(branchName.BeginsWith(glob->GetOptC("basePrefix"))) continue;
 
         branchNameV.push_back(branchName);
       }
@@ -689,7 +690,7 @@ void CatFormat::inputToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
   // cleanup
   DELNULL(var); DELNULL(rnd);
 
-  for(int nTreeNow=0; nTreeNow<nTrees; nTreeNow++) {
+  for(int nTreeNow=0; nTreeNow<nSplit; nTreeNow++) {
     TString treeNameNow = treeNames[nTreeNow];
     
     DELNULL(treeOut[nTreeNow]); outputs->TreeMap.erase(treeNameNow);
@@ -705,12 +706,14 @@ void CatFormat::inputToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
   OptMaps          * optMap = new OptMaps("localOptMap");
   TString          saveName = "";
   vector <TString> optNames;
-  saveName = "nSplit";        optNames.push_back(saveName); optMap->NewOptI(saveName, glob->GetOptI(saveName));
-  saveName = "treeName";      optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(saveName));
-  saveName = "indexName";     optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(saveName));
-  saveName = "splitName";     optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(saveName));
-  saveName = "testValidType"; optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(saveName));
-  saveName = "useWgtKNN";     optNames.push_back(saveName); optMap->NewOptB(saveName, glob->GetOptB(saveName));
+
+  saveName = glob->versionTag(); optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(glob->versionTag()));
+  saveName = "nSplit";           optNames.push_back(saveName); optMap->NewOptI(saveName, glob->GetOptI(saveName));
+  saveName = "treeName";         optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(saveName));
+  saveName = "indexName";        optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(saveName));
+  // saveName = "splitName";        optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(saveName)); // deprecated
+  // saveName = "testValidType";    optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(saveName)); // deprecated
+  saveName = "useWgtKNN";        optNames.push_back(saveName); optMap->NewOptB(saveName, glob->GetOptB(saveName));
 
   if(storeOrigFileName) { saveName = "origFileName";  optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(saveName)); }
 
@@ -864,16 +867,17 @@ void CatFormat::setSplitVars(VarMaps * var, TRandom * rnd, map <TString,int> & i
   int     nLine_splitBlocks = (nSplitType == 1) ? intMap["nLine_splitBlocks"] : 0;
   int     inFileSplitIndex  = (nSplitType == 3) ? intMap["inFileSplitIndex"]  : 0;
   TString indexName         = glob->GetOptC("indexName");
-  TString splitName         = glob->GetOptC("splitName");
-  TString testValidType     = glob->GetOptC("testValidType");
+  // TString splitName         = glob->GetOptC("splitName");     // deprecated
+  // TString testValidType     = glob->GetOptC("testValidType"); // deprecated
 
   // -----------------------------------------------------------------------------------------------------------
   // no splitting
   // -----------------------------------------------------------------------------------------------------------
   if(nSplit == 1) {
     intMap["nSplitTree"] = 0;
-    var->SetVarI(splitName,     0);
-    var->SetVarI(testValidType, 0);
+    var->SetVarI(indexName, var->GetCntr("nLine"));
+    // var->SetVarI(splitName, 0);     // deprecated
+    // var->SetVarI(testValidType, 0); // deprecated
   }
   // -----------------------------------------------------------------------------------------------------------
   // split into two or three sub-sets within two trees
@@ -885,71 +889,71 @@ void CatFormat::setSplitVars(VarMaps * var, TRandom * rnd, map <TString,int> & i
     if(nSplit == 2) {
       int resid2(0);
 
-      // "serial" - 
-      if     (nSplitType == 0) { resid2 = var->GetCntr("nLine") % 2; }
-      // - "blocks" -
-      else if(nSplitType == 1) { resid2 = (var->GetCntr("nLine") < nLine_splitBlocks) ? 0 : 1; }
-      // - "random" -
-      else if(nSplitType == 2) { resid2 = static_cast<int>(floor(rnd->Rndm() * 2)); }
-      // - "byInFiles" -
-      else if(nSplitType == 3) { resid2 = inFileSplitIndex; }
+      if     (nSplitType == 0) { resid2 = var->GetCntr("nLine") % 2;                           }// "serial" -
+      else if(nSplitType == 1) { resid2 = (var->GetCntr("nLine") < nLine_splitBlocks) ? 0 : 1; } // "blocks"
+      else if(nSplitType == 2) { resid2 = static_cast<int>(floor(rnd->Rndm() * 2));            } // "random"
+      else if(nSplitType == 3) { resid2 = inFileSplitIndex;                                    } // "byInFiles"
       // -----------------------------------------------------------------------------------------------------------
       // now set the variables
       // -----------------------------------------------------------------------------------------------------------
-      if     (resid2 == 0) {
+      if (resid2 == 0) {
         intMap["nSplitTree"] = 0;
-        var->SetVarI(splitName, var->GetCntr("nTrain"));
-        var->IncCntr("nTrain");
+        // var->SetVarI(splitName, var->GetCntr("nTrain")); var->IncCntr("nTrain"); // deprecated
+        var->SetVarI(indexName, var->GetCntr("nTrain")); var->IncCntr("nTrain");
       }
-      else if(resid2 == 1) {
+      else {
         intMap["nSplitTree"] = 1;
-        var->SetVarI(splitName, var->GetCntr("nTest"));
-        var->IncCntr("nTest");
+        // var->SetVarI(splitName, var->GetCntr("nTest")); var->IncCntr("nTest"); // deprecated
+        var->SetVarI(indexName, var->GetCntr("nTest")); var->IncCntr("nTest");
       }
-      var->SetVarI(testValidType, 0); // this will not be used if there is no three-way splitting
-    }
-    else {
-      int resid3(0);
 
-      // - "serial" - 
-      if     (nSplitType == 0) { resid3 = var->GetCntr("nLine") % 3; }
-      // - "blocks" -
-      else if(nSplitType == 1) {
-        if     (var->GetCntr("nLine") <   nLine_splitBlocks) resid3 = 0;
-        else if(var->GetCntr("nLine") < 2*nLine_splitBlocks) resid3 = 1;
-        else                                                 resid3 = 2;
-      }
-      // - "random" -
-      else if(nSplitType == 2) { resid3 = static_cast<int>(floor(rnd->Rndm() * 3)); }
-      // - "byInFiles" -
-      else if(nSplitType == 3) { resid3 = inFileSplitIndex; }
-
-      // -----------------------------------------------------------------------------------------------------------
-      // now set the variables
-      // -----------------------------------------------------------------------------------------------------------
-      if     (resid3 == 0) {
-        intMap["nSplitTree"] = 0;
-        var->SetVarI(splitName,var->GetCntr("nTrain"));
-        var->SetVarI(testValidType, 0);
-        var->IncCntr("nTrain");
-      }
-      else if(resid3 == 1) {
-        intMap["nSplitTree"] = 1;
-        var->SetVarI(splitName,var->GetCntr("nTest"));
-        var->SetVarI(testValidType, 0);
-        var->IncCntr("nTest");
-      }
-      else if(resid3 == 2) {
-        intMap["nSplitTree"] = 1;
-        var->SetVarI(splitName,var->GetCntr("nValid"));
-        var->SetVarI(testValidType, 1);
-        var->IncCntr("nValid");
-      }
+      // var->SetVarI(testValidType, 0); // deprecated
     }
+    // -----------------------------------------------------------------------------------------------------------
+    // deprecated ...
+    // -----------------------------------------------------------------------------------------------------------
+    // else {
+    //   int resid3(0);
+
+    //   // - "serial" - 
+    //   if     (nSplitType == 0) { resid3 = var->GetCntr("nLine") % 3; }
+    //   // - "blocks" -
+    //   else if(nSplitType == 1) {
+    //     if     (var->GetCntr("nLine") <   nLine_splitBlocks) resid3 = 0;
+    //     else if(var->GetCntr("nLine") < 2*nLine_splitBlocks) resid3 = 1;
+    //     else                                                 resid3 = 2;
+    //   }
+    //   // - "random" -
+    //   else if(nSplitType == 2) { resid3 = static_cast<int>(floor(rnd->Rndm() * 3)); }
+    //   // - "byInFiles" -
+    //   else if(nSplitType == 3) { resid3 = inFileSplitIndex; }
+
+    //   // -----------------------------------------------------------------------------------------------------------
+    //   // now set the variables
+    //   // -----------------------------------------------------------------------------------------------------------
+    //   if     (resid3 == 0) {
+    //     intMap["nSplitTree"] = 0;
+    //     var->SetVarI(splitName,var->GetCntr("nTrain"));
+    //     var->SetVarI(testValidType, 0);
+    //     var->IncCntr("nTrain");
+    //   }
+    //   else if(resid3 == 1) {
+    //     intMap["nSplitTree"] = 1;
+    //     var->SetVarI(splitName,var->GetCntr("nTest"));
+    //     var->SetVarI(testValidType, 0);
+    //     var->IncCntr("nTest");
+    //   }
+    //   else if(resid3 == 2) {
+    //     intMap["nSplitTree"] = 1;
+    //     var->SetVarI(splitName,var->GetCntr("nValid"));
+    //     var->SetVarI(testValidType, 1);
+    //     var->IncCntr("nValid");
+    //   }
+    // }
   }
   
   // the main counter
-  var->SetVarI(indexName, var->GetCntr("nLine"));
+  // var->SetVarI(indexName, var->GetCntr("nLine")); // deprecated
   var->IncCntr("nLine");
 
   return;

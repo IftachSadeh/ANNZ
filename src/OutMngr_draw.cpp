@@ -80,6 +80,10 @@ void OutMngr::SetHisStyle(TGraph * grph, TMultiGraph * mGrph) {
   if(draw->OptOrNullB("moreLogX")) { grph->GetXaxis()->SetMoreLogLabels(); }
   if(draw->OptOrNullB("moreLogY")) { grph->GetYaxis()->SetMoreLogLabels(); }
 
+  if(draw->HasOptC("yRangeL") && draw->HasOptC("yRangeH")) {
+    grph->GetYaxis()->SetRangeUser(draw->GetOptC("yRangeL").Atof(),draw->GetOptC("yRangeH").Atof());
+  }
+  
   if(dynamic_cast<TMultiGraph*>(mGrph)) {
     mGrph->GetXaxis()->SetTitle(grph->GetXaxis()->GetTitle());
     mGrph->GetYaxis()->SetTitle(grph->GetYaxis()->GetTitle());
@@ -99,6 +103,10 @@ void OutMngr::SetHisStyle(TGraph * grph, TMultiGraph * mGrph) {
     if(draw->OptOrNullB("moreLogX")) { mGrph->GetXaxis()->SetMoreLogLabels(); }
     if(draw->OptOrNullB("moreLogY")) { mGrph->GetYaxis()->SetMoreLogLabels(); }
     // grph->GetXaxis()->Copy(*mGrph->GetXaxis()); grph->GetYaxis()->Copy(*mGrph->GetYaxis()); // must come after: mGrph->Draw("a")
+
+    if(draw->HasOptC("yRangeL") && draw->HasOptC("yRangeH")) {
+      mGrph->GetYaxis()->SetRangeUser(draw->GetOptC("yRangeL").Atof(),draw->GetOptC("yRangeH").Atof());
+    }
   }
 
   return;

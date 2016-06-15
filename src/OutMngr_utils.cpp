@@ -20,7 +20,10 @@
 void OutMngr::SetOutDirName(TString outDirNameNow) { 
   if(!outDirNameNow.EndsWith("/")) outDirNameNow += "/";
 
-  outDirName = outDirNameNow;
+  outDirName     = outDirNameNow;
+  outPlotDirName = (TString)outDirName+"plots/";
+  if(outPlotDirName.BeginsWith("./")) outPlotDirName = outPlotDirName(2,outPlotDirName.Length());
+
   utils->checkPathPrefix(outDirName);
   utils->validDirExists(outDirName);
 
@@ -34,6 +37,10 @@ void OutMngr::SetOutFileName(TString outFileNameNow) {
 // ===========================================================================================================
 TString OutMngr::GetOutDirName()  {
   return outDirName;
+}
+// ===========================================================================================================
+TString OutMngr::GetOutPlotDirName()  {
+  return outPlotDirName;
 }
 // ===========================================================================================================
 TString OutMngr::GetOutFileName() {
@@ -86,13 +93,10 @@ void OutMngr::WriteOutObjects(bool writePdfScripts, bool dontWriteHis) {
   }
 
   if(writePdfScripts) {
-    TString outDirNamePlot = (TString)outDirName+"plots/";
-    if(outDirNamePlot.BeginsWith("./")) outDirNamePlot = outDirNamePlot(2,outDirNamePlot.Length());
+    utils->exeShellCmndOutput((TString)"mkdir -p "+outPlotDirName,false,true);
+    aLOG(Log::INFO) << coutCyan<<" - Writing to plotting directory "<<coutPurple<<outPlotDirName<<coutDef<<endl;
 
-    utils->exeShellCmndOutput((TString)"mkdir -p "+outDirNamePlot,false,true);
-    aLOG(Log::INFO) << coutCyan<<" - Writing to plotting directory "<<coutPurple<<outDirNamePlot<<coutDef<<endl;
-
-    // outputRootFileName = (TString)outDirNamePlot+outFileName+"_plots.root";
+    // outputRootFileName = (TString)outPlotDirName+outFileName+"_plots.root";
     // OutputRootFile     = new TFile(outputRootFileName,"RECREATE");
 
     TString printPlotExtension(glob->GetOptC("printPlotExtension"));
@@ -106,7 +110,7 @@ void OutMngr::WriteOutObjects(bool writePdfScripts, bool dontWriteHis) {
       if(dynamic_cast<TCanvas*>(CanvasMap[hisName])) {
         // CanvasMap[hisName]->Write();
 
-        TString printName = outDirNamePlot+hisName;
+        TString printName = outPlotDirName+hisName;
         TString printFile = (TString)printName+".C";
         CanvasMap[hisName]->Print(printFile);
 
@@ -116,13 +120,16 @@ void OutMngr::WriteOutObjects(bool writePdfScripts, bool dontWriteHis) {
         fixCmnd = (TString)"sed -e 's/"+fixCmnd+"/"+hisName+"/g' < "+printFile+" > "+tmpFile+" ; mv "+tmpFile+" "+printFile;
         utils->exeShellCmndOutput(fixCmnd);
         
-        if(printPlotExtension != "") CanvasMap[hisName]->SaveAs((TString)outDirNamePlot+hisName+"."+printPlotExtension);
+        if(printPlotExtension != "") CanvasMap[hisName]->SaveAs((TString)outPlotDirName+hisName+"."+printPlotExtension);
     
         eraseKeys.push_back(hisName);
       }
     }
 
-    for(int eraseKeyNow=0; eraseKeyNow<int(eraseKeys.size()); eraseKeyNow++) CanvasMap.erase(eraseKeys[eraseKeyNow]);
+    for(int eraseKeyNow=0; eraseKeyNow<int(eraseKeys.size()); eraseKeyNow++) {
+      DELNULL(CanvasMap[eraseKeys[eraseKeyNow]]);
+      CanvasMap.erase(eraseKeys[eraseKeyNow]);
+    }
     eraseKeys.clear();
 
     // OutputRootFile->Close();  DELNULL(OutputRootFile); // utils->exeShellCmndOutput((TString)"rm -rf "+outputRootFileName);

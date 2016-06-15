@@ -43,9 +43,8 @@ if glob.annz["doGenInputTrees"]:
   #                file, e.g., [TYPE:NAME] may be [F:MAG_U], with 'F' standing for float. (see advanced example for detailed explanation)
   glob.annz["inAsciiVars"]    = "F:MAG_U;F:MAGERR_U;F:MAG_G;F:MAGERR_G;F:MAG_R;F:MAGERR_R;F:MAG_I;F:MAGERR_I;F:MAG_Z;F:MAGERR_Z;D:Z"
 
-  # splitTypeTrain - list of files for training, testing and validation. the entire dataset is split into [nSplit=3] parts (one for
+  # splitTypeTrain - list of files for training and testing. the entire dataset is split into two parts (one for
   # each subsample), where splitting is determined by the [splitType="serial"] criteria. (see advanced example for more options/detials.)
-  glob.annz["nSplit"]         = 3
   glob.annz["splitType"]      = "serial" # "serial", "blocks" or "random"
   glob.annz["inAsciiFiles"]   = "boss_dr10_0_large.csv;boss_dr10_1_large.csv;boss_dr10_2_large.csv"
   # run ANNZ with the current settings
@@ -143,5 +142,5 @@ if glob.annz["doTrain"] or glob.annz["doVerif"] or glob.annz["doEval"]:
       # run ANNZ with the current settings
       runANNZ()
 
-log.info(whtOnBlck(" - "+time.strftime("%d/%m/%y %H:%M:%S")+" - finished runing ANNZ !"))
+log.info(whtOnBlck(" - "+time.strftime("%d/%m/%y %H:%M:%S")+" - finished running ANNZ !"))
 

@@ -59,6 +59,7 @@ public:
   void    Train();
   void    Optim();
   void    Eval();
+  void    KnnErr();
 
 
 private:  
@@ -69,9 +70,11 @@ private:
   // -----------------------------------------------------------------------------------------------------------
   void     Init();
   void     setTags();
+  TString  getBaseTagName(TString MLMname = DefOpts::NullC);
   TString  getTagName(int nMLMnow = -1);
   TString  getTagError(int nMLMnow = -1, TString errType = "");
   TString  getTagWeight(int nMLMnow = -1);
+  TString  getTagBias(int nMLMnow = -1);
   TString  getTagClsVal(int nMLMnow = -1);
   TString  getTagIndex(int nMLMnow = -1);
   TString  getTagInVarErr(int nMLMnow = -1, int nInErrNow = -1);
@@ -82,10 +85,11 @@ private:
   TString  getErrKNNname(int nMLMnow = -1);
   int      getErrKNNtagNow(TString errKNNname);
   TString  getKeyWord(TString MLMname, TString sequence, TString key);
+  TString  getRegularStrForm(TString strIn = "", VarMaps * var = NULL, TChain * aChain = NULL);
   void     loadOptsMLM();
   void     setNominalParams(int nMLMnow, TString inputVariables, TString inputVarErrors);
   void     setMethodCuts(VarMaps * var, int nMLMnow, bool verbose = true);
-  TCut     getTrainTestCuts(TString cutType = "", int nMLMnow = -1, int split0 = 0, int split1 = 0);
+  TCut     getTrainTestCuts(TString cutType = "", int nMLMnow = 0, int split0 = -1, int split1 = -1, VarMaps * var = NULL, TChain * aChain = NULL);
   void     selectUserMLMlist(vector <TString> & optimMLMv, map <TString,bool> & mlmSkipNow);
   void     setInfoBinsZ();
   int      getBinZ(double valZ, vector <double> & binEdgesV, bool forceCheck = false);
@@ -100,13 +104,14 @@ private:
   void     Train_singleCls();
   void     Train_singleReg();
   void     Train_binnedCls();
+  void     Train_singleRegBiasCor();
   void     generateOptsMLM(OptMaps * optMap, TString userMLMopts);
   void     verifTarget(TTree * aTree);
 
   // -----------------------------------------------------------------------------------------------------------
   // ANNZ_TMVA.cpp :
   // -----------------------------------------------------------------------------------------------------------
-  void              prepFactory(int nMLMnow = -1, TMVA::Factory * factory = NULL);
+  void              prepFactory(int nMLMnow = -1, TMVA::Factory * factory = NULL, bool isBiasMLM = false);
   void              doFactoryTrain(TMVA::Factory * factory);
   void              clearReaders(Log::LOGtypes logLevel = Log::DEBUG_1);
   void              loadReaders(map <TString,bool> & mlmSkipNow, bool needMcPRB = true);
@@ -128,6 +133,12 @@ private:
   double   getRegClsErrINP(VarMaps * var, bool isREG, int nMLMnow, UInt_t * seedP = NULL, vector <double> * zErrV = NULL);
   
   // -----------------------------------------------------------------------------------------------------------
+  // ANNZ_onlyKnnErr.cpp :
+  // -----------------------------------------------------------------------------------------------------------
+  void     onlyKnnErr_createTreeErrKNN();
+  void     onlyKnnErr_eval();
+
+  // -----------------------------------------------------------------------------------------------------------
   // ANNZ_loopRegCls.cpp :
   // -----------------------------------------------------------------------------------------------------------
   void     makeTreeRegClsAllMLM();
@@ -135,7 +146,8 @@ private:
   double   getSeparation(TH1 * hisSig, TH1 * hisBck);
   void     deriveHisClsPrb(int nMLMnow = -1);
   TChain   * mergeTreeFriends(TChain * aChain = NULL, TChain * aChainFriend = NULL, vector<TString> * chainFriendFileNameV = NULL,
-                              vector <TString> * acceptV = NULL, vector <TString> * rejectV = NULL, TCut aCut = "");
+                              vector <TString> * acceptV = NULL, vector <TString> * rejectV = NULL,
+                              TCut aCut = "", vector< pair<TString,TString> > * addFormV = NULL);
   void     verifyIndicesMLM(TChain * aChain = NULL);
   
   // -----------------------------------------------------------------------------------------------------------
@@ -153,7 +165,7 @@ private:
   void     setBinClsPdfBinWeights(vector < vector < pair<int,double> > > & pdfBinWgt, vector <int> & nClsBinsIn);
   void     getBinClsBiasCorPDF(TChain * aChain, vector <TH2*>  & hisPdfBiasCorV);
   void     doEvalReg(TChain * inChain = NULL, TString outDirName = "", vector <TString> * selctVarV = NULL);
-  void     doMetricPlots(TChain * inChain = NULL, vector <TString> * selctMLMv = NULL);
+  void     doMetricPlots(TChain * inChain = NULL, vector <TString> * addPlotVarV = NULL, TString addOutputVarsIn = "");
 
   // -----------------------------------------------------------------------------------------------------------
   // ANNZ_loopRegCls.cpp :
@@ -165,19 +177,21 @@ private:
   // private variables
   // ===========================================================================================================
   vector < Double_t >                   zClos_binE, zClos_binC, zPlot_binE, zPlot_binC, zPDF_binE, zPDF_binC, zBinCls_binE, zBinCls_binC;
-  vector < TString >                    mlmTagName, mlmTagWeight, mlmTagClsVal, mlmTagIndex, mlmTagErrKNN, inputVariableV;
+  vector < TString >                    mlmTagName, mlmTagWeight, mlmTagBias, mlmTagClsVal, mlmTagIndex, mlmTagErrKNN, inputVariableV;
   vector < map <TString,TString> >      mlmTagErr;
   vector < vector <TString> >           pdfBinNames, inErrTag;
   vector < map < TString,TString> >     pdfAvgNames;
   map    < TString,bool >               mlmSkip;
   vector < vector <TString> >           inNamesVar, inNamesErr;
+  vector < bool >                       hasBiasCorMLMinp;
   vector < vector <TF1*> >              inVarsScaleFunc;
   map    < TString,TCut >               userCutsM;
-  map    < TString,TString >            userWgtsM, bestMLMname;
+  map    < TString,TString >            userWgtsM, bestMLMname, mlmBaseTag;
   vector < time_t >                     trainTimeM;
   vector < pair<TString,Float_t> >      readerInptV;
   vector < vector<int> >                readerInptIndexV;
-  vector < TMVA::Reader* >              regReaders;
+  vector < Float_t >                    readerBiasInptV;
+  vector < TMVA::Reader* >              regReaders, biasReaders;
   vector < TMVA::Types::EAnalysisType > anlysTypes;
   vector < TMVA::Types::EMVA >          typeMLM, allANNZtypes;
   map    < TMVA::Types::EMVA,TString >  typeToNameMLM;

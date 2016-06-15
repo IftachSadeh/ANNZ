@@ -81,13 +81,15 @@ public:
                                                      return TString::Format((TString)tree->GetName()+"_friend_%d",nTreeFriends);              };
 
   // see: http://www.cplusplus.com/reference/cstdio/printf/
-  inline TString  boolToStr  (bool     input)                           { return (TString)(input ? "1" : "0");  };
-  inline TString  intToStr   (int      input, TString format = "%d"   ) { return TString::Format(format,input); };
-  inline TString  lIntToStr  (long int input, TString format = "%ld"  ) { return TString::Format(format,input); };
-  inline TString  uIntToStr  (int      input, TString format = "%u"   ) { return TString::Format(format,input); };
-  inline TString  ULIntToStr (long int input, TString format = "%lu"  ) { return TString::Format(format,input); };
-  inline TString  floatToStr (double   input, TString format = "%f"   ) { return TString::Format(format,input); };
-  inline TString  doubleToStr(double   input, TString format = "%.10g") { return TString::Format(format,input); };
+  inline TString  boolToStr  (bool              input)                           { return (TString)(input ? "1" : "0");  };
+  inline TString  intToStr   (int               input, TString format = "%d"   ) { return TString::Format(format,input); };
+  inline TString  lIntToStr  (long int          input, TString format = "%ld"  ) { return TString::Format(format,input); };
+  inline TString  uIntToStr  (unsigned int      input, TString format = "%u"   ) { return TString::Format(format,input); };
+  inline TString  ULIntToStr (unsigned long int input, TString format = "%lu"  ) { return TString::Format(format,input); };
+  inline TString  floatToStr (double            input, TString format = "%f"   ) { return TString::Format(format,input); };
+  inline TString  doubleToStr(double            input, TString format = "%.10g") { return TString::Format(format,input); };
+
+  inline TString  getRndStr(TString format = "%.20f") { return doubleToStr(rnd->Rndm(),format); };
 
   Int_t     strToInt   (TString input);
   Long64_t  strToLong  (TString input);
@@ -96,6 +98,9 @@ public:
   Float_t   strToFloat (TString input);
   Double_t  strToDouble(TString input);
   Bool_t    strToBool  (TString input);
+
+  void            getCodeVersionV(vector <ULong64_t> & strV, TString versStrIn = "");
+  int             getCodeVersionDiff(TString compVers);
 
   inline TString  getFilePath(TString fileName) { return (TString)fileName(0,fileName.Last('/'))+"/"; };
 
@@ -121,9 +126,9 @@ public:
   bool    validFileExists(TString fileName = "", bool verif = true);
   void    resetDirectory(TString OutDirName = "", bool verbose = false, bool copyCode = false);
   void    checkCmndSafety(TString cmnd = "", bool verbose = false);
-  void    safeRM(TString cmnd = "", bool verbose = false);
+  void    safeRM(TString cmnd = "", bool verbose = false, bool checkExitStatus = true);
   TString getShellCmndOutput(TString cmnd = "", vector <TString> * outV = NULL, bool verbose = false, bool checkExitStatus = true, int * getSysReturn = NULL);
-  void    exeShellCmndOutput(TString cmnd = "", bool verbose = false, bool checkExitStatus = true);
+  int     exeShellCmndOutput(TString cmnd = "", bool verbose = false, bool checkExitStatus = true);
  
   TString cleanWeightExpr(TString wgtIn);
   bool    isSameWeightExpr(TString wgt0, TString wgt1);
@@ -162,6 +167,7 @@ public:
 
   // variables
   // ===========================================================================================================
+  TRandom3          * rnd;
   vector <int>      colours, markers, greens, blues, reds, fillStyles;   
   
   OptMaps            * glob, * param;

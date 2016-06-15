@@ -59,7 +59,7 @@ public:
   void    parseInputVars(VarMaps * var, TString inAsciiVars, vector <TString> & inVarNames, vector <TString> & inVarTypes);
   bool    inputLineToVars(TString line, VarMaps * var, vector <TString> & inVarNames, vector <TString> & inVarTypes);
   void    setSplitVars(VarMaps * var, TRandom * rnd, map <TString,int> & intMap);
-  void    addWgtKNNtoTree(TChain * aChainInp = NULL, TChain * aChainRef = NULL, TString outTreeName = "");
+  void    addWgtKNNtoTree(TChain * aChainInp = NULL, TChain * aChainRef = NULL, TChain * aChainEvl = NULL, TString outTreeName = "");
 
 };
 #endif  // #ifndef CatFormat_h

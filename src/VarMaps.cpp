@@ -165,6 +165,8 @@ void VarMaps::NewForm(TString aName, TString input) {
                        <<coutRed<<"\") by setting input=aName ... Better to explicitly define input !"<<coutDef<<endl;
     input = aName;
   }
+  input = regularizeStringForm(input);
+
   NewForm_(aName,input);
   return;
 }
@@ -231,6 +233,8 @@ void VarMaps::SetVarF(TString aName, TString input) {
 void VarMaps::SetForm(TString aName, TString input) {
 // ==================================================
   VERIFY(LOCATION,(TString)"TTreeFormula is not valid (\""+input+"\") ...",(input != ""));
+  input = regularizeStringForm(input);
+
   SetForm_(aName,input);
   return;
 }
@@ -615,7 +619,13 @@ void VarMaps::setTreeRead(TTree * tree) {
   return;
 }
 
-
+// ===========================================================================================================
+void VarMaps::fillTree() { 
+// =======================
+  VERIFY(LOCATION,(TString)"trying to use fillTree() with undefined tree ...",(dynamic_cast<TTree*>(treeWrite)));
+  treeWrite->Fill();
+  return;
+}
 
 
 // ===========================================================================================================
@@ -629,7 +639,9 @@ void VarMaps::eraseTreeCutsPattern(TString cutPattern, bool ignorCase) {
     if(hasEle || cutPattern == "") eraseEle.push_back(itr->first);
   }
 
-  for(int nEraseEleNow=0; nEraseEleNow<(int)eraseEle.size(); nEraseEleNow++) treeCutsM.erase(eraseEle[nEraseEleNow]);
+  for(int nEraseEleNow=0; nEraseEleNow<(int)eraseEle.size(); nEraseEleNow++) {
+    treeCutsM.erase(eraseEle[nEraseEleNow]);
+  }
   
   eraseEle.clear();
   return;
@@ -639,10 +651,14 @@ int VarMaps::replaceTreeCut(TString oldCut, TString newCut) {
 // ==========================================================
   TString cutExpr("");
   int     foundOldCut(0);
+
+  oldCut = regularizeStringForm(oldCut);
+  newCut = regularizeStringForm(newCut);
+
   for(Map <TString,TString>::iterator itr=treeCutsM.begin(); itr!=treeCutsM.end(); ++itr) {
     if(!(((TString)itr->second).Contains(oldCut))) continue;
     
-    cutExpr     = itr->second; cutExpr.ReplaceAll(oldCut,newCut);
+    cutExpr     = itr->second;   cutExpr.ReplaceAll(oldCut,newCut);
     itr->second = (TCut)cutExpr;
     foundOldCut++;
   }
@@ -652,18 +668,24 @@ int VarMaps::replaceTreeCut(TString oldCut, TString newCut) {
 // ===========================================================================================================
 void VarMaps::addTreeCuts(TString cutType, TCut aCut) {
 // ====================================================
-  TString cutStr0 = treeCutsM[cutType];  cutStr0.ReplaceAll(" ","");
-  TString cutStr1 = (TString)aCut;       cutStr1.ReplaceAll(" ","");
+  TString cutStr0 = treeCutsM[cutType];  cutStr0 = (regularizeStringForm(cutStr0)).ReplaceAll(" ","");
+  TString cutStr1 = (TString)aCut;       cutStr1 = (regularizeStringForm(cutStr1)).ReplaceAll(" ","");
   
-  if(cutStr1 != "" && !cutStr0.Contains(cutStr1)) treeCutsM[cutType] = (TString)( (TCut)(treeCutsM[cutType]) + aCut );
+  if(cutStr1 != "" && !cutStr0.Contains(cutStr1)) {
+    treeCutsM[cutType] = regularizeStringForm((TString)((TCut)(treeCutsM[cutType]) + (TCut)(aCut)));
+  }
 
   printCut(cutType);
   return;
 }
 // ===========================================================================================================
-void VarMaps::setTreeCuts(TString cutType, TCut aCut) {
-// ====================================================
-  treeCutsM[cutType] = (TString)aCut;
+void VarMaps::setTreeCuts(TString cutType, TCut aCut, bool checkTreeRead) {
+// ========================================================================
+  if(checkTreeRead) {
+    VERIFY(LOCATION,(TString)"Trying to set tree-cuts with no read-tree defined !!!", (getTreeRead() != NULL));
+  }
+  
+  treeCutsM[cutType] = regularizeStringForm((TString)aCut);
   printCut(cutType);
   return;
 }
@@ -671,23 +693,38 @@ void VarMaps::setTreeCuts(TString cutType, TCut aCut) {
 void VarMaps::getTreeCutsM(map <TString,TCut> & aTreeCutsM) {
 // ==========================================================
   aTreeCutsM.clear();
-  for(Map <TString,TString>::iterator itr=treeCutsM.begin(); itr!=treeCutsM.end(); ++itr) { aTreeCutsM[itr->first] = (TCut)itr->second; }
+  for(Map <TString,TString>::iterator itr=treeCutsM.begin(); itr!=treeCutsM.end(); ++itr) {
+    aTreeCutsM[itr->first] = (TCut)itr->second;
+  }
   return;
 }
 // ===========================================================================================================
-void VarMaps::setTreeCutsM(map <TString,TCut> & aTreeCutsM) {
-// ==========================================================
+void VarMaps::setTreeCutsM(map <TString,TCut> & aTreeCutsM, bool checkTreeRead) {
+// ==============================================================================
+  if(checkTreeRead) {
+    VERIFY(LOCATION,(TString)"Trying to set tree-cuts with no read-tree defined !!!", (getTreeRead() != NULL));
+  }
+
   treeCutsM.clear();
-  for(map <TString,TCut>::iterator itr=aTreeCutsM.begin(); itr!=aTreeCutsM.end(); ++itr) { treeCutsM[itr->first] = (TString)itr->second; }
+  for(map <TString,TCut>::iterator itr=aTreeCutsM.begin(); itr!=aTreeCutsM.end(); ++itr) {
+    treeCutsM[itr->first] = regularizeStringForm((TString)itr->second);
+  }
   return;
 }
 // ===========================================================================================================
 TCut VarMaps::getTreeCuts(TString cutType) {
 // =========================================
   TCut aCut("");
-  if(cutType == "") { for(Map <TString,TString>::iterator itr=treeCutsM.begin(); itr!=treeCutsM.end(); ++itr) aCut += (TCut)itr->second; }
-  else              { assert(treeCutsM.find(cutType) != treeCutsM.end()); aCut = (TCut)treeCutsM[cutType]; }
-  return aCut;
+  if(cutType == "") {
+    for(Map <TString,TString>::iterator itr=treeCutsM.begin(); itr!=treeCutsM.end(); ++itr) {
+      aCut += (TCut)itr->second;
+    }
+  }
+  else {
+    VERIFY(LOCATION,(TString)"Has not setup treeCutsFormM (\""+cutType+"\") ...",(treeCutsM.find(cutType) != treeCutsM.end()));
+    aCut = (TCut)treeCutsM[cutType];
+  }
+  return (TCut)regularizeStringForm((TString)aCut);
 }
 // ===========================================================================================================
 bool VarMaps::hasFailedTreeCuts(vector<TString> & cutTypeV) {
@@ -719,7 +756,7 @@ bool VarMaps::hasFailedTreeCuts(TString cutType) {
   if(!areCutsEnabled) return false;
 
   vector<TString> cutsV = utils->splitStringByChar(cutType,';');
-  
+
   for(int nCutTypeNow=0; nCutTypeNow<(int)cutsV.size(); nCutTypeNow++) {
     TString cutTypeNow = cutsV[nCutTypeNow];
 
@@ -774,7 +811,8 @@ void VarMaps::printCut(TString cutType, bool debug) {
     aCustomLOG("")<<coutDef<<endl;
   } else {
     if(debug || inLOG(Log::DEBUG_2))
-      aCustomLOG("") <<coutBlue<<"  -- Has cut ("<<coutGreen<<cutType<<coutBlue<<")  =  "<<coutRed<<treeCutsM[cutType]<<coutDef<<endl;
+      aCustomLOG("") <<coutBlue<<"  -- Has cut ("<<coutGreen<<cutType<<coutBlue<<")  =  "
+                     <<coutRed<<treeCutsM[cutType]<<coutDef<<endl;
   }
   return;
 }
@@ -1279,13 +1317,14 @@ void VarMaps::setTreeForms(bool isFirstEntry) {
 
     if(isFirstEntry) {
       for(Map <TString,TString>::iterator itr=nameMap->begin(); itr!=nameMap->end(); ++itr) {
-        TString treeForm     = itr->second; treeForm.ReplaceAll(" ","");
+        TString treeForm     = (regularizeStringForm(itr->second)).ReplaceAll(" ","");
         TString treeFormName = utils->regularizeName( (TString)treeRead->GetName()+"_"+itr->first );
-        TCut    aCut         = (TCut)((treeForm == "") ? "1" : treeForm);
-      //cout <<"setTreeForms  "<<treeForm<<CT<<treeFormName<<CT<<(TString)aCut<<endl;
+        TString aCut         = (TString)((treeForm == "") ? "1" : treeForm);
+
+        // cout <<"setTreeForms  "<<treeForm<<CT<<treeFormName<<CT<<(TString)aCut<<endl;
         
         if(formMap->find(itr->first) != formMap->end()) DELNULL((*formMap)[itr->first]);
-        (*formMap)[itr->first] = new TTreeFormula(treeFormName,aCut,treeRead);
+        (*formMap)[itr->first] = new TTreeFormula(treeFormName,(TCut)aCut,treeRead);
        
         VERIFY(LOCATION,(TString)"TTreeFormula is not valid (\""+(TString)aCut+"\") ...",((*formMap)[itr->first]->GetNdim() != 0));
       }
@@ -1411,7 +1450,7 @@ void VarMaps::storeTreeToAscii(TString outFilePrefix, TString outFileDir, int ma
 
     IncCntr("nObj"); if(GetCntr("nObj") == maxNobj) break;
 
-    if(!dynamic_cast<std::ofstream*>(fout) || (nLinesFile > 0 && (GetCntr("nObj") % nLinesFile == 0))) {
+    if(!dynamic_cast<std::ofstream*>(fout) || (dynamic_cast<std::ofstream*>(fout) && (nLinesFile > 0) && ((GetCntr("nObj")-1) % nLinesFile == 0))) {
       nOutFileNow += 1;
       outFileName  = (TString)outFileDir+outFilePrefix+"_"+TString::Format("%4.4d",nOutFileNow-1)+csvPostfix;
       

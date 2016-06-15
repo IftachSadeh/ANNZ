@@ -19,6 +19,7 @@
 #include "ANNZ.hpp"
 #include "ANNZ_utils.cpp"
 #include "ANNZ_err.cpp"
+#include "ANNZ_onlyKnnErr.cpp"
 #include "ANNZ_TMVA.cpp"
 
 #include "ANNZ_train.cpp"
@@ -38,23 +39,25 @@ ANNZ::~ANNZ() {
 // ================
   aLOG(Log::DEBUG) <<coutBlue<<" - starting ANNZ::~ANNZ() ... "<<coutDef<<endl;
 
-  mlmTagName.clear();   mlmTagErr.clear();       mlmTagWeight.clear();   mlmTagClsVal.clear();
-  mlmTagIndex.clear();  mlmSkip.clear();         pdfBinNames.clear();    pdfAvgNames.clear();
-  trainTimeM.clear();   inputVariableV.clear();  inErrTag.clear();       readerInptIndexV.clear();
-  zPDF_binE.clear();    zPDF_binC.clear();       zPlot_binE.clear();     zPlot_binC.clear();
-  inNamesVar.clear();   inNamesErr.clear();      userWgtsM.clear();      mlmTagErrKNN.clear();
-  zClos_binE.clear();   zClos_binC.clear();      zBinCls_binE.clear();   zBinCls_binC.clear();
-  typeMLM.clear();      allANNZtypes.clear();    typeToNameMLM.clear();  nameToTypeMLM.clear();
-  bestMLMname.clear();  anlysTypes.clear();      readerInptV.clear();
+  mlmTagName.clear();   mlmTagErr.clear();        mlmTagWeight.clear();   mlmTagClsVal.clear();
+  mlmTagIndex.clear();  mlmSkip.clear();          pdfBinNames.clear();    pdfAvgNames.clear();
+  trainTimeM.clear();   inputVariableV.clear();   inErrTag.clear();       readerInptIndexV.clear();
+  zPDF_binE.clear();    zPDF_binC.clear();        zPlot_binE.clear();     zPlot_binC.clear();
+  inNamesVar.clear();   inNamesErr.clear();       userWgtsM.clear();      mlmTagErrKNN.clear();
+  zClos_binE.clear();   zClos_binC.clear();       zBinCls_binE.clear();   zBinCls_binC.clear();
+  typeMLM.clear();      allANNZtypes.clear();     typeToNameMLM.clear();  nameToTypeMLM.clear();
+  bestMLMname.clear();  anlysTypes.clear();       readerInptV.clear();    readerBiasInptV.clear();
+  mlmBaseTag.clear();   hasBiasCorMLMinp.clear();
 
   for(int nMLMnow=0; nMLMnow<(int)inVarsScaleFunc.size(); nMLMnow++) {
     for(int nVarNow=0; nVarNow<(int)inVarsScaleFunc[nMLMnow].size(); nVarNow++) DELNULL(inVarsScaleFunc[nMLMnow][nVarNow]);
   }
   inVarsScaleFunc.clear();
 
-  for(int nHisNow=0; nHisNow<(int)regReaders.size(); nHisNow++) DELNULL(regReaders[nHisNow]);
-  for(int nHisNow=0; nHisNow<(int)hisClsPrbV.size(); nHisNow++) DELNULL(hisClsPrbV[nHisNow]);
-  regReaders.clear();  hisClsPrbV.clear();
+  for(int nHisNow=0; nHisNow<(int)regReaders .size(); nHisNow++) DELNULL(regReaders [nHisNow]);
+  for(int nHisNow=0; nHisNow<(int)biasReaders.size(); nHisNow++) DELNULL(biasReaders[nHisNow]);
+  for(int nHisNow=0; nHisNow<(int)hisClsPrbV .size(); nHisNow++) DELNULL(hisClsPrbV [nHisNow]);
+  regReaders.clear(); biasReaders.clear(); hisClsPrbV.clear();
 
   return;
 }

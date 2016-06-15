@@ -32,6 +32,7 @@ public :
   void    Init();
   void    DoANNZ();
   void    GenerateInputTrees();
+  void    doOnlyKnnErr();
   void    doInTrainFlag();
   void    setColors();
 

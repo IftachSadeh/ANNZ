@@ -215,7 +215,7 @@ namespace Log {
   // a version with some verbosity for debugging
   #define DELNULL_(loc,ptr,name,verb) \
     do { \
-      if(verb) { aCustomLOG("DELNULL")<<coutGreen<<loc<<coutRed<<" - deleting "<<coutBlue<<name<<coutRed<<" ("<<coutPurple<<ptr<<coutRed<<") ..."<<coutDef<<endl; } \
+      if(verb) { aCustomLOG("DELNULL")<<coutRed<<" - "<<coutGreen<<loc<<coutRed<<" - deleting "<<coutBlue<<name<<coutRed<<" ("<<coutPurple<<ptr<<coutRed<<") ..."<<coutDef<<endl; } \
       delete ptr; ptr = NULL; \
     } while(false)
 

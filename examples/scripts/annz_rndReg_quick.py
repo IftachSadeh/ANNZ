@@ -50,12 +50,9 @@ if glob.annz["doGenInputTrees"]:
   #                file, e.g., [TYPE:NAME] may be [F:MAG_U], with 'F' standing for float. (see advanced example for detailed explanation)
   glob.annz["inAsciiVars"]    = "F:MAG_U;F:MAGERR_U;F:MAG_G;F:MAGERR_G;F:MAG_R;F:MAGERR_R;F:MAG_I;F:MAGERR_I;F:MAG_Z;F:MAGERR_Z;D:Z"
 
-  # splitTypeTrain - list of files for training. splitTypeTest - list of files for testing. splitTypeValid - list of files for validation if
-  #                  there is no dedicated validation sample, set [nSplit=2] and ignore splitTypeValid (see advanced example for more options).
-  glob.annz["nSplit"]         = 3
+  # splitTypeTrain - list of files for training. splitTypeTest - list of files for testing.
   glob.annz["splitTypeTrain"] = "boss_dr10_0.csv"
-  glob.annz["splitTypeTest"]  = "boss_dr10_1.csv;boss_dr10_2.csv"
-  glob.annz["splitTypeValid"] = "boss_dr10_3.csv"
+  glob.annz["splitTypeTest"]  = "boss_dr10_1.csv;boss_dr10_2.csv;boss_dr10_3.csv"
 
   # run ANNZ with the current settings
   runANNZ()
@@ -120,5 +117,4 @@ if glob.annz["doOptim"] or glob.annz["doEval"]:
     # run ANNZ with the current settings
     runANNZ()
 
-log.info(whtOnBlck(" - "+time.strftime("%d/%m/%y %H:%M:%S")+" - finished runing ANNZ !"))
-
+log.info(whtOnBlck(" - "+time.strftime("%d/%m/%y %H:%M:%S")+" - finished running ANNZ !"))

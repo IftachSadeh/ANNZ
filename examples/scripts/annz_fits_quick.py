@@ -61,5 +61,5 @@ if glob.annz["doAsciiToFits"]:
 
   asciiToFits()
 
-log.info(whtOnBlck(" - "+time.strftime("%d/%m/%y %H:%M:%S")+" - finished runing ANNZ !"))
+log.info(whtOnBlck(" - "+time.strftime("%d/%m/%y %H:%M:%S")+" - finished running ANNZ !"))
 

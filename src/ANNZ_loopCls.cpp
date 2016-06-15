@@ -31,7 +31,7 @@ void ANNZ::optimCls() {
   
   int     nMLMs             = glob->GetOptI("nMLMs");
   TString sigBckTypeName    = glob->GetOptC("sigBckTypeName");
-  bool    separateTestValid = glob->GetOptB("separateTestValid");
+  // bool    separateTestValid = glob->GetOptB("separateTestValid"); // deprecated
   int     nANNZtypes        = (int)allANNZtypes.size();
 
   // adjust maxNobj to stop loop after maxNobj/2 sig and maxNobj/2 bck objects have been accepted
@@ -44,7 +44,8 @@ void ANNZ::optimCls() {
 
   // create the chain for the loop
   // -----------------------------------------------------------------------------------------------------------
-  TString treeNamePostfix = (TString)(separateTestValid ? "_valid" : "_train");
+  // TString treeNamePostfix = (TString)(separateTestValid ? "_valid" : "_train"); // deprecated
+  TString treeNamePostfix = (TString)"_train";
   TString inTreeName      = (TString)glob->GetOptC("treeName")+treeNamePostfix;
   TString inFileName      = (TString)glob->GetOptC("postTrainDirNameFull")+inTreeName+"*.root";
 
@@ -58,7 +59,7 @@ void ANNZ::optimCls() {
   VarMaps * var = new VarMaps(glob,utils,"loopRegClsVar");
   var->connectTreeBranches(aChain);
 
-  if(separateTestValid) var->setTreeCuts("_train",getTrainTestCuts("_valid",0));
+  // if(separateTestValid) var->setTreeCuts("_train",getTrainTestCuts("_valid",0,0,0,var)); // deprecated
 
   // number of initial bins and rebin factor for classification response histograms
   hisBinsN  = glob->GetOptI("clsResponseHisN");  rebinFactor = glob->GetOptI("clsResponseHisR");
@@ -135,7 +136,7 @@ void ANNZ::optimCls() {
     }
     if(breakLoop) break;
 
-    if(separateTestValid) { if(var->hasFailedTreeCuts("_train")) continue; }
+    // if(separateTestValid) { if(var->hasFailedTreeCuts("_train")) continue; } // deprecated
 
     int sigBckType = var->GetVarI(sigBckTypeName);
     if(sigBckType == -1) {
@@ -458,8 +459,10 @@ void ANNZ::optimCls() {
   OptMaps * optMap = new OptMaps("localOptMap");
   TString          saveName("");
   vector <TString> optNames;
-  saveName = "optimMLMs_PRB"; optNames.push_back(saveName); optMap->NewOptC(saveName, orderedMLMs["PRB"]);
-  saveName = "optimMLMs_CLS"; optNames.push_back(saveName); optMap->NewOptC(saveName, orderedMLMs["CLS"]);
+
+  saveName = glob->versionTag();  optNames.push_back(saveName); optMap->NewOptC(saveName, glob->GetOptC(glob->versionTag()));
+  saveName = "optimMLMs_PRB";     optNames.push_back(saveName); optMap->NewOptC(saveName, orderedMLMs["PRB"]);
+  saveName = "optimMLMs_CLS";     optNames.push_back(saveName); optMap->NewOptC(saveName, orderedMLMs["CLS"]);
 
   utils->optToFromFile(&optNames,optMap,saveFileName,"WRITE");
 
@@ -524,10 +527,12 @@ void  ANNZ::doEvalCls() {
   aLOG(Log::INFO)<<coutYellow<<" - Getting optimization results from "<<coutGreen<<saveFileName<<coutYellow<<" ..."<<coutDef<<endl;
 
   OptMaps * optMap = new OptMaps("localOptMap");
-  TString          saveNameP(""), saveNameC(""), optimMLMs("");
+  TString          saveName(""), saveNameP(""), saveNameC(""), optimMLMs("");
   vector <TString> optNames;
-  saveNameP = "optimMLMs_PRB"; optNames.push_back(saveNameP); optMap->NewOptC(saveNameP);
-  saveNameC = "optimMLMs_CLS"; optNames.push_back(saveNameC); optMap->NewOptC(saveNameC);
+
+  saveName  = glob->versionTag(); optNames.push_back(saveName);  optMap->NewOptC(saveName);
+  saveNameP = "optimMLMs_PRB";    optNames.push_back(saveNameP); optMap->NewOptC(saveNameP);
+  saveNameC = "optimMLMs_CLS";    optNames.push_back(saveNameC); optMap->NewOptC(saveNameC);
 
   utils->optToFromFile(&optNames,optMap,saveFileName,"READ","SILENT_KeepFile",inLOG(Log::DEBUG_2));
 
@@ -592,8 +597,8 @@ void  ANNZ::doEvalCls() {
 
       setMethodCuts(varKNN,nMLMnow,false);
 
-      TCut    cutsNow(varKNN->getTreeCuts("_comn") + varKNN->getTreeCuts(MLMname+"_valid"));
-      TString wgtCls(userWgtsM[MLMname+"_valid"]);
+      TCut    cutsNow = varKNN->getTreeCuts("_comn") + varKNN->getTreeCuts(MLMname+"_valid");
+      TString wgtCls  = getRegularStrForm(userWgtsM[MLMname+"_valid"],varKNN);
 
       TString inputComboNow = (TString)"[__ANNZ_VAR__]"+inputVariableV[nMLMnow]+"[__ANNZ_WGT__]"+wgtCls+"[__ANNZ_CUT__]"+(TString)cutsNow;
       inputComboNow.ReplaceAll(" ","").ReplaceAll("[__"," [__").ReplaceAll("__]","__] ");
@@ -655,7 +660,8 @@ void  ANNZ::doEvalCls() {
     TString MLMname_w = getTagWeight(nMLMnow); TString MLMname_v = getTagClsVal(nMLMnow);
 
     // create MLM-weight formulae for the input variables
-    var_0->NewForm(MLMname_w,userWgtsM[MLMname+"_valid"]);
+    TString wgtStr    = getRegularStrForm(userWgtsM[MLMname+"_valid"],var_0);
+    var_0->NewForm(MLMname_w,wgtStr);
 
     // formulae for inpput-variable errors, to be used by getRegClsErrINP()
     if(isErrINPv[nMLMnow]) {
@@ -734,7 +740,7 @@ void  ANNZ::doEvalCls() {
       int     nMLMnow   = getTagNow(MLMname);    TString MLMname_e = getTagError(nMLMnow);
       TString MLMname_w = getTagWeight(nMLMnow); TString MLMname_v = getTagClsVal(nMLMnow);
 
-      double  clasVal = getReader(var_0,ANNZ_readType::CLS,true ,nMLMnow);
+      double  clasVal = getReader(var_0,ANNZ_readType::CLS,true,nMLMnow);
       double  clsPrb  = getReader(var_0,ANNZ_readType::PRB,false,nMLMnow);
       double  clsWgt  = var_0->GetForm(MLMname_w);
 
@@ -749,7 +755,7 @@ void  ANNZ::doEvalCls() {
       if(hasErrs) { var_1->SetVarF(MLMname_e,clsErr); }
     }
 
-    treeOut->Fill();
+    var_1->fillTree();
 
     // to increment the loop-counter, at least one method should have passed the cuts
     mayWriteObjects = true; var_0->IncCntr("nObj"); if(var_0->GetCntr("nObj") == maxNobj) breakLoop = true;

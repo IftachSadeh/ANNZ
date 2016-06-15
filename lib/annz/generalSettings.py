@@ -47,7 +47,7 @@ def generalSettings():
   # glob.annz["overwriteExistingTrain"] = True
 
   # optimCondReg -
-  #   ["bias", "sig68" or "fracSig68"] - used for deciding how to rank MLM performance. the named criteria represents
+  #   ["sig68" or "bias"] - used for deciding how to rank MLM performance. the named criteria represents
   #   the metric which is more significant in deciding which MLM performs "best" (correspondingly, the bias, the
   #   68th percentile scatter of bias distribution, or the outlier fraction of the latter). The default value is "sig68".
   # glob.annz["optimCondReg"] = "bias"
@@ -60,8 +60,7 @@ def generalSettings():
   #   correspondingly the value of the scatter of `deltaScaled` instead of that of `delta`.
   #   The selection criteria for prioritizing the bias or the scatter remains the parameter `glob.annz["optimCondReg"]`.
   #   This means that optimCondReg can take the value `bias` (for `delta` or `deltaScaled`),
-  #   or `sig68` (for the 68th percentile scatter of `delta` or of `deltaScaled`), or
-  #   `fracSig68` (for the outlier fraction of `delta` or of `deltaScaled`). The default value is False.
+  #   or `sig68` (for the 68th percentile scatter of `delta` or of `deltaScaled`). The default value is False.
   # glob.annz["optimWithScaledBias"] = True
 
   # use the scaled bias `(zReg-zTrg)/(1+zTrg)` instead of the bias for the figures generated with the plotting
@@ -75,6 +74,10 @@ def generalSettings():
   #   procedure in randomized regression. The default value is False.
   #   glob.annz["optimWithMAD"] = True
 
+  # turn on or off the PDF bias correction, which is applied during optimization/verification
+  # during single/randomized regression and binned classification (set to True by default)
+  # glob.annz["doBiasCorPDF"] = False
+  
   # number of random MLM weighting schemes to generate as part of getRndMethodBestPDF()
   # glob.annz["nRndPdfWeightTries"] = 50
 
@@ -104,10 +107,18 @@ def generalSettings():
 
   # if propagating input-errors - nErrINP is the number of randomly generated MLM values used to propagate
   # the uncertainty on the input parameters to the MLM-estimator. See getRegClsErrINP()
-  # glob.annz["nErrINP"] = -1
+  # glob.annz["nErrINP"] = -1 # if set to [-1], the default value is used
 
   # maximal number of objects in a tree/output ascii file
   # glob.annz["nObjectsToWrite"] = 1e6
+
+  # possible list of variables which will always be plotted (that is, no safety checks
+  # on variable type will be performed)
+  # glob.annz["alwaysPlotVars"] = "(MAG_R-MAG_I);(MAG_I-MAG_Z)"
+
+  # possible list of variables for which we will NOT use quantile bins for plotting (i.e., performance plots will
+  # contain equal-width bins for these, and not bins defined such that the number of objects/bin is constant)
+  # glob.annz["noQuantileBinsPlots"] = "inTrainFlag;MAG_U"
 
   return
 

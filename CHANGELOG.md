@@ -1,10 +1,86 @@
 # Changelog
 
-## Master version
+## Master version (11/6/2016)
+
+- Modified the `Makefile` to explicitly include `rpath` in `LDFLAGS`, which may be needed for pre-compiled versions of ROOT.
+
+## ANNZ v2.2.0 (24/5/2016)
+
+- Added a bias correction procedure for MLMs, which may be switched off using `glob.annz["doBiasCorMLM"] = False`. (See `README.md` and `scripts/annz_rndReg_advanced.py` for details.)
+
+- Added the option to generate error estimations (using the KNN method) for a general input dataset. An example script is provided as `scripts/annz_rndReg_knnErr.py`. (A detailed description is given in `README.md`.)
+
+- Added the `userWeights_metricPlots` job option, which can be used to set weight expressions for the performance plots of regression. (See `README.md` for details.)
+
+- Changed the binning scheme for the performance plots of auxiliary variables (defined using `glob.annz["addOutputVars"]`). Instead of equal-width bins, the plots now include bins which are defined as each having the same number of objects (equal-quantile binning). This e.g., reduces statistical fluctuations in computations of the bias, scatter and other parameters, as a function of the variables used for the training.
+
+- Changed the default number of training cycles for ANNs from `5000` to a (more reasonable) randomized choice in the range `[500,2000]` (`ANNZ::generateOptsMLM()`). The option may be set to any other value by the user, using the `NCycles` setting. E.g., during training, set: `glob.annz["userMLMopts"] = "ANNZ_MLM=ANN::HiddenLayers=N,N+3:NCycles=3500"`.
+
+- Fixed minor bug in `ANNZ::Train_binnedCls()`, which caused a mismatch of job-options for some configuration of binned classification.
+
+- Added a version-tag to all intermediate option files, with a format as e.g., `[versionTag]=ANNZ_2.1.3`.
+
+- Minor change to the selection criteria for `ANNZ_best` in randomized regression.
+
+- Other minor modifications and bug fixes.
+
+## ANNZ v2.1.2 (15/3/2016)
+
+- Improved selection criteria for `ANNZ_best` in randomized regression. The optimization is now based on `glob.annz["optimCondReg"]="sig68"` or `"bias"`. (The `"fracSig68"` option is deprecated.)
+
+- **Significant speed improvement** for KNN weights and `inTrainFlag` calculations in `CatFormat::addWgtKNNtoTree()`.
+
+- Modified `CatFormat::addWgtKNNtoTree()` and `CatFormat::inputToSplitTree_wgtKNN()` so that both training and testing objects are used together as the reference dataset, when deriving KNN weights. This new option is on by default, and may be turned off by setting:
+  ```python
+  glob.annz["trainTestTogether_wgtKNN"] = False
+  ```
+  - For developers: internal interface change (not backward compatible) - What used to be `CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TString outTreeName)` has been changed to `CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TChain * aChainEvl, TString outTreeName)`.
+
+- Cancelled the `splitTypeValid` option, which was not very useful and confusing for users. From now on, input datasets may only be divided into two subsets, one for training and one for testing. The user may define the training/testing samples in one of two ways (see `scripts/annz_rndReg_advanced.py` for details):
+  
+  1. Automatic splitting:
+    ```python
+    glob.annz["splitType"]    = "random"
+    glob.annz["inAsciiFiles"] = "boss_dr10_0.csv;boss_dr10_1.csv"
+    ```
+  Set a list of input files in `inAsciiFiles`, and use `splitType` to specify the method for splitting the sample. Allowed values for the latter are `serial`, `blocks` or `random`.
+  
+  2. Splitting by file:
+    ```python
+    glob.annz["splitType"]      = "byInFiles"
+    glob.annz["splitTypeTrain"] = "boss_dr10_0.csv"
+    glob.annz["splitTypeTest"]  = "boss_dr10_1.csv;boss_dr10_2.csv"
+    ```
+  Set a list of input files for training in `splitTypeTrain`, and a list of input files for testing in `splitTypeTest`. 
+
+- Added plotting for the evaluation mode of regression (single regression, randomized regression and binned classification). If the regression target is detected as part of the evaluated dataset, the nominal performance plots are created. For instance, for the `scripts/annz_rndReg_quick.py` script, the plots will be created in `output/test_randReg_quick/regres/eval/plots/`.
 
 - Fixed bug in plotting routine from `ANNZ::doMetricPlots()`, when adding user-defined cuts for variables not already present in the input trees.
 
-## ANNZ 2.1.1 (15/1/2016)
+- Simplified the interface for string variables in cut and weight expressions.
+  - For example, given a set of input parameters,
+    ```python
+    glob.annz["inAsciiVars"] = "D:MAG_AUTO_G;D:MAG_AUTO_R;D:MAG_AUTO_I;D:Z_SPEC;C:FIELD"
+    ```
+    one can now use cuts and weights of the form:
+    ```python
+    glob.annz["userCuts_train"]    = "    (FIELD == \"FIELD_0\") ||     (FIELD == \"FIELD_1\")"
+    glob.annz["userCuts_valid"]    = "    (FIELD == \"FIELD_1\") ||     (FIELD == \"FIELD_2\")"
+    glob.annz["userWeights_train"] = "1.0*(FIELD == \"FIELD_0\") +  2.0*(FIELD == \"FIELD_1\")"
+    glob.annz["userWeights_valid"] = "1.0*(FIELD == \"FIELD_1\") +  0.1*(FIELD == \"FIELD_2\")"
+    ```
+    Here, training is only done using `FIELD_0` and `FIELD_1`; validation is weighted such that galaxies from `FIELD_1` have ten times the weight compared to galaxies from `FIELD_2` etc.
+
+  - The same rules also apply for the weight and cut options for the KNN re-weighting method: `cutInp_wgtKNN`, `cutRef_wgtKNN`, `weightRef_wgtKNN` and `weightInp_wgtKNN`, and for the corresponding variables for the evaluation compatibility test: `cutInp_inTrain`, `cutRef_inTrain`, `weightRef_inTrain` and `weightInp_inTrain`. (Examples for the re-weighting and for the compatibility test using these variables are given in `scripts/annz_rndReg_advanced.py`.)
+
+- `ANNZ_PDF_max_0` no longer calculated by default. This may be turned back on by setting
+```python
+glob.annz["addMaxPDF"] = True
+```
+
+- Other minor modifications and bug fixes.
+
+## ANNZ v2.1.1 (15/1/2016)
 
 - Fixed bug in generating a name for an internal `TF1` function in `ANNZ::setupKdTreeKNN()`.
 
@@ -42,9 +118,9 @@
 
 - Other minor modifications.
 
-## ANNZ 2.1.0 (08/10/2015)
+## ANNZ v2.1.0 (08/10/2015)
 
-- Removed unnecessary dictionary generation from Makefile.
+- Removed unnecessary dictionary generation from the `Makefile`.
 
 - Changed `std::map` to `std::unordered_map` in main containers of the `OptMaps()` and `VarMaps()` classes (constitutes a slight performance boost).
 
@@ -52,14 +128,14 @@
 
 - Added the option to use an entire input file as signal or background for single/randomized classification, in addition to (or instead of) defining a cut based on one of the input parameters. In order to use this option, one muse define the variables `inpFiles_sig` and `inpFiles_bck`. An example is given in `scripts/annz_rndCls_advanced.py`.
 
-- Added a bias-correction for randomized regression PDFs. This options is now active by default, and may be turned off by setting,
+- Added a bias correction for randomized regression PDFs. This options is now active by default, and may be turned off by setting,
   ```python
   glob.annz["doBiasCorPDF"] = False
   ```
 
 - Other minor modifications.
 
-## ANNZ 2.0.6 (03/8/2015)
+## ANNZ v2.0.6 (03/8/2015)
 
 - Did some code optimization for tree-looping operations.
 
@@ -83,7 +159,7 @@ Similarly, added the same transformations for the kd-tree during the `glob.annz[
 
 - Other minor modifications.
 
-## ANNZ 2.0.5 (17/6/2015)
+## ANNZ v2.0.5 (17/6/2015)
 
 - Fixed bug in `CatFormat::addWgtKNNtoTree()`, where the weight expression for the KNN trees did not include the `ANNZ_KNN_w` weight in cases of `glob.annz["addInTrainFlag"] = True`.
 
@@ -91,13 +167,13 @@ Similarly, added the same transformations for the kd-tree during the `glob.annz[
 
 - Other minor modifications.
 
-## ANNZ 2.0.4 (19/3/2015)
+## ANNZ v2.0.4 (19/3/2015)
 
 - **Modified the function, `CatFormat::addWgtKNNtoTree()`, and added `CatFormat::asciiToFullTree_wgtKNN()`:** The purpose of the new features is to add an output variable, denoted as `inTrainFlag` to the output of evaluation. The new output indicates if the corresponding object is "compatible" with other objects from the training dataset. The compatibility is estimated by comparing the density of objects in the training dataset in the vicinity of the evaluated object. If the evaluated object belongs to an area of parameter-space which is not represented in the training dataset, we will get `inTrainFlag = 0`. In this case, the output of the training is probably unreliable.
 
 - Other minor modifications.
 
-## ANNZ 2.0.3 (25/2/2015)
+## ANNZ v2.0.3 (25/2/2015)
 
 - **Added *MultiClass* support to binned classification:** The new option is controlled by setting the `doMultiCls` flag. In this mode, multiple background samples can be trained simultaneously against the signal. In the context of binned classification, this means that each classification bin acts as an independent sample during the training.
 
@@ -114,11 +190,11 @@ Similarly, added the same transformations for the kd-tree during the `glob.annz[
 
 - Other minor modifications.
 
-## ANNZ 2.0.2 (10/2/2015)
+## ANNZ v2.0.2 (10/2/2015)
 
 Fixed bug in VarMaps::storeTreeToAscii(), where variables of type `Long64_t` were treated as `Bool_t` by mistake, causing a crash.
 
-## ANNZ 2.0.1 (10/2/2015)
+## ANNZ v2.0.1 (10/2/2015)
 
 The following changes were made:
 
@@ -131,6 +207,6 @@ Added the variable `evalDirPostfix`, which allows to modify the name of the eval
 
 - Various small modifications.
 
-## ANNZ 2.0.0 (26/1/2015)
+## ANNZ v2.0.0 (26/1/2015)
 
 First version (v2.0.0) of the new implementation of the machine learning code, ANNz.

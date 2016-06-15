@@ -58,34 +58,24 @@ if glob.annz["doGenInputTrees"]:
   glob.annz["inAsciiVars"]  = "F:MAG_U;F:MAGERR_U;F:MAG_G;F:MAGERR_G;F:MAG_R;F:MAGERR_R;F:MAG_I;F:MAGERR_I;F:MAG_Z;F:MAGERR_Z;D:Z"
 
   # --------------------------------------------------------------------------------------------------
-  #   - For training and testing/validation the input is divided into two (test,train) or into three (test,train,valid)
-  #     sub-samples.
-  #   - The user needs to define the number of sub-samples (e.g., nSplit = 1,2 or 3) and the way to divide the
+  #   - For training and testing/validation the input is divided into two (test,train) sub-samples.
+  #   - The user needs to define the way to divide the samples
   #     inputs in one of 4 ways (e.g., splitType = "serial", "blocks", "random" or "byInFiles" (default)):
   #       - serial: -> test;train;valid;test;train;valid;test;train;valid;test;train;valid...
   #       - blocks: -> test;test;test;test;train;train;train;train;valid;valid;valid;valid...
   #       - random: -> valid;test;test;train;valid;test;valid;valid;test;train;valid;train...
   #       - separate input files. Must supplay at least one file in splitTypeTrain and one in splitTypeTest.
-  #         In this case, [nSplit = 2]. Optionally can set [nSplit = 3] and provide a list of files in "splitTypeValid" as well.
   # - example use:
   #   set inFileOpt and choose one of the following options for input file configuration:
   # --------------------------------------------------------------------------------------------------
-  inFileOpt = 2
-  # splitTypeTrain - list of files for training. splitTypeTest - list of files for testing and validation
+  inFileOpt = 0
+  # splitTypeTrain - list of files for training. splitTypeTest - list of files for testing
   if   inFileOpt == 0:
-    glob.annz["nSplit"]         = 2
     glob.annz["splitTypeTrain"] = "boss_dr10_0_large.csv"
     glob.annz["splitTypeTest"]  = "boss_dr10_1_large.csv"
-  # splitTypeTrain - list of files for training. splitTypeTest - list of files for testing. splitTypeValid - list of files for validation
-  elif inFileOpt == 1:
-    glob.annz["nSplit"]         = 3
-    glob.annz["splitTypeTrain"] = "boss_dr10_0_large.csv"
-    glob.annz["splitTypeTest"]  = "boss_dr10_1_large.csv"
-    glob.annz["splitTypeValid"] = "boss_dr10_2_large.csv"
-  # inAsciiFiles - one list of input files for training, testing and validation, where the the objects are assigned to a given
+  # inAsciiFiles - one list of input files for training and testing, where the the objects are assigned to a given
   # category based on the selection criteria defined by splitType
-  elif inFileOpt == 2:
-    glob.annz["nSplit"]         = 3
+  elif inFileOpt == 1:
     glob.annz["splitType"]      = "serial" # "serial", "blocks" or "random"
     glob.annz["inAsciiFiles"]   = "boss_dr10_0_large.csv;boss_dr10_1_large.csv;boss_dr10_2_large.csv"
   else:
@@ -135,8 +125,8 @@ if glob.annz["doGenInputTrees"]:
     glob.annz["weightVarNames_wgtKNN"] = "MAG_U;MAG_G;MAG_R;MAG_I;MAG_Z"
 
     # optional parameters (may leave empty as default value):
-    glob.annz["sampleFracInp_wgtKNN"]  = 0.1                                           # fraction of dataset to use (positive number, smaller or equal to 1)
-    glob.annz["sampleFracRef_wgtKNN"]  = 0.2                                           # fraction of dataset to use (positive number, smaller or equal to 1)
+    glob.annz["sampleFracInp_wgtKNN"]  = 0.9                                           # fraction of dataset to use (positive number, smaller or equal to 1)
+    glob.annz["sampleFracRef_wgtKNN"]  = 0.8                                           # fraction of dataset to use (positive number, smaller or equal to 1)
     glob.annz["outAsciiVars_wgtKNN"]   = "MAG_U;MAG_G;MAGERR_U"                        # write out two additional variables to the output file
     glob.annz["weightRef_wgtKNN"]      = "(MAGERR_R<0.7)*1 + (MAGERR_R>=0.7)/MAGERR_R" # down-weight objects with high MAGERR_R
     glob.annz["cutRef_wgtKNN"]         = "MAGERR_U<200"                                # only use objects which have small MAGERR_U
@@ -496,5 +486,4 @@ if glob.annz["doTrain"] or glob.annz["doVerif"] or glob.annz["doEval"]:
       # run ANNZ with the current settings
       runANNZ()
 
-log.info(whtOnBlck(" - "+time.strftime("%d/%m/%y %H:%M:%S")+" - finished runing ANNZ !"))
-
+log.info(whtOnBlck(" - "+time.strftime("%d/%m/%y %H:%M:%S")+" - finished running ANNZ !"))
