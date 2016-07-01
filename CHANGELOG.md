@@ -1,8 +1,10 @@
 # Changelog
 
-## Master version (11/6/2016)
+## Master version (01/7/2016)
 
 - Modified the `Makefile` to explicitly include `rpath` in `LDFLAGS`, which may be needed for pre-compiled versions of ROOT.
+
+- Other minor modifications and bug fixes.
 
 ## ANNZ v2.2.0 (24/5/2016)
 

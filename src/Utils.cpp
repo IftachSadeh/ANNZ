@@ -1592,7 +1592,9 @@ int Utils::getInterQuantileStats(double * dataArr, TH1 * dataHis) {
     double * madQuant = new double[1];
     double * madProb  = new double[1]; madProb[0] = 0.50;
 
-    madH->GetQuantiles(1,madQuant,madProb);
+    if(madH->Integral() > EPS) madH->GetQuantiles(1,madQuant,madProb);
+    else                       madQuant[0] = DefOpts::DefF;
+    
     param->NewOptF("quant_MAD", madQuant[0]);
 
     delete [] madQuant; delete [] madProb; delete madH;

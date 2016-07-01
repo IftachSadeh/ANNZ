@@ -561,7 +561,7 @@ double ANNZ::getRegClsErrINP(VarMaps * var, bool isREG, int nMLMnow, UInt_t * se
   }
   fracV.clear(); quantV.clear();
 
-  // fore a reset of the variables which are connected to the reader to the correct values and check that we get the
+  // force a reset of the variables which are connected to the reader to the correct values and check that we get the
   // original evaluation result back
   regClsSmear = getReader(var,readType,true,nMLMnow);
   VERIFY(LOCATION,(TString)"Somehow the error calculation messed up the MLM reader ... Something is horribly wrong ?!?!?"

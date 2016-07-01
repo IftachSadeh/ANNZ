@@ -354,7 +354,7 @@ double ANNZ::getReader(VarMaps * var, ANNZ_readType readType, bool forceUpdate, 
 
   }
 
-  return readVal;
+  return (utils->isNanInf(readVal) ? DefOpts::DefF : readVal);
 }
 
 // ===========================================================================================================

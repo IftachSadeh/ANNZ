@@ -1283,6 +1283,10 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
 
     his1_N[nPDFnow] = ((TH2*)his2_N[nPDFnow])->ProjectionY((TString)his2_N[nPDFnow]->GetName()+"_proj");
 
+    // sanity check
+    VERIFY(LOCATION,(TString)"For ["+(TString)his1_N[nPDFnow]->GetName()+"], found no entries ..."
+                            +"something is horribly wrong ?!?",(his1_N[nPDFnow]->Integral() > EPS));
+
     vector <TH1*> his1_NzV;
     utils->his2d_to_his1dV(NULL,his2_N[nPDFnow],his1_NzV);
 
@@ -2747,8 +2751,9 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
                 for(int nBinXnow=1; nBinXnow<nPDFbins+1; nBinXnow++) {
                   double val = hisPDF_w_TMP->GetBinContent(nBinXnow);
 
-                  if(val < minWeight)                   continue;
-                  if(!hisBiasCorV[nPDFnow][nBinXnow-1]) continue;
+                  if(val < minWeight)                                    continue;
+                  if(!hisBiasCorV[nPDFnow][nBinXnow-1])                  continue;
+                  if(hisBiasCorV[nPDFnow][nBinXnow-1]->Integral() < EPS) continue;
 
                   val /= nSmearUnf;
                   for(int nSmearUnfNow=0; nSmearUnfNow<nSmearUnf; nSmearUnfNow++) {
