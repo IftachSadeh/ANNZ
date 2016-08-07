@@ -573,7 +573,7 @@ A few notes:
 
   - If ANNZ does not compile, check the definition of `$ROOTSYS` and `$LD_LIBRARY_PATH`. The values used by ANNZ are printed out before compilation starts.
 
-  - Mac users should take make sure to install the `Xcode Command Line Tools` before compiling against ROOT.
+  - Mac users may need to install the `Xcode Command Line Tools` before compiling against ROOT.
 
   - During the `--genInputTrees` phase, a list of input parameters is specified, corresponding to the makeup of the input ascii files; here each column in the input file is registered. Note that the training of MLM does not necessarily need to correspond to the same set of parameters. In fact, any combination of input parameters, including mathematical expressions of the latter, may be used for training. The only constraint is that (for regression problems) the regression target should correspond to exactly one of the input parameters. See the various example scripts for details.
   An example for a set of input parameters is
@@ -672,7 +672,7 @@ A few notes:
 
 ---
 
-The example scripts use the data stored in `examples/data/` as the input for training, validation and evaluation. The data for the regression examples (`examples/data/photoZ/`) were derived from the [catalogues](http://www.sdss3.org/dr10/spectro/spectro_access.php). These include spectroscopic data, taken with the Baryon Oscillation Spectroscopic Survey (BOSS). The data for classification (`examples/data/sgSeparation/`) were derived from the Sloan Digital Sky Survey (SDSS) dataset, following the procedure used by [Vasconcellos et al., (2010)](http://arxiv.org/abs/1011.1951). (Please also see [SDSS](https://www.sdss3.org/collaboration/boiler-plate.php).)
+The example scripts use the data stored in `examples/data/` as the input for training, validation and evaluation. The data for the regression examples (`examples/data/photoZ/`) were derived from [these catalogues](http://www.sdss3.org/dr10/spectro/spectro_access.php). The latter include spectroscopic data taken with the Baryon Oscillation Spectroscopic Survey (BOSS). The data for classification (`examples/data/sgSeparation/`) were derived from the Sloan Digital Sky Survey (SDSS) dataset, following the procedure used by [Vasconcellos et al., (2010)](http://arxiv.org/abs/1011.1951). (Please also see [SDSS](https://www.sdss3.org/collaboration/boiler-plate.php).)
 
 ---
 

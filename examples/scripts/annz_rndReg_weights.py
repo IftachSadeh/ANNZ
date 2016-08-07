@@ -24,8 +24,7 @@
 #     into account during the --inTrainFlag calculation.
 # --------------------------------------------------------------------------------------------------
 
-
-from helperFuncs import *
+from scripts.helperFuncs import *
 
 # command line arguments and basic settings
 # --------------------------------------------------------------------------------------------------

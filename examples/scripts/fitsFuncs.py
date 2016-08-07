@@ -1,4 +1,4 @@
-from   helperFuncs import *
+from   scripts.helperFuncs import *
 import numpy as np
 import csv,fnmatch
 

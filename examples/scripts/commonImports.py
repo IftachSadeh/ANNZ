@@ -1,4 +1,4 @@
-import  os,logging
+import os,logging
 
 # --------------------------------------------------------------------------------------------------
 # if [useDefinedROOTSYS == False], rootHome overrides the predefined environmental variable, $ROOTSYS,
@@ -13,9 +13,9 @@ qsub         = dict()
 annz         = dict()
 
 log          = logging.getLogger('annzLog')
-annzDir      = os.getcwd()+"/"
-libDirName   = annzDir+"lib/"
-exeName      = libDirName+"myANNZ"
+annzDir      = os.getcwd() if not "ANNZSYS" in os.environ else os.environ["ANNZSYS"]
+libDirName   = os.path.join(annzDir,"lib")
+exeName      = os.path.join(libDirName,"myANNZ")
 
 # color output
 # --------------------------------------------------------------------------------------------------

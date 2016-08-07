@@ -12,7 +12,7 @@
 #                     on different samples without the need to repeat the [genInputTrees] stage.
 # --------------------------------------------------------------------------------------------------
 
-from helperFuncs import *
+from scripts.helperFuncs import *
 
 # command line arguments and basic settings
 # --------------------------------------------------------------------------------------------------

@@ -1,9 +1,9 @@
 import  sys,os,time,logging,argparse,subprocess
-from    math            import floor
-from    generalSettings import *
-import  commonImports   as     glob
-from    commonImports   import Assert, log, blue, red, green, lBlue, yellow, purple, cyan, whtOnBlck, redOnBlck
-from    commonImports   import bluOnBlck, yellOnBlck, whtOnRed, yellowOnRed, whtOnYellow, whtOnGreen
+from    math                    import floor
+from    scripts.generalSettings import *
+import  scripts.commonImports   as     glob
+from    scripts.commonImports   import Assert, log, blue, red, green, lBlue, yellow, purple, cyan, whtOnBlck, redOnBlck
+from    scripts.commonImports   import bluOnBlck, yellOnBlck, whtOnRed, yellowOnRed, whtOnYellow, whtOnGreen
 
 # --------------------------------------------------------------------------------------------------
 # command line arguments and basic settings
@@ -232,7 +232,8 @@ def doMake():
     resetDir(glob.libDirName,isClean)
   if isMake:
     log.info(blue(" - Moving to ")+red(glob.libDirName)+blue(" and compiling ANNZ... "))
-    cmnd = "cd "+glob.libDirName+" ; make "+glob.makeOpt+" -f "+glob.annzDir+"Makefile"
+    mkfl = os.path.join(glob.annzDir,'Makefile')
+    cmnd = "cd "+glob.libDirName+" ; make "+glob.makeOpt+" -f "+mkfl
     cmkdStatus = os.system(cmnd) ; Assert("compilation failed",(cmkdStatus == 0))
 
     if os.path.isfile(glob.exeName): log.info(blue(" - Found ")+red(glob.exeName)+blue(" - compilation seems to have succeded... "))

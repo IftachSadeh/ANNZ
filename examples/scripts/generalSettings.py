@@ -1,9 +1,8 @@
-import  time,logging
-from    math          import floor
-import  random        as     rnd
-import  commonImports as     glob
-from    commonImports import Assert, log, blue, red, green, lBlue, yellow, purple, cyan, whtOnBlck, redOnBlck
-from    commonImports import bluOnBlck, yellOnBlck, whtOnRed, yellowOnRed, whtOnYellow, whtOnGreen
+from    math                  import floor
+import  random                as     rnd
+import  scripts.commonImports as     glob
+from    scripts.commonImports import Assert, log, blue, red, green, lBlue, yellow, purple, cyan, whtOnBlck, redOnBlck
+from    scripts.commonImports import bluOnBlck, yellOnBlck, whtOnRed, yellowOnRed, whtOnYellow, whtOnGreen
 
 # --------------------------------------------------------------------------------------------------
 # general settings which may be modified by the user (see myMain::myMain() for
@@ -72,7 +71,7 @@ def generalSettings():
   #   set to True, so that the MAD (median absolute deviation) is used, instead of the 68th percentile 
   #   of the bias (`sigma_68`). This affects only the selection of the "best" MLM and the PDF optimization 
   #   procedure in randomized regression. The default value is False.
-  #   glob.annz["optimWithMAD"] = True
+  # glob.annz["optimWithMAD"] = True
 
   # turn on or off the PDF bias correction, which is applied during optimization/verification
   # during single/randomized regression and binned classification (set to True by default)

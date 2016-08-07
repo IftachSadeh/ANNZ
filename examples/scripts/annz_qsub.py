@@ -8,7 +8,7 @@
 #   the batch farm). After training, optimization takes place (stage="optim"), where again, the optimization
 #   job is pu on hold until all training jobs have finished.
 # ---------------------------------------------------------------------------------------------------
-from helperFuncs import *
+from scripts.helperFuncs import *
 
 # ---------------------------------------------------------------------------------------------------
 # set here the python file to run, as well as nTrainJobs, which should correspond to [nMLMs] (for
