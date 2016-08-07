@@ -1,9 +1,9 @@
 import  sys,os,time,logging,argparse,subprocess
-from    math            import floor
-from    generalSettings import *
-import  commonImports   as     glob
-from    commonImports   import Assert, log, blue, red, green, lBlue, yellow, purple, cyan, whtOnBlck, redOnBlck
-from    commonImports   import bluOnBlck, yellOnBlck, whtOnRed, yellowOnRed, whtOnYellow, whtOnGreen
+from    math                 import floor
+from    annz.generalSettings import *
+import  annz.commonImports   as     glob
+from    annz.commonImports   import Assert, log, blue, red, green, lBlue, yellow, purple, cyan, whtOnBlck, redOnBlck
+from    annz.commonImports   import bluOnBlck, yellOnBlck, whtOnRed, yellowOnRed, whtOnYellow, whtOnGreen
 
 # --------------------------------------------------------------------------------------------------
 # command line arguments and basic settings
@@ -27,7 +27,7 @@ def initParse():
   parser.add_argument("--train",                action='store_true')
   parser.add_argument("--optimize",             action='store_true')
   parser.add_argument("--verify",               action='store_true')
-  parser.add_argument("--evaluate",             action='store_true')  
+  parser.add_argument("--evaluate",             action='store_true')
   parser.add_argument("--qsub",                 action='store_true')
   parser.add_argument("--genInputTrees",        action='store_true')
   parser.add_argument("--singleRegression",     action='store_true')
@@ -134,18 +134,18 @@ def initParse():
 # --------------------------------------------------------------------------------------------------
 def initLogger():
   fileMode = "a" if glob.pars["truncateLog"] else "w"
-  
+
   if glob.pars["logFileName"] != "":
     resetDir("./log",False)
     glob.pars["logFileName"]  = "./log/"+glob.pars["logFileName"]
     # glob.pars["logFileName"] += time.strftime("_%d_%m_%y__%H_%M_%S")
 
     logFileName = glob.pars["logFileName"]+"_python"
-    
+
     logging.basicConfig(filename=logFileName,format="(%(asctime)s %(levelname)s) %(message)s",datefmt='%H:%M',filemode=fileMode)
   else:
     logging.basicConfig(format="(%(asctime)s %(levelname)s) %(message)s",datefmt='%H:%M',filemode=fileMode)
-  
+
   log.setLevel(glob.pars["logLevel"].upper())
 
 # output colors
@@ -163,7 +163,7 @@ def setCols():
 def resetDir(dirName, resetOutDir, verb = True):
   Assert("Tried to resetDir with empty directory name",dirName != "")
   if verb: log.info(blue(" - Resetting directory(")+yellow(dirName)+blue(",")+red(resetOutDir)+blue(")"))
-  
+
   if os.path.isdir(dirName):
     if resetOutDir:
       filesInDir = os.listdir(dirName)
@@ -232,7 +232,8 @@ def doMake():
     resetDir(glob.libDirName,isClean)
   if isMake:
     log.info(blue(" - Moving to ")+red(glob.libDirName)+blue(" and compiling ANNZ... "))
-    cmnd = "cd "+glob.libDirName+" ; make "+glob.makeOpt+" -f "+glob.annzDir+"Makefile"
+    mkfl = os.path.join(glob.annzDir,'Makefile')
+    cmnd = "cd "+glob.libDirName+" ; make "+glob.makeOpt+" -f "+mkfl
     cmkdStatus = os.system(cmnd) ; Assert("compilation failed",(cmkdStatus == 0))
 
     if os.path.isfile(glob.exeName): log.info(blue(" - Found ")+red(glob.exeName)+blue(" - compilation seems to have succeded... "))
@@ -300,7 +301,7 @@ def runANNZ():
 
 
 # ---------------------------------------------------------------------------------------------------
-# 
+#
 # ---------------------------------------------------------------------------------------------------
 def addArg(args,key,val):
   if key in args: args[key] += " "+str(val);
@@ -309,4 +310,3 @@ def addArg(args,key,val):
 def getArg(args,key):
   if key in args: return args[key]
   else:           return ""
-

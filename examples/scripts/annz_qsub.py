@@ -8,7 +8,7 @@
 #   the batch farm). After training, optimization takes place (stage="optim"), where again, the optimization
 #   job is pu on hold until all training jobs have finished.
 # ---------------------------------------------------------------------------------------------------
-from helperFuncs import *
+from annz.helperFuncs import *
 
 # ---------------------------------------------------------------------------------------------------
 # set here the python file to run, as well as nTrainJobs, which should correspond to [nMLMs] (for
@@ -58,11 +58,11 @@ for stage in ["make","genInp","train","optim"]:
   # now submit jobs to generate the input dataset, to do training of nTrainJobs and to optimize the results
   # ---------------------------------------------------------------------------------------------------
   if stage == "genInp":
-    nJobs = 1          ; qsub["depJob"] = ""                             ; qsub["depJobIds"] = "" 
+    nJobs = 1          ; qsub["depJob"] = ""                             ; qsub["depJobIds"] = ""
   if stage == "train":
-    nJobs = nTrainJobs ; qsub["depJob"] = "-hold_jid "+qsub["depJobIds"] ; qsub["depJobIds"] = "" 
+    nJobs = nTrainJobs ; qsub["depJob"] = "-hold_jid "+qsub["depJobIds"] ; qsub["depJobIds"] = ""
   if stage == "optim":
-    nJobs = 1          ; qsub["depJob"] = "-hold_jid "+qsub["depJobIds"] ; qsub["depJobIds"] = "" 
+    nJobs = 1          ; qsub["depJob"] = "-hold_jid "+qsub["depJobIds"] ; qsub["depJobIds"] = ""
 
   if onlyDoOptimVerif:
     if stage == "genInp" or stage == "train": continue
@@ -100,7 +100,7 @@ for stage in ["make","genInp","train","optim"]:
 
     lines   += [ "date ; hostname ; pwd > "+qsub["log"] ]
     lines   += [ cmnd_annz+" >> "+qsub["log"]+" 2>&1"   ]
-    
+
     for lineNow in lines: outFile.write(lineNow+"\n")
     outFile.close()
 
@@ -111,7 +111,7 @@ for stage in ["make","genInp","train","optim"]:
 
     # submit the job
     outputStr = (subprocess.check_output(cmnd_qsub, shell=True)).replace("\n","").replace("\r","")
-    
+
     # get the job-id and build the string for the dependency job (specific syntax for a given cluster)
     # ---------------------------------------------------------------------------------------------------
     outputLst = outputStr.split()

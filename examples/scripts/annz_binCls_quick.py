@@ -1,4 +1,4 @@
-from helperFuncs import *
+from annz.helperFuncs import *
 
 # command line arguments and basic settings
 # --------------------------------------------------------------------------------------------------
@@ -55,7 +55,7 @@ if glob.annz["doGenInputTrees"]:
 # --------------------------------------------------------------------------------------------------
 if glob.annz["doTrain"] or glob.annz["doVerif"] or glob.annz["doEval"]:
 
-  # binCls_nBins,binCls_maxBinW - 
+  # binCls_nBins,binCls_maxBinW -
   #   the range, [minValZ,maxValZ] is divided into binCls_nBins classification bins, such that the number
   #   of objects is approximately equal in each bin, and bins are constrained to have a width
   #   smaller than binCls_maxBinW.
@@ -87,7 +87,7 @@ if glob.annz["doTrain"] or glob.annz["doVerif"] or glob.annz["doEval"]:
     # - Setting binCls_bckSubsetRange to value of format "x_y_p" will reject background objects from training,
     #   such that the ratio of background to signal is in the range between x and y. This will happen
     #   for p% of the requested binCls_nTries. (see advanced example for details.)
-    # - in this example, 99% of the time, the number of background objects will be between 5 to 10 times 
+    # - in this example, 99% of the time, the number of background objects will be between 5 to 10 times
     #   the number of signal objects. the other 1% of cases, all background objects will be used
     # --------------------------------------------------------------------------------------------------
     glob.annz["binCls_bckSubsetRange"] = "5_10_99"
@@ -104,7 +104,7 @@ if glob.annz["doTrain"] or glob.annz["doVerif"] or glob.annz["doEval"]:
 
       # run ANNZ with the current settings
       runANNZ()
-    
+
   # --------------------------------------------------------------------------------------------------
   # optimization and evaluation
   # --------------------------------------------------------------------------------------------------
@@ -113,7 +113,7 @@ if glob.annz["doTrain"] or glob.annz["doVerif"] or glob.annz["doEval"]:
     # nPDFs - number of PDFs (up to two PDF types are implemented, the second one is experimental)
     glob.annz["nPDFs"]    = 1
     # nPDFbins - number of PDF bins, with equal width bins between minValZ and maxValZ. (see advanced example
-    #            for setting other bin configurations) this is not directly tied to binCls_nBins -> the results of 
+    #            for setting other bin configurations) this is not directly tied to binCls_nBins -> the results of
     #            the classification bins are cast into whatever final PDF bin scheme is defined by nPDFbins.
     glob.annz["nPDFbins"] = 30
 

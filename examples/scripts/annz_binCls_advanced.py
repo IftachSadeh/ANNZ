@@ -1,4 +1,4 @@
-from helperFuncs import *
+from annz.helperFuncs import *
 
 # command line arguments and basic settings
 # --------------------------------------------------------------------------------------------------
@@ -90,7 +90,7 @@ if glob.annz["doGenInputTrees"]:
   #   - an input file (or file list) is required (inAsciiFiles_wgtKNN), which has the reference
   #     sample from which the weights are derived. The ref' sample has the same variable
   #     structure defined in inAsciiVars_wgtKNN (similar rules as for inAsciiVars), but does not
-  #     have to be equal to inAsciiVars. However, both inAsciiVars for the main sample (used for training etc.) 
+  #     have to be equal to inAsciiVars. However, both inAsciiVars for the main sample (used for training etc.)
   #     and inAsciiVars_wgtKNN used for the reference sample must include all variables needed to the weight calculation!
   #     The latter variables are defined in weightVarNames_wgtKNN, these do not necessarily need to correspond to the
   #     variables which are later used for the training (defined in inputVariables).
@@ -123,7 +123,7 @@ if glob.annz["doGenInputTrees"]:
     glob.annz["inAsciiFiles_wgtKNN"]   = "boss_dr10_colorCuts.csv"
     glob.annz["inAsciiVars_wgtKNN"]    = glob.annz["inAsciiVars"]
     glob.annz["weightVarNames_wgtKNN"] = "MAG_U;MAG_G;MAG_R;MAG_I;MAG_Z"
-    
+
     # optional parameters (may leave empty as default value):
     glob.annz["sampleFracInp_wgtKNN"]  = 0.9                                           # fraction of dataset to use (positive number, smaller or equal to 1)
     glob.annz["sampleFracRef_wgtKNN"]  = 0.8                                           # fraction of dataset to use (positive number, smaller or equal to 1)
@@ -267,7 +267,7 @@ if glob.annz["doTrain"] or glob.annz["doVerif"] or glob.annz["doEval"]:
       #       the type of MLM [ANNZ_MLM=???]. Also, it is allowed to specify a global normalization, which normaly in
       #       TMVA is given as part of the TMVA::Factory options.
       #     - for example one may set:
-      #         glob.annz["userMLMopts"] = "ANNZ_MLM=BDT:VarTransform=Norm:NTrees=110:NormMode=NumEvents:BoostType=AdaBoost:" 
+      #         glob.annz["userMLMopts"] = "ANNZ_MLM=BDT:VarTransform=Norm:NTrees=110:NormMode=NumEvents:BoostType=AdaBoost:"
       #       where "ANNZ_MLM=BDT" and "NormMode=NumEvents" are the two options which are not nominally part of TMVA
       # --------------------------------------------------------------------------------------------------
       #   - transformations (numerical value of inputs to training):
@@ -332,7 +332,7 @@ if glob.annz["doTrain"] or glob.annz["doVerif"] or glob.annz["doEval"]:
       #   - define cuts and weights for training and/or validation.
       #     - cuts are logical expressions that define acceptance criterial (e.g., objects which fail
       #       userCuts_train are excluded from the training).
-      #       For instance, 
+      #       For instance,
       #         glob.annz["userCuts_train"] = "MAG_G < 24"
       #       means that only objects which have G-band magnitude lower than 24 are accepted for training.
       #     - weights are used to enhance or reduce the significance of objects by some numerical value.
@@ -354,7 +354,7 @@ if glob.annz["doTrain"] or glob.annz["doVerif"] or glob.annz["doEval"]:
 
 
       # --------------------------------------------------------------------------------------------------
-      # inputVariables - 
+      # inputVariables -
       # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       #   - semicolon-separated list of input variables for the MLMs. Can include math expressions of the variables
       #     given in inAsciiVars (see https://root.cern.ch/root/html520/TFormula.html for examples of valid math expressions).
@@ -405,14 +405,14 @@ if glob.annz["doTrain"] or glob.annz["doVerif"] or glob.annz["doEval"]:
 
       # run ANNZ with the current settings
       runANNZ()
-    
+
   # --------------------------------------------------------------------------------------------------
   # verification and evaluation
   # --------------------------------------------------------------------------------------------------
   if glob.annz["doVerif"] or glob.annz["doEval"]:
 
     # --------------------------------------------------------------------------------------------------
-    # nPDFs - 
+    # nPDFs -
     #   number of PDFs (up to two PDF types are implemented, the second one is experimental)
     # --------------------------------------------------------------------------------------------------
     glob.annz["nPDFs"]    = 1
@@ -420,7 +420,7 @@ if glob.annz["doTrain"] or glob.annz["doVerif"] or glob.annz["doEval"]:
     # --------------------------------------------------------------------------------------------------
     # nPDFbins,userPdfBins -
     #   - nPDFbins:    number of PDF bins, with equal width bins between minValZ and maxValZ.
-    #                  this is not directly tied to binCls_nBins -> the results of 
+    #                  this is not directly tied to binCls_nBins -> the results of
     #                  the classification bins are cast into whatever final PDF bin scheme is defined by nPDFbins.
     #                  nPDFbins is ignored if [userPdfBins != ""].
     #   - userPdfBins: define a specific set of bins instead of having nPDFbins bins of euqal width.
@@ -487,4 +487,3 @@ if glob.annz["doTrain"] or glob.annz["doVerif"] or glob.annz["doEval"]:
       runANNZ()
 
 log.info(whtOnBlck(" - "+time.strftime("%d/%m/%y %H:%M:%S")+" - finished running ANNZ !"))
-

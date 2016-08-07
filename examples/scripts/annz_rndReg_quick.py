@@ -1,4 +1,4 @@
-from helperFuncs import *
+from annz.helperFuncs import *
 
 # command line arguments and basic settings
 # --------------------------------------------------------------------------------------------------
@@ -62,7 +62,7 @@ if glob.annz["doGenInputTrees"]:
 # --------------------------------------------------------------------------------------------------
 if glob.annz["doTrain"]:
   # for each MLM, run ANNZ
-  for nMLMnow in range(glob.annz["nMLMs"]): 
+  for nMLMnow in range(glob.annz["nMLMs"]):
     glob.annz["nMLMnow"] = nMLMnow
     if glob.annz["trainIndex"] >= 0 and glob.annz["trainIndex"] != nMLMnow: continue
 
@@ -118,4 +118,3 @@ if glob.annz["doOptim"] or glob.annz["doEval"]:
     runANNZ()
 
 log.info(whtOnBlck(" - "+time.strftime("%d/%m/%y %H:%M:%S")+" - finished running ANNZ !"))
-

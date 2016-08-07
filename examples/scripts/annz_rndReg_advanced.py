@@ -1,4 +1,4 @@
-from helperFuncs import *
+from annz.helperFuncs import *
 
 # command line arguments and basic settings
 # --------------------------------------------------------------------------------------------------
@@ -88,7 +88,7 @@ if glob.annz["doGenInputTrees"]:
   # example ofr using a root tree input file, instead of an ascii input
   elif inFileOpt == 2:
     glob.annz["splitType"]      = "serial" # "serial", "blocks" or "random"
-    glob.annz["inTreeName"]     = "ANNZ_tree_full"  
+    glob.annz["inTreeName"]     = "ANNZ_tree_full"
     glob.annz["inAsciiFiles"]   = "ANNZ_tree_full_00000.root"
   else:
     inFileOpt("Unsupported...",False)
@@ -102,7 +102,7 @@ if glob.annz["doGenInputTrees"]:
   #   - an input file (or file list) is required (inAsciiFiles_wgtKNN), which has the reference
   #     sample from which the weights are derived. The ref' sample has the same variable
   #     structure defined in inAsciiVars_wgtKNN (similar rules as for inAsciiVars), but does not
-  #     have to be equal to inAsciiVars. However, both inAsciiVars for the main sample (used for training etc.) 
+  #     have to be equal to inAsciiVars. However, both inAsciiVars for the main sample (used for training etc.)
   #     and inAsciiVars_wgtKNN used for the reference sample must include all variables needed to the weight calculation!
   #     The latter variables are defined in weightVarNames_wgtKNN, these do not necessarily need to correspond to the
   #     variables which are later used for the training (defined in inputVariables).
@@ -141,7 +141,7 @@ if glob.annz["doGenInputTrees"]:
     # glob.annz["inAsciiVars_wgtKNN"]    = "F:MAG_U;F:MAGERR_U;F:MAG_G;F:MAGERR_G;F:MAG_R;F:MAGERR_R;F:MAG_I;F:MAGERR_I;F:MAG_Z;F:MAGERR_Z;D:Z"
     glob.annz["inAsciiFiles_wgtKNN"]   = "boss_dr10_0_large_magCut_noZ.csv"
     glob.annz["inAsciiVars_wgtKNN"]    = "F:MAG_U;F:MAGERR_U;F:MAG_G;F:MAGERR_G;F:MAG_R;F:MAGERR_R;F:MAG_I;F:MAGERR_I;F:MAG_Z;F:MAGERR_Z"
-    
+
     # some random weird choice for [weightInp_wgtKNN, weightRef_wgtKNN] in this example, just to get different
     # distributions for the input and reference samples, so that we have something to calculate weights for...
     glob.annz["weightInp_wgtKNN"]      = "1/pow(MAG_G*MAG_U*MAG_R*MAG_I, 5)"
@@ -170,7 +170,7 @@ if glob.annz["doGenInputTrees"]:
     useRootInputFile = False
     if useRootInputFile:
       glob.annz["inAsciiFiles_wgtKNN"]   = "ANNZ_tree_full_00000.root"
-      glob.annz["inTreeName_wgtKNN"]     = "ANNZ_tree_full"  
+      glob.annz["inTreeName_wgtKNN"]     = "ANNZ_tree_full"
 
 
   # run ANNZ with the current settings
@@ -181,12 +181,12 @@ if glob.annz["doGenInputTrees"]:
 # --------------------------------------------------------------------------------------------------
 if glob.annz["doTrain"]:
   # for each MLM, run ANNZ
-  for nMLMnow in range(glob.annz["nMLMs"]): 
+  for nMLMnow in range(glob.annz["nMLMs"]):
     glob.annz["nMLMnow"] = nMLMnow
     if glob.annz["trainIndex"] >= 0 and glob.annz["trainIndex"] != nMLMnow: continue
 
     # --------------------------------------------------------------------------------------------------
-    # inputVariables - 
+    # inputVariables -
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #   - semicolon-separated list of input variables for the MLMs. Can include math expressions of the variables
     #     given in inAsciiVars (see https://root.cern.ch/root/html520/TFormula.html for examples of valid math expressions).
@@ -232,7 +232,7 @@ if glob.annz["doTrain"]:
     #       the type of MLM [ANNZ_MLM=???]. Also, it is allowed to specify a global normalization, which normaly in
     #       TMVA is given as part of the TMVA::Factory options.
     #     - for example one may set:
-    #         glob.annz["userMLMopts"] = "ANNZ_MLM=BDT:VarTransform=Norm:NTrees=110:NormMode=NumEvents:BoostType=AdaBoost:" 
+    #         glob.annz["userMLMopts"] = "ANNZ_MLM=BDT:VarTransform=Norm:NTrees=110:NormMode=NumEvents:BoostType=AdaBoost:"
     #       where "ANNZ_MLM=BDT" and "NormMode=NumEvents" are the two options which are not nominally part of TMVA
     # --------------------------------------------------------------------------------------------------
     #   - transformations (numerical value of inputs to training):
@@ -275,7 +275,7 @@ if glob.annz["doTrain"]:
     #   - define cuts and weights for training and/or validation for any given nMLMnow.
     #     - cuts are logical expressions that define acceptance criterial (e.g., objects which fail
     #       userCuts_train are excluded from the training).
-    #       For instance, 
+    #       For instance,
     #         glob.annz["userCuts_train"] = "MAG_G < 24"
     #       means that only objects which have G-band magnitude lower than 24 are accepted for training.
     #     - weights are used to enhance or reduce the significance of objects by some numerical value.
@@ -306,7 +306,7 @@ if glob.annz["doTrain"]:
     #                         - can be empty (then the job options will be automatically generated, same as is setting [userMLMopts=""])
     #                         - can be set as [biasCorMLMopt="same"], then the same configuration options as for the nominal MLM
     #                           for which the bias-correction is applied are used
-    #                       - simple MLMs are recommended, e.g.: 
+    #                       - simple MLMs are recommended, e.g.:
     #                         - BDT with around 50-100 trees:
     #                           "ANNZ_MLM=BDT:VarTransform=N:NTrees=100:BoostType=AdaBoost"
     #                         - ANN with a simple layer structure, not too many NCycles etc.:
@@ -397,15 +397,15 @@ if glob.annz["doOptim"] or glob.annz["doEval"]:
     glob.annz["userCuts_valid"]           = "(MAGERR_R < 1)"
 
   # ==================================================================================================
-  # MLMsToStore - 
+  # MLMsToStore -
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   #   - which MLMs to write to output (in addition to the "best MLM" and the PDFs).
   #     - ""              - non
   #     - "ALL"           - write all trained MLMs
   #     - "LIST;0;1;3;55" - specific list of MLM indices (sepaated by ';') to write out
   # --------------------------------------------------------------------------------------------------
-  glob.annz["MLMsToStore"] = "" 
-  
+  glob.annz["MLMsToStore"] = ""
+
   # --------------------------------------------------------------------------------------------------
   # addOutputVars
   #   - add the following variables (extracted from the input file) to the output
@@ -480,4 +480,3 @@ if glob.annz["doOptim"] or glob.annz["doEval"]:
     runANNZ()
 
 log.info(whtOnBlck(" - "+time.strftime("%d/%m/%y %H:%M:%S")+" - finished running ANNZ !"))
-
