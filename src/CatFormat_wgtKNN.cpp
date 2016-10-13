@@ -312,25 +312,25 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TChain *
   VERIFY(LOCATION,(TString)"Must set knnFracFact_wgtKNN >= 2 (recommended 3,4 or 5), while now set [\"knnFracFact_wgtKNN\" = "
                           +utils->intToStr(knnFracFact)+"] ... Something is horribly wrong !?!?",(knnFracFact > 1));
 
-  for(int nChainNow=0; nChainNow<3; nChainNow++) {
-    TChain * aChain(NULL);
-    if     (nChainNow == 0) aChain = aChainInp;
-    else if(nChainNow == 1) aChain = aChainRef;
-    else if(nChainNow == 2) {
-      if(hasChainEvl) aChain = aChainEvl;
-      else            continue;
-    }
+  // for(int nChainNow=0; nChainNow<3; nChainNow++) {
+  //   TChain * aChain(NULL);
+  //   if     (nChainNow == 0) aChain = aChainInp;
+  //   else if(nChainNow == 1) aChain = aChainRef;
+  //   else if(nChainNow == 2) {
+  //     if(hasChainEvl) aChain = aChainEvl;
+  //     else            continue;
+  //   }
 
-    vector <TString> branchNameV;
-    utils->getTreeBranchNames(aChain,branchNameV);
+  //   vector <TString> branchNameV;
+  //   utils->getTreeBranchNames(aChain,branchNameV);
 
-    for(int nVarNow=0; nVarNow<nVars; nVarNow++) {
-      VERIFY(LOCATION,(TString)" - Could not find variable "+varNames[nVarNow]+" in list of inputs from "+aChain->GetName(),
-                      (find(branchNameV.begin(),branchNameV.end(), varNames[nVarNow]) != branchNameV.end()));
-    }
+  //   for(int nVarNow=0; nVarNow<nVars; nVarNow++) {
+  //     VERIFY(LOCATION,(TString)" - Could not find variable "+varNames[nVarNow]+" in list of inputs from "+aChain->GetName(),
+  //                     (find(branchNameV.begin(),branchNameV.end(), varNames[nVarNow]) != branchNameV.end()));
+  //   }
     
-    branchNameV.clear();
-  }
+  //   branchNameV.clear();
+  // }
 
   aLOG(Log::INFO) <<coutPurple<<" - will use the following variables for the KNN search: "<<coutYellow<<weightVarNames<<coutDef<<endl;
 
@@ -404,7 +404,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TChain *
     // -----------------------------------------------------------------------------------------------------------
     for(int nVarNow=0; nVarNow<nVars; nVarNow++) {
       TString hisName   = (TString)nChainKNNname+utils->regularizeName(varNames[nVarNow])+"_hisVar";
-      TString drawExprs = (TString)varNames[nVarNow]+">>"+hisName;
+      TString drawExprs = (TString)"("+varNames[nVarNow]+")>>"+hisName;
       TString wgtCut    = (TString)"("+chainCutV[nChainNow]+")*("+chainWgtV[nChainNow]+")";
       wgtCut.ReplaceAll("()*()","").ReplaceAll("*()","").ReplaceAll("()*","").ReplaceAll("()","1");
 
@@ -425,7 +425,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TChain *
         // if there is a separate evaluation chain, get the weighted/cut sum of entries for later normalization
         if(nChainNow == 0 && hasChainEvl) {
           hisName   += (TString)"_TMP";
-          drawExprs  = (TString)varNames[nVarNow]+">>"+hisName;
+          drawExprs  = (TString)"("+varNames[nVarNow]+")>>"+hisName;
 
           TCanvas * tmpCnvs = new TCanvas("tmpCnvs","tmpCnvs");
           aChainEvl->Draw(drawExprs,wgtCut); DELNULL(tmpCnvs);
@@ -990,7 +990,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TChain *
           weightNow = utils->cleanWeightExpr(weightNow);
 
           TString hisName   = (TString)baseName+aChainInpEvl->GetName()+nVarName+nChainKNNname;
-          TString drawExprs = (TString)varNameNow+">>"+hisName;
+          TString drawExprs = (TString)"("+varNameNow+")>>"+hisName;
           if(nDrawNow == 1) drawExprs += TString::Format("(%d,%f,%f)",nDrawBins,drawLim0,drawLim1);
           // cout <<drawExprs<<" \t --> "<<weightNow <<endl;
 

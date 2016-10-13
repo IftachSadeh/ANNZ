@@ -149,6 +149,10 @@ if glob.annz["doGenInputTrees"]:
 
     glob.annz["weightVarNames_wgtKNN"] = "MAG_U;MAG_G;MAG_R;MAG_I;MAG_Z"
 
+    # it is possible to use general mathematical expressions which include any of the input
+    # variables defined in "inAsciiVars_wgtKNN", as for example, the following silly choice:
+    # glob.annz["weightVarNames_wgtKNN"] = "(MAG_U-MAG_G)*MAG_I/MAG_Z;MAG_U;MAG_G;MAG_R;MAG_I;MAG_Z"
+
     # optional parameters (may leave empty as default value):
     glob.annz["sampleFracInp_wgtKNN"]  = 0.99                                          # fraction of dataset to use (positive number, smaller or equal to 1)
     glob.annz["sampleFracRef_wgtKNN"]  = 0.95                                          # fraction of dataset to use (positive number, smaller or equal to 1)

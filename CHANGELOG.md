@@ -2,6 +2,8 @@
 
 ## Master version (13/10/2016)
 
+- Fixed bug with using general math expressions for the `weightVarNames_wgtKNN` and `weightVarNames_inTrain` variables.
+
 - Modified the `Makefile` to explicitly include `rpath` in `LDFLAGS`, which may be needed for pre-compiled versions of ROOT.
 
 - Modified `subprocess.check_output()` in `examples/scripts/annz_qsub.py , fitsFuncs.py` for `Python 3.x`.
