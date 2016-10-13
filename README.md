@@ -7,11 +7,7 @@ ANZZ uses the [TMVA package](http://tmva.sourceforge.net/) which is based on [RO
 
 The different configurations for regression problems (such as photometric redshift estimation) are referred to as *single regression*, *randomized regression* and *binned classification*. In addition, it is possible to run ANNZ in *single classification* and *randomized classification* modes, used for general classification problems.
 
-<<<<<<< HEAD
 The algorithm is described in the dedicated paper, [Sadeh et al., PASP, Volume 128, Number 968 (2016)](http://arxiv.org/abs/1507.00490).
-=======
-The algorithm is described in the dedicated paper, [Sadeh et al. (2016)](http://arxiv.org/abs/1507.00490).
->>>>>>> origin/master
 
 ### Terminology
   - **ANN**: artificial neural network.
