@@ -1,8 +1,10 @@
 # Changelog
 
-## Master version (01/7/2016)
+## Master version (13/10/2016)
 
 - Modified the `Makefile` to explicitly include `rpath` in `LDFLAGS`, which may be needed for pre-compiled versions of ROOT.
+
+- Modified `subprocess.check_output()` in `examples/scripts/annz_qsub.py , fitsFuncs.py` for `Python 3.x`.
 
 - Other minor modifications and bug fixes.
 

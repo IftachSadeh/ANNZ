@@ -110,7 +110,7 @@ for stage in ["make","genInp","train","optim"]:
                 +" -N "+qsub["jobName"]+" -m n -o "+qsub["logIO"]+" -e "+qsub["logIO"]+" "+qsub["file"]
 
     # submit the job
-    outputStr = (subprocess.check_output(cmnd_qsub, shell=True)).replace("\n","").replace("\r","")
+    outputStr = (subprocess.check_output(cmnd_qsub, shell=True)).decode('ascii').replace("\n","").replace("\r","")
     
     # get the job-id and build the string for the dependency job (specific syntax for a given cluster)
     # ---------------------------------------------------------------------------------------------------

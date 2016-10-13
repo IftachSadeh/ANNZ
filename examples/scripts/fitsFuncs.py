@@ -159,7 +159,7 @@ def asciiToFits():
 
     # derive the number of lines in the file
     cmnd      = "wc -l "+asciiFileName
-    outputStr = (subprocess.check_output(cmnd, shell=True)).replace("\n","").replace("\r","")
+    outputStr = (subprocess.check_output(cmnd, shell=True)).decode('ascii').replace("\n","").replace("\r","")
     nLines = (outputStr.split())[0]
     Assert("Could not derive number of lines using command \""+cmnd+"\" ... Something is horribly wrong ?!?! ",(nLines.isdigit()))
     nLines = int(nLines)
