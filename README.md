@@ -101,14 +101,18 @@ Otherwise, define `$ROOTSYS` in the session, and set in `scripts/commonImports.p
 useDefinedROOTSYS = True
 ```
 
+It is also recommended to add the installation directory to the `PYTHONPATH` system variable:
+```bash
+export PYTHONPATH=/home/work/annz:$PYTHONPATH
+```
+This may be needed for `python` to recognize the sub-directory package structure, where scripts are imported with e.g., `from scripts.helperFuncs import *` statements.
+
 To install and/or clean ANNZ is possible with any of the `scripts/annz_*.py` scripts described in the following. For instance, do:
 ```bash
 python scripts/annz_singleReg_quick.py --make
 ```
 
-(This is also done automatically the first time any of the `scripts/annz_*.py` scripts are run, if the compilation directory, `lib/`, is not detected.)
-
-To force a complete re-install, one may either safely delete the `lib/` directory, or do:
+(This is also done automatically the first time any of the `scripts/annz_*.py` scripts are run, if the compilation directory, `lib/`, is not detected.) To force a complete re-install, one may either safely delete the `lib/` directory, or do:
 ```bash
 python scripts/annz_singleReg_quick.py --make --clean
 ```
