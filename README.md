@@ -96,7 +96,7 @@ ROOT requires definition of the environmental variables `$ROOTSYS` (set to the d
 rootHome = "/home/work/root/"
 ```
 
-Otherwise, define `$ROOTSYS` in the session, and set in `scripts/commonImports.py`:
+Otherwise, define `$ROOTSYS` and `$LD_LIBRARY_PATH` in the session, and set in `scripts/commonImports.py`:
 ```python
 useDefinedROOTSYS = True
 ```
