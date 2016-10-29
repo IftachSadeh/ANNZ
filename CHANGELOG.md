@@ -8,6 +8,8 @@
 
 - Modified `subprocess.check_output()` in `examples/scripts/annz_qsub.py , fitsFuncs.py` for `Python 3.x`.
 
+- Fixed bug which caused a segmentation fault in some cases during reweighting.
+
 - Other minor modifications and bug fixes.
 
 ## ANNZ v2.2.0 (24/5/2016)

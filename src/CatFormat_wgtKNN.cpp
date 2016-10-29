@@ -574,6 +574,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TChain *
                                ,(knnErrMethod[nChainNow][nFracNow]->fScaleFrac < EPS));
       nKnnFracsIn++;
     }
+
     // final check on nKnnFracs - at least two knnErrModule need to be accepted
     VERIFY(LOCATION,(TString)"Could not find enough objects for the KNN search."
                     +" Try to decrease the value of "+"minNobjInVol"+typePostfix+" ...",(nKnnFracsIn > 1));
@@ -659,7 +660,6 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TChain *
         // find the same number of near neighbours for each chain, and derive the distance this requires
         int    nObjKNN(minNobjInVol);
         for(int nChainNow=0; nChainNow<2; nChainNow++) {
-
           knnErrModule[nChainNow][0]->Find(evtNow,nObjKNN);
           const TMVA::kNN::List & knnList = knnErrModule[nChainNow][0]->GetkNNList();
 
@@ -714,6 +714,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TChain *
             }
           }
         }
+
         if(foundDist) { var_0->IncCntr("Found good weight");        weightSum += weightKNN; }
         else          { var_0->IncCntr("Did not find good weight");                         }
       }
@@ -744,6 +745,8 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TChain *
         bool   foundDist(false);
         double dist_Ref0_RefNear(0);
         for(int nFracNow=0; nFracNow<nKnnFracs; nFracNow++) {
+          if(!knnErrModule[1][nFracNow]) break;
+
           double wgtSum_Ref0_RefNear = 0;
           double minNobjInVolWgt     = minNobjInVol * wgt_Ref_Inp / pow(knnFracFact,nFracNow);
 
