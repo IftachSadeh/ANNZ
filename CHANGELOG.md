@@ -1,6 +1,6 @@
 # Changelog
 
-## Master version (13/10/2016)
+## Master version (30/10/2016)
 
 - Fixed bug with using general math expressions for the `weightVarNames_wgtKNN` and `weightVarNames_inTrain` variables.
 
