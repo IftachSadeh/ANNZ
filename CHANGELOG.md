@@ -1,6 +1,7 @@
 # Changelog
 
-## Master version (30/10/2016)
+<!-- ## Master version (30/10/2016) -->
+## ANNZ v2.2.1 (01/11/2016)
 
 - Fixed bug with using general math expressions for the `weightVarNames_wgtKNN` and `weightVarNames_inTrain` variables.
 
