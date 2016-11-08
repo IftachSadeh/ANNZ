@@ -606,7 +606,6 @@ A few notes:
   - The KNN error, weight and quality-flag calculations are nominally performed for rescaled variable distributions; each input variable is mapped by a linear transformation to the range `[-1,1]`, so that the distance in the input parameter space is not biased by the scale (units) of the different parameters. It is possible to prevent the rescalling by setting the following flags to `False`: `doWidthRescale_errKNN`, `doWidthRescale_wgtKNN` and `doWidthRescale_inTrain`.
   These respectively relate to the KNN error calculation, the reference dataset reweighting, and the training quality-flag.
 
-
   - It is possible to train/optimize MLMs using specific cuts and/or weights, based on any mathematical expression which uses the variables defined in the input dataset (not limited to the variables used for the training). The relevant variables are `userCuts_train`, `userCuts_valid`, `userWeights_train` and `userWeights_valid`. See the advanced scripts for use-examples.
 
   - The syntax for math expressions is defined using the ROOT conventions (see e.g., [TMath](https://root.cern.ch/root/html524/TMath.html) and [TFormula](https://root.cern.ch/root/html/TFormula.html)). Acceptable expressions may for instance include the following ridiculous choice:
@@ -662,6 +661,14 @@ A few notes:
   ```
 
   - It is possible to use root input files instead of ascii inputs. In this case, use the `splitTypeTrain`, `splitTypeTest`, `inAsciiFiles` and `inAsciiFiles_wgtKNN` variables in the same way as for ascii inputs; in addition, specify the name of the tree inside the root files. The latter is done using the variable `inTreeName` (for the nominal set) or `inTreeName_wgtKNN` (for the `inAsciiFiles_wgtKNN` variable). An example is given in `scripts/annz_rndReg_advanced.py`.
+
+  - *Slow/hanging evaluation:* For large numbers of MLMs or for complex MLM structures (e.g., very large BDTs), it is possible that evaluation will become very slow. This may happen if too much memory is required to load all of the different estimators at once. In case of hanging evaluation, one may try to set
+  ```python
+  nDivs = 2
+  glob.annz["nDivEvalLoops"] = nDivs
+  ```
+  The `nDivEvalLoops` variable splits the evaluation phase into two steps. First sub-samples of the ensemble of MLMs are evaluated for each object. Then, the entire evaluated dataset is reprocessed as for the nominal evaluation mode. (This is an internal mechanism, transparent to the user.)
+  In this example, `nDivs = 2`, results in the ensemble of MLMs being split in two sub-samples. Higher values of `nDivs` are allowed, but this may incur a computing overhead. (Nominally, we have `glob.annz["nDivEvalLoops"] = 1`, for which evaluation is not split at all, and the overhead is avoided.)
 
   - The output of ANNZ includes escape sequences for color. To avoid these, set 
   ```python
