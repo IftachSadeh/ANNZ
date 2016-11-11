@@ -447,6 +447,9 @@ myANNZ::myANNZ() {
   glob->NewOptI("nSmearUnf"         ,100);
   // add calculation of maximum of PDF to output
   glob->NewOptB("addMaxPDF"         ,false);
+  // flag to allow the option to NOT store the full value of pdfs in the output of optimization/evaluation
+  // (so only the average metrics of a pdf are included in the output)
+  glob->NewOptB("doStorePdfBins"    ,true);
 
   // if max_sigma68_PDF,max_bias_PDF are positive, they put thresholds on the maximal value of the
   // scatter/bias/outlier-fraction of an MLM which may be included in the PDF created in randomized regression

@@ -1975,8 +1975,9 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
   bool    writePosNegErrs   = glob->GetOptB("writePosNegErrs");
   bool    doBiasCorPDF      = glob->GetOptB("doBiasCorPDF");
   bool    addMaxPDF         = glob->GetOptB("addMaxPDF");
-  double  minWeight         = 0.001;
+  bool    doStorePdfBins    = glob->GetOptB("doStorePdfBins");
   
+  double  minWeight         = 0.001;
   TRandom * rnd             = new TRandom(seed);
   TString regBestNameVal    = getTagBestMLMname(baseTag_v);
   TString regBestNameErr    = getTagBestMLMname(baseTag_e);
@@ -2453,9 +2454,11 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
         // pdf branches (pdf bins and pdf average)
         for(int nPDFnow=0; nPDFnow<nPDFs; nPDFnow++) {
           // pdf value in each pdf-bin
-          for(int nPdfBinNow=0; nPdfBinNow<nPDFbins; nPdfBinNow++) {
-            TString pdfBinName = getTagPdfBinName(nPDFnow,nPdfBinNow);
-            var_1->NewVarF(pdfBinName);
+          if(doStorePdfBins) {
+            for(int nPdfBinNow=0; nPdfBinNow<nPDFbins; nPdfBinNow++) {
+              TString pdfBinName = getTagPdfBinName(nPDFnow,nPdfBinNow);
+              var_1->NewVarF(pdfBinName);
+            }
           }
 
           // average unweighted and weighted pdf values and corresponding errors
@@ -2466,7 +2469,8 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
             TString pdfAvgErrName = getTagPdfAvgName(nPDFnow,(TString)baseTag_e+tagNameV[nPdfTypeNow]);
             TString pdfAvgWgtName = getTagPdfAvgName(nPDFnow,(TString)baseTag_w+tagNameV[nPdfTypeNow]);
 
-            var_1->NewVarF(pdfAvgName); if(nPdfTypeNow < 2) { var_1->NewVarF(pdfAvgErrName); var_1->NewVarF(pdfAvgWgtName); }
+            var_1->NewVarF(pdfAvgName);
+            if(nPdfTypeNow < 2) { var_1->NewVarF(pdfAvgErrName); var_1->NewVarF(pdfAvgWgtName); }
           }
         }
       }
@@ -2774,10 +2778,12 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
             // default (std::numeric_limits<float>::max()), but to avoid very big meaningless output, set the pdf-bins to zero
             // -----------------------------------------------------------------------------------------------------------
             if(intgrPDF_w < EPS) {
-              for(int nPdfBinNow=0; nPdfBinNow<nPDFbins; nPdfBinNow++) {
-                TString pdfBinName = getTagPdfBinName(nPDFnow,nPdfBinNow);
+              if(doStorePdfBins) {
+                for(int nPdfBinNow=0; nPdfBinNow<nPDFbins; nPdfBinNow++) {
+                  TString pdfBinName = getTagPdfBinName(nPDFnow,nPdfBinNow);
 
-                var_1->SetVarF(pdfBinName,0);
+                  var_1->SetVarF(pdfBinName,0);
+                }
               }
               for(int nPdfTypeNow=0; nPdfTypeNow<nPdfTypes; nPdfTypeNow++) {
                 if((isBinCls && nPdfTypeNow == 0) || nPdfTypeNow == 2) continue;
@@ -2792,11 +2798,13 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
 
             // the value of the pdf in the different bins
             // -----------------------------------------------------------------------------------------------------------
-            for(int nPdfBinNow=0; nPdfBinNow<nPDFbins; nPdfBinNow++) {
-              TString pdfBinName = getTagPdfBinName(nPDFnow,nPdfBinNow);
-              double  pdfValNow  = hisPDF_w[nPDFnow]->GetBinContent(nPdfBinNow+1);
+            if(doStorePdfBins) {
+              for(int nPdfBinNow=0; nPdfBinNow<nPDFbins; nPdfBinNow++) {
+                TString pdfBinName = getTagPdfBinName(nPDFnow,nPdfBinNow);
+                double  pdfValNow  = hisPDF_w[nPDFnow]->GetBinContent(nPdfBinNow+1);
 
-              var_1->SetVarF(pdfBinName,pdfValNow);
+                var_1->SetVarF(pdfBinName,pdfValNow);
+              }
             }
 
             // the average value and the width of the pdf distribution
@@ -2934,9 +2942,11 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
       }
 
       // pdf value in each pdf-bin
-      for(int nPdfBinNow=0; nPdfBinNow<nPDFbins; nPdfBinNow++) {
-        TString pdfBinName = getTagPdfBinName(nPDFnow,nPdfBinNow);
-        addVarV.push_back(pdfBinName);
+      if(doStorePdfBins) {
+        for(int nPdfBinNow=0; nPdfBinNow<nPDFbins; nPdfBinNow++) {
+          TString pdfBinName = getTagPdfBinName(nPDFnow,nPdfBinNow);
+          addVarV.push_back(pdfBinName);
+        }
       }
     }
     var_2->connectTreeBranches(aChainReg);
@@ -3035,10 +3045,19 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV, TStri
   double  maxValZ             = glob->GetOptF("maxValZ");
   bool    isBinCls            = glob->GetOptB("doBinnedCls");
   bool    addMaxPDF           = glob->GetOptB("addMaxPDF");
-  TString aChainName          = (TString)aChain->GetName();
+  bool    doStorePdfBins      = glob->GetOptB("doStorePdfBins");
 
   bool    plotWithSclBias     = glob->GetOptB("plotWithScaledBias");
   TString biasTitle           = plotWithSclBias ? (TString)"#delta/(1+"+glob->GetOptC("zTrgTitle")+")" : (TString)"#delta";
+
+  if(!doStorePdfBins) {
+    aLOG(Log::INFO) <<coutRed<<" - Found \"doStorePdfBins\" = true ---> Will skip ANNZ::doMetricPlots()"<<coutDef
+                    <<coutYellow<<" (It is allowed set \"doStorePdfBins\" to false for optimization, and then "
+                    <<"to true for evaluation, in order to properly derive the optimization metric plots ...)"<<coutDef<<endl;
+    return;
+  }
+
+  TString aChainName = (TString)aChain->GetName();
 
   // added variables are plotted with equal-quintile binning instead of equal-width
   // bins, if they are NOT included in this list

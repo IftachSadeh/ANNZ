@@ -119,6 +119,10 @@ def generalSettings():
   # contain equal-width bins for these, and not bins defined such that the number of objects/bin is constant)
   # glob.annz["noQuantileBinsPlots"] = "inTrainFlag;MAG_U"
 
+  # it is possible to NOT store the full value of pdfs in the output of optimization/evaluation (so only
+  # the average metrics of a pdf are stored), by setting
+  # glob.annz["doStorePdfBins"] = False
+
   return
 
 # --------------------------------------------------------------------------------------------------

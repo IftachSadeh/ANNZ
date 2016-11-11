@@ -1,6 +1,12 @@
 # Changelog
 
-## Master version (08/11/2016)
+## Master version (11/11/2016)
+
+- Added the option to to *not* store the full value of pdfs in the output of optimization/evaluation, by setting
+```python
+glob.annz["doStorePdfBins"] = False
+```
+In this case, only the average metrics of a pdf are included in the output.
 
 - Updated `README.md`.
 
