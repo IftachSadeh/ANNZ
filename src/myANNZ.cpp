@@ -218,10 +218,11 @@ myANNZ::myANNZ() {
 
   // independent KNN error estimation for an external dataset
   // -----------------------------------------------------------------------------------------------------------
-  glob->NewOptC("zReg_onlyKnnErr"    ,"");  // name of variable for which the error is estimated
-  glob->NewOptC("knnVars_onlyKnnErr" ,"");  // name of variable which corresponds to the true value of "zReg_onlyKnnErr"
-  glob->NewOptC("cuts_onlyKnnErr"    ,"");  // possible cut expression applied to the KNN error estimator
-  glob->NewOptC("weights_onlyKnnErr" ,"");  // possible weight expression applied to the KNN error estimator
+  glob->NewOptC("zReg_onlyKnnErr"    ,"");   // name of variable for which the error is estimated
+  glob->NewOptC("knnVars_onlyKnnErr" ,"");   // name of variable which corresponds to the true value of "zReg_onlyKnnErr"
+  glob->NewOptC("cuts_onlyKnnErr"    ,"");   // possible cut expression applied to the KNN error estimator
+  glob->NewOptC("weights_onlyKnnErr" ,"");   // possible weight expression applied to the KNN error estimator
+  glob->NewOptB("doPlots_onlyKnnErr" ,true); // a flag to choose if to use doMetricPlots() for the onlyKnnErr setting
 
   // addInTrainFlag, minNobjInVol_inTrain, maxRelRatioInRef_inTrain -
   // -----------------------------------------------------------------------------------------------------------
@@ -503,6 +504,8 @@ myANNZ::myANNZ() {
   glob->NewOptC("alwaysPlotVars"  ,"");
   // possible list of variables for which we do not use quantile bins for plotting - e.g., set as "inTrainFlag;MAG_U"
   glob->NewOptC("noQuantileBinsPlots"  ,"inTrainFlag");
+  // add plots with the distribution of the knn error estimator
+  glob->NewOptB("doKnnErrPlots"   ,false); 
 
   // format for plotting (in addition to generated root scripts, which may be run with [root -l script.C]
   // availabe formats (leave empty [glob->NewOptC("printPlotExtension","")] to prevent plotting):
@@ -524,8 +527,12 @@ myANNZ::myANNZ() {
   // the scatter (or 68th percentile scatter) of the distribution
   glob->NewOptB("doGausSigmaRelErr",true);
 
-  glob->NewOptI("nErrKNN",100);                // number of near-neighbours to use for the KNN error estimation, see setupKdTreeKNN().
-  glob->NewOptB("doWidthRescale_errKNN",true); // whether or not to rescale the input parameters of the knn-err search to the range [-1,1]
+  // number of near-neighbours to use for the KNN error estimation, see setupKdTreeKNN().
+  glob->NewOptI("nErrKNN",100);
+  // whether or not to rescale the input parameters of the knn-err search to the range [-1,1]
+  glob->NewOptB("doWidthRescale_errKNN",true);
+  // fraction of the input sample to use for the kd-tree uncertainty calculation. takes values within [0,1]
+  glob->NewOptF("sampleFrac_errKNN",1);
 
   // if propagating input-errors - nErrINP is the number of randomly generated MLM values used to propagate
   // the uncertainty on the input parameters to the MLM-estimator. See getRegClsErrINP()

@@ -158,6 +158,9 @@ void ANNZ::setupKdTreeKNN(TChain * aChainKnn, TFile *& knnErrOutFile, TMVA::Fact
   int     nErrKNN         = glob->GetOptI("nErrKNN");
   bool    doWidthRescale  = glob->GetOptB((TString)"doWidthRescale_errKNN");
   bool    debug           = inLOG(Log::DEBUG_2) || glob->OptOrNullB("debugErrANNZ");
+  TString indexName       = glob->GetOptC("indexName");
+  int     minObjTrainTest = glob->GetOptI("minObjTrainTest");
+  double  sampleFrac      = glob->GetOptF("sampleFrac_errKNN");
 
   if(debug) aCustomLOG("") <<coutWhiteOnBlack<<coutBlue<<" - starting ANNZ::setupKdTreeKNN() ... "<<coutDef<<endl;
 
@@ -229,15 +232,16 @@ void ANNZ::setupKdTreeKNN(TChain * aChainKnn, TFile *& knnErrOutFile, TMVA::Fact
 
         TString varScaledFunc(varScaled);  varScaledFunc.ReplaceAll(inNamesVar[nMLMnow][nVarNow],"x");  
         TString varScaledFuncName(utils->regularizeName(varScaledFunc));
-        
+
         inVarsScaleFunc[nMLMnow][nVarNow] = new TF1(varScaledFuncName,varScaledFunc);
-        
+
         aLOG(Log::DEBUG_1)<<coutYellow<<"   --> Transformation to range [-1,1] from "<<coutGreen<<inNamesVar[nMLMnow][nVarNow]
                           <<coutYellow<<" to:  "<<coutBlue<<varScaled<<coutDef<<endl;
       }
       else {
-        // identity function in order to avoid seg-fault, if the qualtile calculation failed for some reason (!?!?!)
-        inVarsScaleFunc[nMLMnow][nVarNow] = new TF1("x","x");
+        // identity function in order to avoid seg-fault, if the qualtile calculation
+        // failed for some reason... (name of object must be different than "x")
+        inVarsScaleFunc[nMLMnow][nVarNow] = new TF1("x+0","x");
       }
 
       // his_var->SaveAs((TString)hisName+"_scaled.C");
@@ -263,6 +267,41 @@ void ANNZ::setupKdTreeKNN(TChain * aChainKnn, TFile *& knnErrOutFile, TMVA::Fact
     trgIndexV[indexErrKNN] = nTrgIn;
     
     nTrgIn++;
+  }
+
+  // -----------------------------------------------------------------------------------------------------------
+  // set a cut to sub-sample the dataset if requested, as [0 < sampleFrac_errKNN < 1]
+  // -----------------------------------------------------------------------------------------------------------
+  if(sampleFrac > 1+EPS || sampleFrac < 0) {
+    aLOG(Log::WARNING) <<coutRed<<" - Found \"sampleFrac_errKNN\" = "<<coutYellow<<sampleFrac<<coutRed
+                       <<" ... Value must be between 0 and 1 !!!"<<coutDef<<endl;
+
+    sampleFrac = max(0., min(1., sampleFrac));
+  }
+  if(sampleFrac < 1-EPS) {
+    int nTrainObj = max(0, static_cast<int>(floor(aChainKnn->GetEntries() * sampleFrac)));
+
+    VERIFY(LOCATION,(TString)"Following sampleFracInp_wgtKNN/sampleFracRef_wgtKNN cut, chain("
+                            +(TString)aChainKnn->GetName()+") with initial "+utils->lIntToStr(aChainKnn->GetEntries())
+                            +" objects, now has "+utils->lIntToStr(nTrainObj)+" objects (minimum is \"minObjTrainTest\" = "
+                            +utils->lIntToStr(minObjTrainTest)+") ...",(nTrainObj >= minObjTrainTest));
+
+    TString fracCut("");
+    for(int nTrySplit=0; nTrySplit<5; nTrySplit++) {
+      int split0  = pow(10,nTrySplit);
+      int split1  = static_cast<int>(floor(EPS + split0 / sampleFrac));
+
+      if(split0 != split1) {
+        fracCut = (TString)indexName+" % "+TString::Format("%d < %d",split1,split0);
+        break;
+      }
+    }
+    if(fracCut != "") {
+      cutsAll += (TCut)fracCut;
+
+      aLOG(Log::INFO) <<coutGreen<<" - will use sampleFrac_errKNN = "<<coutYellow<<sampleFrac<<coutGreen
+                      <<" --> cut on sample by: "<<coutYellow<<cutsAll<<coutDef<<endl;
+    }
   }
 
   // let TMVA know the name of the XML file

@@ -1027,6 +1027,17 @@ void VarMaps::connectTreeBranches(TTree * tree, vector <TString> * excludedBranc
       }
       if(!treeNow->GetBranchStatus(brnchName)) skipBranch = true;
 
+      if(brnchType == "/C" || brnchType == "/B" || brnchType == "/b") {
+        if(brnchType == "/B" || brnchType == "/b") {
+          aLOG(Log::WARNING) <<coutRed<<" - Please cast: [Char_t(/B), to Int_t], "
+                             <<"or [UChar_t(/b) to UInt_t] ..."<<coutDef<<endl;
+        }
+        aLOG(Log::WARNING)  <<coutRed<<" - Skipping unsupported branch type ("<<coutBlue<<brnchTitle<<coutRed
+                            <<" , "<<coutBlue<<brnchType<<coutRed<<") "<<coutYellow<<brnchName<<coutDef<<endl;
+
+        skipBranch = true;
+      }
+
       if(!skipBranch) {
         // count number of times a branch is accepted
         nBranchesVar[brnchName]++;
@@ -1052,13 +1063,6 @@ void VarMaps::connectTreeBranches(TTree * tree, vector <TString> * excludedBranc
       // the maps are filled up.
       // -----------------------------------------------------------------------------------------------------------
       if(!skipBranch) {
-        if(brnchType == "/C" || brnchType == "/B" || brnchType == "/b") {
-          aLOG(Log::ERROR) <<coutWhiteOnRed<<"Found un-supported branch type ("<<coutBlue<<brnchTitle<<coutWhiteOnRed
-                           <<" , "<<coutYellow<<brnchType<<coutWhiteOnRed<<") - Please cast [Char_t(/B), to Int_t] or [UChar_t(/b) to UInt_t]."
-                           <<" String(/C) should be part of TObjString.     ABORTING.... "<<coutDef<<endl;
-          assert(false);
-        }
-
         if     (brnchType == "/I") NewVarI_ (brnchName,DefOpts::DefI);
         else if(brnchType == "/F") NewVarF_ (brnchName,DefOpts::DefF);
         else if(brnchType == "/O") NewVarB_ (brnchName,DefOpts::DefB);

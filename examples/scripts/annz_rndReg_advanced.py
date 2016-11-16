@@ -39,6 +39,11 @@ glob.annz["maxValZ"]    = 0.8
 # set the number of near-neighbours used to compute the KNN error estimator
 glob.annz["nErrKNN"]    = 90 # should be around ~100
 
+# the fraction of objects from the training dataset to use for the KNN error estimator. Allowed values are
+# fractions within the range [0,1]. Unless the KNN error estimator is slow (the training sample very large),
+# it is recommended to use the entire sample for the calculation (i.e., a value of 1), as in:
+glob.annz["sampleFrac_errKNN"] = 1
+
 # --------------------------------------------------------------------------------------------------
 # pre-processing of the input dataset
 # --------------------------------------------------------------------------------------------------

@@ -127,14 +127,18 @@ void ANNZ::onlyKnnErr_eval() {
 
   int     nMLMs          = glob->GetOptI("nMLMs");
   int     nMLMnow        = glob->GetOptI("nMLMnow");
-  TString zRegName       = glob->GetOptC("zReg_onlyKnnErr");
+  TString zTrgName       = glob->GetOptC("zTrg");
+  double  minValZ        = glob->GetOptF("minValZ");
+  double  maxValZ        = glob->GetOptF("maxValZ");
   TString indexName      = glob->GetOptC("indexName");
+  bool    doStoreToAscii = glob->GetOptB("doStoreToAscii");
+  TString weightKNN      = glob->GetOptC("baseName_wgtKNN");
+  TString zRegName       = glob->GetOptC("zReg_onlyKnnErr");
   TString knnErrCut      = glob->GetOptC("cuts_onlyKnnErr");
   TString knnErrWgt      = glob->GetOptC("weights_onlyKnnErr");
   TString knnVars        = glob->GetOptC("knnVars_onlyKnnErr");
   TString asciiPostfix   = glob->GetOptC("baseName_onlyKnnErr");
-  bool    doStoreToAscii = glob->GetOptB("doStoreToAscii");
-  TString weightKNN      = glob->GetOptC("baseName_wgtKNN");
+  bool    doPlots        = glob->GetOptB("doPlots_onlyKnnErr");
 
   TString MLMname        = getTagName(nMLMnow);
   TString errKNNname     = getErrKNNname(nMLMnow);
@@ -158,7 +162,7 @@ void ANNZ::onlyKnnErr_eval() {
   readerInptV.clear();
   for(int nVarNow=0; nVarNow<nKnnVars; nVarNow++) {
     TString inVarNameNow = inNamesVar[nMLMnow][nVarNow];
-    VERIFY(LOCATION,(TString)"Should not have empty input-variable. Something is horribly wrong... ?!?",(inVarNameNow != ""));        
+    VERIFY(LOCATION,(TString)"Should not have empty input-variable. Something is horribly wrong... ?!?",(inVarNameNow != ""));
 
     bool hasVar(false);
     for(int nVarNow=0; nVarNow<(int)readerInptV.size(); nVarNow++) {
@@ -298,7 +302,7 @@ void ANNZ::onlyKnnErr_eval() {
   // -----------------------------------------------------------------------------------------------------------
   // write the results to an ascii file
   // -----------------------------------------------------------------------------------------------------------
-  if(doStoreToAscii) {
+  if(doStoreToAscii || doPlots) {
     TChain  * aChainAsc = new TChain(outTreeName,outTreeName); aChainAsc->SetDirectory(0); aChainAsc->Add(outFileName); 
     int nEntriesChain   = aChainAsc->GetEntries();
     aLOG(Log::DEBUG) <<coutRed<<" - added chain "<<coutGreen<<outTreeName<<"("<<nEntriesChain<<")"<<" from "<<coutBlue<<outFileName<<coutDef<<endl;
@@ -306,22 +310,60 @@ void ANNZ::onlyKnnErr_eval() {
     TChain * aChain_toFriend = (TChain*)aChain->Clone();
     aChain_toFriend->AddFriend(aChainAsc,utils->nextTreeFriendName(aChain_toFriend));
 
-    VarMaps * var_2 = new VarMaps(glob,utils,"aChainAsc");
-
-    vector <TString> varInV;
-    varInV.push_back(MLMname_e); varInV.push_back(MLMname_eN); varInV.push_back(MLMname_eP);
+    if(doPlots) {
+      vector <TString> branchNameV;
+      utils->getTreeBranchNames(aChain_toFriend,branchNameV);
     
-    // copy the content of addVarV to a new ovctor (will now be ordered such that the knn-error variables come first)
-    for(int nVarsInNow=0; nVarsInNow<(int)addVarV.size(); nVarsInNow++) {
-      if(find(varInV.begin(),varInV.end(), addVarV[nVarsInNow]) == varInV.end()) { varInV.push_back(addVarV[nVarsInNow]); }
+      int     hasTrgReg(0);
+      TString allBranchNames("");
+      for(int nBranchNow=0; nBranchNow<(int)branchNameV.size(); nBranchNow++) {
+        TString branchName = branchNameV[nBranchNow];
+        if(nBranchNow > 0) allBranchNames += ", ";
+        allBranchNames += branchName;
+
+        if(branchName == zRegName) hasTrgReg++;
+        if(branchName == zTrgName) hasTrgReg++;
+      }
+      branchNameV.clear();
+
+      if(hasTrgReg != 2) {
+        doPlots = false;
+
+        aLOG(Log::WARNING) <<coutRed<<" - Found \"doPlots_onlyKnnErr\", but did not find either \"zReg_onlyKnnErr\" ("
+                           <<coutBlue<<zRegName<<coutRed<<"), or \"zTrg\" ("<<coutBlue<<zTrgName<<coutRed
+                           <<") in the branch list ("<<coutGreen<<allBranchNames<<coutRed<<") ---> will skip plotting..."<<coutDef<<endl;
+      }
+      else if(maxValZ < minValZ) {
+        doPlots = false;
+
+        aLOG(Log::WARNING) <<coutRed<<" - Found \"doPlots_onlyKnnErr\", but did not find either \"minValZ\" "
+                           <<"or \"maxValZ\" ---> will skip plotting..."<<coutDef<<endl;
+      }
+
+      if(doPlots) doMetricPlots(aChain_toFriend);
     }
 
-    var_2->connectTreeBranches(aChain_toFriend);
+    if(doStoreToAscii) {
+      VarMaps * var_2 = new VarMaps(glob,utils,"aChainAsc");
 
-    var_2->storeTreeToAscii((TString)"ANNZ"+asciiPostfix,"",0,glob->GetOptI("nObjectsToWrite"),"",&varInV,NULL);
+      vector <TString> varInV;
+      varInV.push_back(MLMname_e); varInV.push_back(MLMname_eN); varInV.push_back(MLMname_eP);
+      
+      // copy the content of addVarV to a new vector (will now be ordered such that the knn-error variables come first)
+      for(int nVarsInNow=0; nVarsInNow<(int)addVarV.size(); nVarsInNow++) {
+        if(find(varInV.begin(),varInV.end(), addVarV[nVarsInNow]) == varInV.end()) {
+          varInV.push_back(addVarV[nVarsInNow]);
+        }
+      }
 
-    // cleanup
-    DELNULL(var_2); varInV.clear();
+      var_2->connectTreeBranches(aChain_toFriend);
+
+      var_2->storeTreeToAscii((TString)"ANNZ"+asciiPostfix,"",0,glob->GetOptI("nObjectsToWrite"),"",&varInV,NULL);
+
+      // cleanup
+      DELNULL(var_2); varInV.clear();
+    }
+
     aChain_toFriend->RemoveFriend(aChainAsc); DELNULL(aChain_toFriend); DELNULL(aChainAsc);
   }
 

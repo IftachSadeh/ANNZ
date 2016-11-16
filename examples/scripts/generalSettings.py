@@ -123,6 +123,16 @@ def generalSettings():
   # the average metrics of a pdf are stored), by setting
   # glob.annz["doStorePdfBins"] = False
 
+  # the fraction of objects from the training dataset to use for the KNN error estimator. Allowed values are
+  # fractions within the range [0,1]. Unless the KNN error estimator is slow (the training sample very large),
+  # it is recommended to use the entire sample for the calculation (i.e., a value of 1).
+  # For instance, in the following example, only 20% of the objects in the training
+  # dataset are used to calculate the knn uncertainty:
+  # glob.annz["sampleFrac_errKNN"] = 0.2
+
+  # # add metric plots of the distribution of the KNN error estimator vs. the true bias
+  # glob.annz["doKnnErrPlots"] = True
+
   return
 
 # --------------------------------------------------------------------------------------------------
