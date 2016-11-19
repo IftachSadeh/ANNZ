@@ -3090,9 +3090,11 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV, TStri
 
   // single-estimator
   // -----------------------------------------------------------------------------------------------------------
-  TString regBestNameVal = getTagBestMLMname(baseTag_v);
-  TString regBestNameErr = getTagBestMLMname(baseTag_e);
-  TString regBestNameWgt = getTagBestMLMname(baseTag_w);
+  TString regBestNameVal  = getTagBestMLMname(baseTag_v);
+  TString regBestNameErr  = getTagBestMLMname(baseTag_e);
+  TString regBestNameErrN = getTagBestMLMname(baseTag_e+"N");
+  TString regBestNameErrP = getTagBestMLMname(baseTag_e+"P");
+  TString regBestNameWgt  = getTagBestMLMname(baseTag_w);
 
   // if we're only computing knn uncertanties, the single-estimator variable names are different
   // -----------------------------------------------------------------------------------------------------------
@@ -3102,7 +3104,9 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV, TStri
     VERIFY(LOCATION,(TString)"For doOnlyKnnErr, found empty value of \"zReg_onlyKnnErr\" ?!?!",(zRegName != ""));
 
     regBestNameVal  = zRegName;
-    regBestNameErr  = (getTagError(nMLMnow,"")).ReplaceAll(getTagName(nMLMnow), zRegName);
+    regBestNameErr  = (getTagError(nMLMnow,"")) .ReplaceAll(getTagName(nMLMnow), zRegName);
+    regBestNameErrN = (getTagError(nMLMnow,"N")).ReplaceAll(getTagName(nMLMnow), zRegName);
+    regBestNameErrP = (getTagError(nMLMnow,"P")).ReplaceAll(getTagName(nMLMnow), zRegName);
     regBestNameWgt  = (glob->GetOptC("weights_onlyKnnErr") != "") ? glob->GetOptC("weights_onlyKnnErr") : glob->GetOptC("baseName_wgtKNN");
   }
 
@@ -3173,7 +3177,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV, TStri
   // store the list of all MLMs, average PDF solutions and PDF bins, together with corresponding errors,
   // weights and titles. Perform sanity checks that all branches exist along the way
   // -----------------------------------------------------------------------------------------------------------
-  vector < TString >          nameV_MLM_v, nameV_MLM_e, nameV_MLM_w, titleV_MLM, titleV_PDF, nameV_PDF;
+  vector < TString >          nameV_MLM_v, nameV_MLM_w, titleV_MLM, titleV_PDF, nameV_PDF, nameV_MLM_e, nameV_MLM_eN, nameV_MLM_eP;
   vector < vector <TString> > nameV_PDF_b;
 
   if(nTagBestMLM > 0) {
@@ -3184,6 +3188,17 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV, TStri
 
     VERIFY(LOCATION,(TString)"Found only "+utils->intToStr(nTagBestMLM)+" of "+regBestNameVal+", "+regBestNameErr+", "+regBestNameWgt
                             +" in the input tree... something is horribly wrong ?!?",(nTagBestMLM == 3));
+    
+    if(doKnnErrPlots) {
+      bool found_eN = (find(branchNameV.begin(),branchNameV.end(), regBestNameErrN) != branchNameV.end());
+      bool found_eP = (find(branchNameV.begin(),branchNameV.end(), regBestNameErrP) != branchNameV.end());
+
+      TString errN(regBestNameErrN), errP(regBestNameErrP);
+      if(!found_eN || !found_eP) {
+        errN = ""; errP = "";
+      }
+      nameV_MLM_eN.push_back(errN); nameV_MLM_eP.push_back(errP);
+    }
   }
 
   // go over PDFs
@@ -3228,6 +3243,10 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV, TStri
 
       VERIFY(LOCATION,(TString)"Did not find "+pdfAvgName+" of (nPDFnow = "
                                +utils->intToStr(nPDFnow)+") ... Something is horribly wrong ?!?!",found_MLMavg);
+    
+      if(doKnnErrPlots) {
+        nameV_MLM_eN.push_back(""); nameV_MLM_eP.push_back("");
+      }
     }
   }
 
@@ -3244,6 +3263,18 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV, TStri
     bool found_w = (find(branchNameV.begin(),branchNameV.end(), MLMname_w) != branchNameV.end());
 
     VERIFY(LOCATION,(TString)"Did not find "+MLMname_e+" , "+MLMname_w+" ... Something is horribly wrong ?!?!",(found_w && found_e));
+
+    if(doKnnErrPlots) {
+      TString MLMname_eN = getTagError(nMLMnow,"N"); TString MLMname_eP = getTagError(nMLMnow,"P");
+
+      bool found_eN = (find(branchNameV.begin(),branchNameV.end(), MLMname_eN) != branchNameV.end());
+      bool found_eP = (find(branchNameV.begin(),branchNameV.end(), MLMname_eP) != branchNameV.end());
+
+      if(!found_eN || !found_eP) {
+        MLMname_eN = ""; MLMname_eP = "";
+      }
+      nameV_MLM_eN.push_back(MLMname_eN); nameV_MLM_eP.push_back(MLMname_eP);
+    }
   }
 
   branchNameV.clear(); nMLMsChain.clear(); nPDFsChain.clear();
@@ -3416,7 +3447,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV, TStri
   vector < TString >                      typeTitleV;
   map < TString,vector <TH1*> >           his_regTrgZ;
   map < TString,TH2* >                    his_corRegTrgZ;
-  map < TString,vector < vector<TH1*> > > his_clos, his_relErr, his_errTrg, his_errReg;
+  map < TString,vector < vector<TH1*> > > his_clos, his_relErr, his_errTrg, his_errReg, his_errNreg, his_errPreg;
 
   for(int nTypeMLMnow=0; nTypeMLMnow<2; nTypeMLMnow++) {
     int nTypeIn = (nTypeMLMnow == 0) ? nMLMsIn : nPDFsIn;
@@ -3430,9 +3461,12 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV, TStri
       his_clos   [typeName].resize(nTypeBins,vector<TH1*>(nBinsZ+1,NULL));
       his_relErr [typeName].resize(nTypeBins,vector<TH1*>(nBinsZ+1,NULL));
       his_regTrgZ[typeName].resize(2,NULL);
+      
       if(doKnnErrPlots) {
-        his_errTrg[typeName].resize(nTypeBins,vector<TH1*>(nBinsZ+1,NULL));
-        his_errReg[typeName].resize(nTypeBins,vector<TH1*>(nBinsZ+1,NULL));
+        his_errTrg [typeName].resize(nTypeBins,vector<TH1*>(nBinsZ+1,NULL));
+        his_errReg [typeName].resize(nTypeBins,vector<TH1*>(nBinsZ+1,NULL));
+        his_errNreg[typeName].resize(nTypeBins,vector<TH1*>(nBinsZ+1,NULL));
+        his_errPreg[typeName].resize(nTypeBins,vector<TH1*>(nBinsZ+1,NULL));
       }
 
       // (nTypeBinNow == 1): bins of the regression value, (nTypeBinNow == 0): bins of the target value
@@ -3442,15 +3476,17 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV, TStri
         for(int nBinZnow=0; nBinZnow<nBinsZ+1; nBinZnow++) {
           TString nameBinZ = TString::Format("_nBinZ%d",nBinZnow);
 
-          for(int nHisType=0; nHisType<4; nHisType++) {
+          for(int nHisType=0; nHisType<6; nHisType++) {
             TH1     * his1(NULL);
             TString hisNameTag("");
             int     nHisBins(0);
 
-            if     (nHisType == 0                 ) { hisNameTag = "closHis_";   nHisBins = closHisN;   }
-            else if(nHisType == 1                 ) { hisNameTag = "relErrHis_"; nHisBins = closHisN;   }
-            else if(nHisType == 2 && doKnnErrPlots) { hisNameTag = "errTrgHis_"; nHisBins = errTrgHisN; }
-            else if(nHisType == 3 && doKnnErrPlots) { hisNameTag = "errRegHis_"; nHisBins = errTrgHisN; }
+            if     (nHisType == 0                 ) { hisNameTag = "closHis_";    nHisBins = closHisN;   }
+            else if(nHisType == 1                 ) { hisNameTag = "relErrHis_";  nHisBins = closHisN;   }
+            else if(nHisType == 2 && doKnnErrPlots) { hisNameTag = "errTrgHis_";  nHisBins = errTrgHisN; }
+            else if(nHisType == 3 && doKnnErrPlots) { hisNameTag = "errRegHis_";  nHisBins = errTrgHisN; }
+            else if(nHisType == 4 && doKnnErrPlots) { hisNameTag = "errNregHis_"; nHisBins = errTrgHisN; }
+            else if(nHisType == 5 && doKnnErrPlots) { hisNameTag = "errPregHis_"; nHisBins = errTrgHisN; }
             else continue;
             
             hisName = (TString)hisNameTag+typeName+typeBinZ+nameBinZ;
@@ -3458,10 +3494,12 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV, TStri
             his1->SetDefaultBufferSize(hisBufSize);
             his1->SetTitle(hisTitle);
 
-            if     (nHisType == 0) his_clos  [typeName][nTypeBinNow][nBinZnow] = his1;
-            else if(nHisType == 1) his_relErr[typeName][nTypeBinNow][nBinZnow] = his1;
-            else if(nHisType == 2) his_errTrg[typeName][nTypeBinNow][nBinZnow] = his1;
-            else if(nHisType == 3) his_errReg[typeName][nTypeBinNow][nBinZnow] = his1;
+            if     (nHisType == 0) his_clos   [typeName][nTypeBinNow][nBinZnow] = his1;
+            else if(nHisType == 1) his_relErr [typeName][nTypeBinNow][nBinZnow] = his1;
+            else if(nHisType == 2) his_errTrg [typeName][nTypeBinNow][nBinZnow] = his1;
+            else if(nHisType == 3) his_errReg [typeName][nTypeBinNow][nBinZnow] = his1;
+            else if(nHisType == 4) his_errNreg[typeName][nTypeBinNow][nBinZnow] = his1;
+            else if(nHisType == 5) his_errPreg[typeName][nTypeBinNow][nBinZnow] = his1;
           }
         }
 
@@ -3542,6 +3580,17 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV, TStri
 
             his_errReg[typeName][nTypeBinNow][nBinZnow]->Fill( zRegE       , zRegW);
             his_errReg[typeName][nTypeBinNow][nBinsZ]  ->Fill( zRegE       , zRegW);
+
+            if(nameV_MLM_eN[nMLMinNow] != "" && nameV_MLM_eP[nMLMinNow] != "") {
+              double zRegE_N = -1 * var->GetVarF(nameV_MLM_eN[nMLMinNow]);
+              double zRegE_P =      var->GetVarF(nameV_MLM_eP[nMLMinNow]);
+
+              his_errNreg[typeName][nTypeBinNow][nBinZnow]->Fill(zRegE_N , zRegW);
+              his_errNreg[typeName][nTypeBinNow][nBinsZ]  ->Fill(zRegE_N , zRegW);
+
+              his_errPreg[typeName][nTypeBinNow][nBinZnow]->Fill(zRegE_P , zRegW);
+              his_errPreg[typeName][nTypeBinNow][nBinsZ]  ->Fill(zRegE_P , zRegW);
+            }
           }
         }
       }
@@ -3843,15 +3892,19 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV, TStri
           // plot the full distributions of the true and knn-estimated bias
           // ----------------------------------------------------------------------------------------------------------- 
           if(nPlotType == 0 && doKnnErrPlots) {
-            vector < vector<TH1*> > hisErrTrgRegV(nBinsZ+1, vector<TH1*>(2));
+            vector < vector<TH1*> > hisErrTrgRegV(nBinsZ+1, vector<TH1*>(4,NULL));
             
             outputs->optClear();
             for(int nBinZnow=0; nBinZnow<nBinsZ+1; nBinZnow++) {
-              hisErrTrgRegV[nBinZnow][0] = his_errTrg[typeName][nTypeBinNow][nBinZnow];
-              hisErrTrgRegV[nBinZnow][1] = his_errReg[typeName][nTypeBinNow][nBinZnow];
+              hisErrTrgRegV[nBinZnow][0] = his_errTrg [typeName][nTypeBinNow][nBinZnow];
+              hisErrTrgRegV[nBinZnow][1] = his_errReg [typeName][nTypeBinNow][nBinZnow];
+              hisErrTrgRegV[nBinZnow][2] = his_errNreg[typeName][nTypeBinNow][nBinZnow];
+              hisErrTrgRegV[nBinZnow][3] = his_errPreg[typeName][nTypeBinNow][nBinZnow];
 
               hisErrTrgRegV[nBinZnow][0]->SetTitle("X #equiv "+zRegTitle+" - "+zTrgTitle);
-              hisErrTrgRegV[nBinZnow][1]->SetTitle("X #equiv knn err estimator");
+              hisErrTrgRegV[nBinZnow][1]->SetTitle("X #equiv uncert. estimator (combined)");
+              hisErrTrgRegV[nBinZnow][2]->SetTitle("X #equiv uncert. estimator (negative)");
+              hisErrTrgRegV[nBinZnow][3]->SetTitle("X #equiv uncert. estimator (positive)");
 
               bool useQuantileBins(false);
               if(nTypeBinNow > 1) {
@@ -3869,6 +3922,8 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV, TStri
             outputs->draw->NewOptB("doNormIntegral"   , true);
             outputs->draw->NewOptC("drawOpt_0"        , "HIST");
             outputs->draw->NewOptC("drawOpt_1"        , "e1p");
+            outputs->draw->NewOptC("drawOpt_2"        , "e1p");
+            outputs->draw->NewOptC("drawOpt_3"        , "e1p");
             outputs->draw->NewOptC("axisTitleX"       , "X");
             outputs->draw->NewOptC("axisTitleY"       , "Norm X dist.");
             outputs->drawHis1dMultiV(hisErrTrgRegV);
@@ -4144,8 +4199,10 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV, TStri
         DELNULL(his_clos  [typeName][nTypeBinNow][nBinZnow]);
         DELNULL(his_relErr[typeName][nTypeBinNow][nBinZnow]);
         if(doKnnErrPlots) {
-          DELNULL(his_errTrg[typeName][nTypeBinNow][nBinZnow]);
-          DELNULL(his_errReg[typeName][nTypeBinNow][nBinZnow]);
+          DELNULL(his_errTrg [typeName][nTypeBinNow][nBinZnow]);
+          DELNULL(his_errReg [typeName][nTypeBinNow][nBinZnow]);
+          DELNULL(his_errNreg[typeName][nTypeBinNow][nBinZnow]);
+          DELNULL(his_errPreg[typeName][nTypeBinNow][nBinZnow]);
         }
       }
     }
@@ -4160,14 +4217,15 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV, TStri
   for(int nHisNow=0; nHisNow<(int)hisToDelV.size(); nHisNow++) { DELNULL(hisToDelV[nHisNow]); }
 
   DELNULL(var);
-  nameV_MLM_v.clear(); nameV_MLM_e.clear(); nameV_MLM_w.clear();
+  nameV_MLM_v.clear(); nameV_MLM_w.clear();
+  nameV_MLM_e.clear();  nameV_MLM_eN.clear();  nameV_MLM_eP.clear();
   titleV_MLM.clear(); titleV_PDF.clear(); nameV_PDF.clear(); nameV_PDF_b.clear();
   tagNameV.clear(); pdfTagWgtV.clear(); pdfTagErrV.clear();
   plotVars.clear(); plotVarForms.clear(); varPlot_binE.clear(); varPlot_binC.clear();
   typeTitleV.clear(); metricNameV.clear(); metricTitleV.clear();
   graphAvg_Xv.clear(); graphAvg_Xe.clear(); graphAvg_Yv.clear(); graphAvg_Ye.clear(); hisToDelV.clear();
-  mltGrphAvgV.clear(); his_regTrgZ.clear(); his_corRegTrgZ.clear();
-  his_clos.clear(); his_relErr.clear(); his_errTrg.clear(); his_errReg.clear();
+  mltGrphAvgV.clear(); his_regTrgZ.clear(); his_corRegTrgZ.clear(); his_clos.clear();
+  his_relErr.clear(); his_errTrg.clear(); his_errReg.clear(); his_errNreg.clear(); his_errNreg.clear();
 
   return;
 }

@@ -321,10 +321,9 @@ void ANNZ::onlyKnnErr_eval() {
         if(nBranchNow > 0) allBranchNames += ", ";
         allBranchNames += branchName;
 
-        if(branchName == zRegName) hasTrgReg++;
-        if(branchName == zTrgName) hasTrgReg++;
+        if     (branchName == zRegName) hasTrgReg++;
+        else if(branchName == zTrgName) hasTrgReg++;
       }
-      branchNameV.clear();
 
       if(hasTrgReg != 2) {
         doPlots = false;
@@ -341,6 +340,8 @@ void ANNZ::onlyKnnErr_eval() {
       }
 
       if(doPlots) doMetricPlots(aChain_toFriend);
+      
+      branchNameV.clear();
     }
 
     if(doStoreToAscii) {
