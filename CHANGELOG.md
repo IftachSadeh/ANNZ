@@ -3,17 +3,17 @@
 ## Master version (20/11/2016)
 
 - Added the option to to *not* store the full value of pdfs in the output of optimization/evaluation, by setting
-```python
-glob.annz["doStorePdfBins"] = False
-```
+  ```python
+  glob.annz["doStorePdfBins"] = False
+  ```
 In this case, only the average metrics of a pdf are included in the output.
 
 - Added the `sampleFrac_errKNN` option, to allow to sub-sample the input dataset for the knn uncertainty calculation (similar to e.g., `sampleFracInp_wgtKNN` and `sampleFracInp_inTrain`).
 
 - Added metric plots of the distribution of the KNN error estimator vs. the true bias. The plots are added to the output by setting
-```python
-glob.annz["doKnnErrPlots"] = True
-```
+  ```python
+  glob.annz["doKnnErrPlots"] = True
+  ```
 
 - Added support for input ROOT files with different Tree names.
 

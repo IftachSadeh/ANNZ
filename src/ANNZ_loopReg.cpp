@@ -3452,8 +3452,11 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV, TStri
   if(doKnnErrPlots) {
     TString cutStr("_comn"), hisTmpName("his1_TMP");
 
-    TString treeCuts  = (TString)getTrainTestCuts(cutStr,0,0,0,var);
-    TString drawExprs = (TString)regBestNameVal+"-"+zTrgName+">>"+hisTmpName;
+    int     nMLMnow   = max(0, glob->GetOptI("nMLMnow"));
+    TString MLMname   = (TString)( (nTagBestMLM == 0) ? getTagName(nMLMnow) : regBestNameVal);
+
+    TString treeCuts  = (TString)getTrainTestCuts(cutStr,nMLMnow,0,0,var);
+    TString drawExprs = (TString)MLMname+"-"+zTrgName+">>"+hisTmpName;
     TCanvas * tmpCnvs = new TCanvas("tmpCnvs","tmpCnvs");
     int     nEvtPass  = aChain->Draw(drawExprs,treeCuts);  DELNULL(tmpCnvs);
 
