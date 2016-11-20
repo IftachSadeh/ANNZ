@@ -3446,7 +3446,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV, TStri
 
 
   // -----------------------------------------------------------------------------------------------------------
-  // derive the binning scheme for the his_err* histograms
+  // derive the binning for the his_err* histograms
   // -----------------------------------------------------------------------------------------------------------
   double minErrTrgReg(1), maxErrTrgReg(-1);
   if(doKnnErrPlots) {
@@ -3489,6 +3489,9 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV, TStri
     }
   }
 
+  // -----------------------------------------------------------------------------------------------------------
+  // initialize some histograms
+  // -----------------------------------------------------------------------------------------------------------
   vector < TString >                      typeTitleV;
   map < TString,vector <TH1*> >           his_regTrgZ;
   map < TString,TH2* >                    his_corRegTrgZ;

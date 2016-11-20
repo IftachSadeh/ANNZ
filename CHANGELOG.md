@@ -1,6 +1,6 @@
 # Changelog
 
-## Master version (19/11/2016)
+## Master version (20/11/2016)
 
 - Added the option to to *not* store the full value of pdfs in the output of optimization/evaluation, by setting
 ```python
@@ -14,6 +14,8 @@ In this case, only the average metrics of a pdf are included in the output.
 ```python
 glob.annz["doKnnErrPlots"] = True
 ```
+
+- Added support for input ROOT files with different Tree names.
 
 - Updated `README.md`.
 

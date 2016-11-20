@@ -323,6 +323,20 @@ See the advanced scripts for additional details.
     ```
   Set a list of input files for training in `splitTypeTrain`, and a list of input files for testing in `splitTypeTest`. 
 
+- Most of the examples show the use of ascii input files. However, one may also use ROOT files as input (see `scripts/annz_rndReg_advanced.py`). For instance, one may define separate input files with corresponding ROOT Tree names, as
+```python
+glob.annz["inTreeNameTrain"]  = "tree0"  
+glob.annz["splitTypeTrain"]   = "file_0.root;file_1.root"
+glob.annz["inTreeNameTest"]   = "tree1"  
+glob.annz["splitTypeTest"]    = "file_2.root"
+```
+Notice that in this case, all files defined in `splitTypeTrain` must contain a ROOT Tree as defined in `inTreeNameTrain`, and the same goes for `splitTypeTest` and `inTreeNameTest`. Since the Tree names for training and testing can be different, one may e.g., use two separate Trees from a single input file for training and testing:
+```python
+glob.annz["splitTypeTrain"]   = "file_0.root"
+glob.annz["splitTypeTest"]    = "file_0.root"
+glob.annz["inTreeNameTrain"]  = "tree0"  
+glob.annz["inTreeNameTest"]   = "tree1"  
+```
 
 #### Definition of signal and background objects in single/randomized classification
 

@@ -281,7 +281,6 @@ void CatFormat::inputToFullTree(TString inAsciiFiles, TString inAsciiVars, TStri
 /**
  * @brief                - Convert ascii file into a root tree (optional splitting for train/test/valid subsamples).
  * 
- * 
  * @details              - For training and testing/validation the input is divided into two (test,train) or into three (test,train,valid)
  *                         sub-samples.
  *                       - The user needs to define the number of sub-samples (e.g., nSplit = 1 or 2) and the way to divide the
@@ -318,6 +317,8 @@ void CatFormat::inputToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
   TString plotExt           = glob->GetOptC("printPlotExtension");
   TString outDirNameFull    = glob->GetOptC("outDirNameFull");
   TString inTreeName        = glob->GetOptC("inTreeName");
+  TString inTreeNameTrain   = glob->GetOptC("inTreeNameTrain");
+  TString inTreeNameTest    = glob->GetOptC("inTreeNameTest");
 
   TString sigBckInpName     = glob->GetOptC("sigBckInpName");
   TString inpFiles_sig      = glob->GetOptC("inpFiles_sig");
@@ -388,7 +389,9 @@ void CatFormat::inputToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
     isRootInput = inFileNameV[0].EndsWith(".root");
 
     // add the path to the file names
-    for(int nInFileNow=0; nInFileNow<nInFiles; nInFileNow++) inFileNameV[nInFileNow] = glob->GetOptC("inDirName")+inFileNameV[nInFileNow];
+    for(int nInFileNow=0; nInFileNow<nInFiles; nInFileNow++) {
+      inFileNameV[nInFileNow] = glob->GetOptC("inDirName")+inFileNameV[nInFileNow];
+    }
   }
 
   // make sure the input files are consistently of the same type
@@ -396,7 +399,8 @@ void CatFormat::inputToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
   if(isRootInput) {
     for(int nInFileNow=0; nInFileNow<nInFiles; nInFileNow++) {
       TString inFileNameNow    = inFileNameV[nInFileNow];
-      bool    isExpectedFormat = (isRootInput && inFileNameV[nInFileNow].EndsWith(".root")) || (!isRootInput && !inFileNameV[nInFileNow].EndsWith(".root"));
+      bool    isExpectedFormat = ( ( isRootInput &&  inFileNameV[nInFileNow].EndsWith(".root")) ||
+                                   (!isRootInput && !inFileNameV[nInFileNow].EndsWith(".root"))    );
 
       VERIFY(LOCATION,(TString)"Found some files ending with \".root\" and some without... must give one type of input!",isExpectedFormat);
     }
@@ -509,8 +513,16 @@ void CatFormat::inputToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
     }
 
     // write out trees and initialize counters if moving from one type to another (e.g., from train to test)
+    // switch to the correct inTreeNameNow if seperate tree names are specified for train/test
+    TString inTreeNameNow(inTreeName);
     if(nSplitType == 3) {
-      intMap["inFileSplitIndex"] = inFileTypeV[nInFileNow];
+      int nSplitNow = inFileTypeV[nInFileNow];
+
+      if     (nSplitNow == 0 && inTreeNameTrain != "") inTreeNameNow = inTreeNameTrain;
+      else if(nSplitNow == 1 && inTreeNameTest  != "") inTreeNameNow = inTreeNameTest;
+      else                                             inTreeNameNow = inTreeName;
+
+      intMap["inFileSplitIndex"] = nSplitNow;
 
       if(inFileTypeChange != inFileTypeV[nInFileNow]) {
         inFileTypeChange = inFileTypeV[nInFileNow];
@@ -530,10 +542,10 @@ void CatFormat::inputToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
     var->NewCntr("nLineFile",0);
 
     if(isRootInput) {
-      TChain  * inChain = new TChain(inTreeName,inTreeName); inChain->SetDirectory(0); inChain->Add(inFileNameNow);
-      aLOG(Log::DEBUG) <<coutRed<<" - added chain "<<coutGreen<<inTreeName<<"("<<inChain->GetEntries()<<")"<<" from "<<coutBlue<<inFileNameNow<<coutDef<<endl;
+      TChain  * inChain = new TChain(inTreeNameNow,inTreeNameNow); inChain->SetDirectory(0); inChain->Add(inFileNameNow);
+      aLOG(Log::DEBUG) <<coutRed<<" - added chain "<<coutGreen<<inTreeNameNow<<"("<<inChain->GetEntries()<<")"<<" from "<<coutBlue<<inFileNameNow<<coutDef<<endl;
 
-      VarMaps * var_0   = new VarMaps(glob,utils,(TString)"inputTree_"+inTreeName);
+      VarMaps * var_0   = new VarMaps(glob,utils,(TString)"inputTree_"+inTreeNameNow);
       var_0->connectTreeBranches(inChain);
 
       // get the full list of variables common to both var and var_0
@@ -685,7 +697,6 @@ void CatFormat::inputToSplitTree(TString inAsciiFiles, TString inAsciiVars) {
       branchNameV.clear(); branchNameV_0.clear();
     }
   }
-
 
   // cleanup
   DELNULL(var); DELNULL(rnd);

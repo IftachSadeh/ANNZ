@@ -83,18 +83,48 @@ if glob.annz["doGenInputTrees"]:
   inFileOpt = 1
   # splitTypeTrain - list of files for training. splitTypeTest - list of files for testing
   if   inFileOpt == 0:
-    glob.annz["splitTypeTrain"] = "boss_dr10_0.csv"
-    glob.annz["splitTypeTest"]  = "boss_dr10_1.csv;boss_dr10_2.csv"
+    glob.annz["splitTypeTrain"]  = "boss_dr10_0.csv"
+    glob.annz["splitTypeTest"]   = "boss_dr10_1.csv;boss_dr10_2.csv"
   # inAsciiFiles - one list of input files for training and testing, where the the objects are assigned to a given
   # category based on the selection criteria defined by splitType
   elif inFileOpt == 1:
-    glob.annz["splitType"]      = "serial" # "serial", "blocks" or "random"
-    glob.annz["inAsciiFiles"]   = "boss_dr10_0.csv;boss_dr10_1.csv;boss_dr10_2.csv;boss_dr10_3.csv"
-  # example ofr using a root tree input file, instead of an ascii input
+    glob.annz["splitType"]       = "serial" # "serial", "blocks" or "random"
+    glob.annz["inAsciiFiles"]    = "boss_dr10_0.csv;boss_dr10_1.csv;boss_dr10_2.csv;boss_dr10_3.csv"
+  # example for using a root tree input file, instead of an ascii input (objects split automatically for
+  # training and teting)
   elif inFileOpt == 2:
-    glob.annz["splitType"]      = "serial" # "serial", "blocks" or "random"
-    glob.annz["inTreeName"]     = "ANNZ_tree_full"  
-    glob.annz["inAsciiFiles"]   = "ANNZ_tree_full_00000.root"
+    glob.annz["splitType"]       = "serial" # "serial", "blocks" or "random"
+    glob.annz["inTreeName"]      = "ANNZ_tree_full"  
+    glob.annz["inAsciiFiles"]    = "ANNZ_tree_full_00000.root"
+  # --------------------------------------------------------------------------------------------------
+  # examples for using a root tree input file, instead of an ascii input. in this case, we specify the
+  # names of the files for training and testing separately, where each has the corresponding name of
+  # the input tree. (in the following, the names of input files/trees are just for illustration -
+  # they are not included in the example directory...)
+  # --------------------------------------------------------------------------------------------------
+  # two input files which each contain a root tree of the same name.
+  elif False:
+    # name of input root file and corresponding tree-name for training
+    glob.annz["inTreeNameTrain"] = "tree0"
+    glob.annz["splitTypeTrain"]  = "file0.root"
+    # name of input root file and corresponding tree-name for testing
+    glob.annz["inTreeNameTest"]  = "tree0"
+    glob.annz["splitTypeTest"]   = "file1.root"
+  # two input files with two distinct corresponding tree names
+  elif False:
+    # name of input root file and corresponding tree-name for training
+    glob.annz["inTreeNameTrain"] = "tree0"
+    glob.annz["splitTypeTrain"]  = "file0.root"
+    # name of input root file and corresponding tree-name for testing
+    glob.annz["inTreeNameTest"]  = "tree1"
+    glob.annz["splitTypeTest"]   = "file1.root;file2.root"
+  # a single input file list, where each file contains two distinct trees, one for training and one for testing
+  elif False:
+    glob.annz["inAsciiFiles"]    = "file0.root;file1.root"
+    glob.annz["inTreeNameTrain"] = "tree0"
+    glob.annz["inTreeNameTest"]  = "tree1"
+
+
   else:
     inFileOpt("Unsupported...",False)
 

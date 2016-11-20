@@ -211,8 +211,13 @@ myANNZ::myANNZ() {
   glob->NewOptB("trainTestTogether_wgtKNN",true);
 
   // input files (given by splitTypeTrain, splitTypeTest and inAsciiFiles) may also be root files, containing
-  // root trees, instead of ascii files. In this case, the name of the tree in the input files is defined in inTreeName
-  glob->NewOptC("inTreeName"     ,"");
+  // root trees, instead of ascii files. In this case, the name of the tree in the input files is
+  // defined in inTreeName. one may alternatively define separate tree names for training and
+  // testing, using inTreeNameTrain and inTreeNameTest.
+  glob->NewOptC("inTreeName"      ,"");
+  glob->NewOptC("inTreeNameTrain" ,"");
+  glob->NewOptC("inTreeNameTest"  ,"");
+
   // if root input is given in inAsciiFiles_wgtKNN, the corresponding tree name is defined in treeName_wgtKNN
   glob->NewOptC("inTreeName_wgtKNN"     ,"");
 
