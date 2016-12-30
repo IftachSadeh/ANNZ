@@ -46,11 +46,12 @@ Randomized classification may be used for general classification problems. In th
 
   - python 2.7 or higher.
   - gcc 4.3 or higher.
-  - ROOT 5.34/11 or higher.
+  - ROOT 5.34/11 to 6.06.
 
 ### Download (and if needed install) ROOT
 
-ROOT is available [here](https://root.cern.ch/drupal/content/downloading-root). ROOT v5.34/25 was used for development, and v6.02/05 for testing. Later ROOT versions should also be compatible (please report any issues).
+ROOT is available [here](https://root.cern.ch/drupal/content/downloading-root). ROOT v5.34/25 was used for development, and v6.06 for testing. At the moment, ROOT version 6.08 is NOT supported.
+<!-- Later ROOT versions should also be compatible (please report any issues). -->
 
 Lets assume we want to install ROOT at `/home/work/root`. We can get ROOT, in one of two ways (as explained on the ROOT site):
 

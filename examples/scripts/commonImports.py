@@ -14,6 +14,8 @@ annz         = dict()
 
 log          = logging.getLogger('annzLog')
 annzDir      = os.getcwd() if not "ANNZSYS" in os.environ else os.environ["ANNZSYS"]
+if annzDir[-1] is not "/":
+  annzDir += "/"
 libDirName   = os.path.join(annzDir,"lib")
 exeName      = os.path.join(libDirName,"myANNZ")
 
