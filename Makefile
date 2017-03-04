@@ -22,7 +22,8 @@ include $(ROOTSYS)/etc/Makefile.arch
 endif
 # Tutorials dir needed by stressProof
 ifneq ($(RCONFIG),)
-TUTDIR := $(wildcard $(shell grep ROOTDOCDIR $(RCONFIG) | sed "s|.*\"\(.*\)\"|\1|")/tutorials)
+# TUTDIR := $(wildcard $(shell grep ROOTDOCDIR $(RCONFIG) | sed "s|.*\"\(.*\)\"|\1|")/tutorials)
+TUTDIR := $(ROOTSYS)/tutorials
 endif
 ifeq ($(TUTDIR),)
 ifeq ($(ROOTSYS),)
@@ -72,13 +73,15 @@ BaseClassS      = BaseClass.$(SrcSuf)
 CatFormatS      = CatFormat.$(SrcSuf) 	
 ANNZS        		= ANNZ.$(SrcSuf) 				
 
-OptMapsSO       = libOptMaps.$(DllSuf)
-UtilsSO       	= libUtils.$(DllSuf)
-VarMapsSO       = libVarMaps.$(DllSuf)
-OutMngrSO	      = libOutMngr.$(DllSuf)
-BaseClassSO			= libBaseClass.$(DllSuf)
-CatFormatSO			= libCatFormat.$(DllSuf)
-ANNZSO					= libANNZ.$(DllSuf)
+SoSuf := so
+
+OptMapsSO       = libOptMaps.$(SoSuf)
+UtilsSO       	= libUtils.$(SoSuf)
+VarMapsSO       = libVarMaps.$(SoSuf)
+OutMngrSO	      = libOutMngr.$(SoSuf)
+BaseClassSO			= libBaseClass.$(SoSuf)
+CatFormatSO			= libCatFormat.$(SoSuf)
+ANNZSO					= libANNZ.$(SoSuf)
 
 ifeq ($(PLATFORM),win32)
 	OptMapsLIB      	= libOptMaps.lib
@@ -124,9 +127,9 @@ ifeq ($(PLATFORM),macosx)
 # We need to make both the .dylib and the .so
 		$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@ $(EXPLLINKLIBS)
 ifneq ($(subst $(MACOSX_MINOR),,1234),1234)
-ifeq ($(MACOSX_MINOR),4)
-		ln -sf $@ $(subst .$(DllSuf),.so,$@)
-endif
+# ifeq ($(MACOSX_MINOR),4)
+# 		ln -sf $@ $(subst .$(DllSuf),.so,$@)
+# endif
 endif
 else
 ifeq ($(PLATFORM),win32)
@@ -154,9 +157,9 @@ ifeq ($(PLATFORM),macosx)
 # We need to make both the .dylib and the .so
 		$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@ $(EXPLLINKLIBS)
 ifneq ($(subst $(MACOSX_MINOR),,1234),1234)
-ifeq ($(MACOSX_MINOR),4)
-		ln -sf $@ $(subst .$(DllSuf),.so,$@)
-endif
+# ifeq ($(MACOSX_MINOR),4)
+# 		ln -sf $@ $(subst .$(DllSuf),.so,$@)
+# endif
 endif
 else
 ifeq ($(PLATFORM),win32)
@@ -184,9 +187,9 @@ ifeq ($(PLATFORM),macosx)
 # We need to make both the .dylib and the .so
 		$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@ $(EXPLLINKLIBS)
 ifneq ($(subst $(MACOSX_MINOR),,1234),1234)
-ifeq ($(MACOSX_MINOR),4)
-		ln -sf $@ $(subst .$(DllSuf),.so,$@)
-endif
+# ifeq ($(MACOSX_MINOR),4)
+# 		ln -sf $@ $(subst .$(DllSuf),.so,$@)
+# endif
 endif
 else
 ifeq ($(PLATFORM),win32)
@@ -215,9 +218,9 @@ ifeq ($(PLATFORM),macosx)
 # We need to make both the .dylib and the .so
 		$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@ $(EXPLLINKLIBS)
 ifneq ($(subst $(MACOSX_MINOR),,1234),1234)
-ifeq ($(MACOSX_MINOR),4)
-		ln -sf $@ $(subst .$(DllSuf),.so,$@)
-endif
+# ifeq ($(MACOSX_MINOR),4)
+# 		ln -sf $@ $(subst .$(DllSuf),.so,$@)
+# endif
 endif
 else
 ifeq ($(PLATFORM),win32)
@@ -245,9 +248,9 @@ ifeq ($(PLATFORM),macosx)
 # We need to make both the .dylib and the .so
 		$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@ $(EXPLLINKLIBS)
 ifneq ($(subst $(MACOSX_MINOR),,1234),1234)
-ifeq ($(MACOSX_MINOR),4)
-		ln -sf $@ $(subst .$(DllSuf),.so,$@)
-endif
+# ifeq ($(MACOSX_MINOR),4)
+# 		ln -sf $@ $(subst .$(DllSuf),.so,$@)
+# endif
 endif
 else
 ifeq ($(PLATFORM),win32)
@@ -275,9 +278,9 @@ ifeq ($(PLATFORM),macosx)
 # We need to make both the .dylib and the .so
 		$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@ $(EXPLLINKLIBS)
 ifneq ($(subst $(MACOSX_MINOR),,1234),1234)
-ifeq ($(MACOSX_MINOR),4)
-		ln -sf $@ $(subst .$(DllSuf),.so,$@)
-endif
+# ifeq ($(MACOSX_MINOR),4)
+# 		ln -sf $@ $(subst .$(DllSuf),.so,$@)
+# endif
 endif
 else
 ifeq ($(PLATFORM),win32)
@@ -306,9 +309,9 @@ ifeq ($(PLATFORM),macosx)
 # We need to make both the .dylib and the .so
 		$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@ $(EXPLLINKLIBS)
 ifneq ($(subst $(MACOSX_MINOR),,1234),1234)
-ifeq ($(MACOSX_MINOR),4)
-		ln -sf $@ $(subst .$(DllSuf),.so,$@)
-endif
+# ifeq ($(MACOSX_MINOR),4)
+# 		ln -sf $@ $(subst .$(DllSuf),.so,$@)
+# endif
 endif
 else
 ifeq ($(PLATFORM),win32)

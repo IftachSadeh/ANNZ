@@ -28,6 +28,10 @@
 #include "TMVA/MethodBase.h"
 #include "TMVA/PDF.h"
 
+#if ROOT_VERSION_CODE >= ROOT_VERSION(6,8,0) 
+#include "TMVA/DataLoader.h"
+#endif
+
 // -----------------------------------------------------------------------------------------------------------
 // hack to make all the private elements of MethodKNN accecible
 // -----------------------------------------------------------------------------------------------------------
@@ -111,7 +115,7 @@ private:
   // -----------------------------------------------------------------------------------------------------------
   // ANNZ_TMVA.cpp :
   // -----------------------------------------------------------------------------------------------------------
-  void              prepFactory(int nMLMnow = -1, TMVA::Factory * factory = NULL, bool isBiasMLM = false);
+  void              prepFactory(int nMLMnow = -1, TMVA::Configurable * configIn = NULL, bool isBiasMLM = false);
   void              doFactoryTrain(TMVA::Factory * factory);
   void              clearReaders(Log::LOGtypes logLevel = Log::DEBUG_1);
   void              loadReaders(map <TString,bool> & mlmSkipNow, bool needMcPRB = true);
@@ -124,9 +128,11 @@ private:
   // ANNZ_err.cpp :
   // -----------------------------------------------------------------------------------------------------------
   void     createTreeErrKNN(int nMLMnow);
-  void     setupKdTreeKNN(TChain * aChainKnn, TFile *& knnErrOutFile, TMVA::Factory *& knnErrFactory, TMVA::kNN::ModulekNN *& knnErrModule,
+  void     setupKdTreeKNN(TChain * aChainKnn, TFile *& knnErrOutFile, TMVA::Factory *& knnErrFactory,
+                          TMVA::Configurable *& knnErrDataLdr, TMVA::kNN::ModulekNN *& knnErrModule,
                           vector <int> & trgIndexV, int nMLMnow, TCut cutsAll, TString wgtAll);
-  void     cleanupKdTreeKNN(TFile *& knnErrOutFile, TMVA::Factory *& knnErrFactory, bool verb = false);
+  void     cleanupKdTreeKNN(TFile *& knnErrOutFile, TMVA::Factory *& knnErrFactory,
+                            TMVA::Configurable *& knnErrDataLdr, bool verb = false);
   void     getRegClsErrKNN(VarMaps * var, TMVA::kNN::ModulekNN * knnErrModule, vector <int> & trgIndexV,
                            vector <int> & nMLMv, bool isREG, vector < vector <double> > & zErrV);
 

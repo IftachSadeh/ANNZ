@@ -137,7 +137,8 @@ void ANNZ::createTreeErrKNN(int nMLMnow) {
  * 
  * @param aChainKnn      - A chain linked to the training dataset.
  * @param knnErrOutFile  - A TFile which is created as part of the setup of the TMVA::Factory (needs to be deleted suring cleanup).
- * @param knnErrFactory  - A pointed to the TMVA::Factory which is created here.
+ * @param knnErrFactory  - A pointer to the TMVA::Factory which is created here.
+ * @param knnErrDataLdr  - A pointer to the TMVA::DataLoader, needed for ROOT versions > 6.8.
  * @param knnErrModule   - A pointer to the TMVA::kNN::ModulekNN which is created by the TMVA::Factory, and is later
  *                       used to get the near-neighbours in getRegClsErrKNN().
  * @param trgIndexV      - container to keep track of how MLM indices are arranged in the KNN target list
@@ -147,8 +148,9 @@ void ANNZ::createTreeErrKNN(int nMLMnow) {
  */
 // ===========================================================================================================
 void ANNZ::setupKdTreeKNN(TChain * aChainKnn, TFile *& knnErrOutFile, TMVA::Factory *& knnErrFactory,
-                          TMVA::kNN::ModulekNN *& knnErrModule, vector <int> & trgIndexV, int nMLMnow, TCut cutsAll, TString wgtAll) {
-// ===================================================================================================================================
+                          TMVA::Configurable *& knnErrDataLdr, TMVA::kNN::ModulekNN *& knnErrModule,
+                          vector <int> & trgIndexV, int nMLMnow, TCut cutsAll, TString wgtAll) {
+// =============================================================================================
 
   int     nMLMs           = glob->GetOptI("nMLMs");
   TString MLMname         = getTagName(nMLMnow);
@@ -184,6 +186,16 @@ void ANNZ::setupKdTreeKNN(TChain * aChainKnn, TFile *& knnErrOutFile, TMVA::Fact
   TString outFileNameTrain = getKeyWord(MLMname,"knnErrXML","outFileNameKnnErr");
   knnErrOutFile            = new TFile(outFileNameTrain,"RECREATE");
   knnErrFactory            = new TMVA::Factory(typeANNZ, knnErrOutFile, (TString)verbLvlF+drawProgBarStr+transStr+analysType);    
+
+  #if ROOT_TMVA_V0
+  typedef TMVA::Factory def_dataLoader;
+
+  knnErrDataLdr = knnErrFactory;
+  #else
+  typedef TMVA::DataLoader def_dataLoader;
+
+  knnErrDataLdr =  new TMVA::DataLoader("./");;
+  #endif
 
   // since all variables are read-in from TTreeFormula, we define them as floats ("F") in the factory
   int  nInVar = (int)inNamesVar[nMLMnow].size();
@@ -249,7 +261,7 @@ void ANNZ::setupKdTreeKNN(TChain * aChainKnn, TFile *& knnErrOutFile, TMVA::Fact
     }
 
     // set the input variable in the tree
-    knnErrFactory->AddVariable(varScaled,varScaled,"",'F');
+    ((def_dataLoader*)knnErrDataLdr)->AddVariable(varScaled,varScaled,"",'F');
   }
 
   // add targets for all available MLMs
@@ -261,7 +273,7 @@ void ANNZ::setupKdTreeKNN(TChain * aChainKnn, TFile *& knnErrOutFile, TMVA::Fact
   for(int nBranchNameNow=0; nBranchNameNow<(int)branchNameV.size(); nBranchNameNow++) {
     TString branchName = branchNameV[nBranchNameNow];  if(!branchName.Contains(baseTag_errKNN)) continue;
 
-    knnErrFactory->AddTarget(branchName,branchName);
+    ((def_dataLoader*)knnErrDataLdr)->AddTarget(branchName,branchName);
     
     int indexErrKNN = getErrKNNtagNow(branchName);
     trgIndexV[indexErrKNN] = nTrgIn;
@@ -307,11 +319,20 @@ void ANNZ::setupKdTreeKNN(TChain * aChainKnn, TFile *& knnErrOutFile, TMVA::Fact
   // let TMVA know the name of the XML file
   (TMVA::gConfig().GetIONames()).fWeightFileDir = getKeyWord(MLMname,"trainXML","outFileDirTrain");
 
-  knnErrFactory->AddRegressionTree(aChainKnn, 1, TMVA::Types::kTraining);
-  knnErrFactory->SetWeightExpression(wgtAll,"Regression");
-  knnErrFactory->PrepareTrainingAndTestTree(cutsAll,trainValidStr);
+  ((def_dataLoader*)knnErrDataLdr)->AddRegressionTree(aChainKnn, 1, TMVA::Types::kTraining);
+  ((def_dataLoader*)knnErrDataLdr)->SetWeightExpression(wgtAll,"Regression");
+  ((def_dataLoader*)knnErrDataLdr)->PrepareTrainingAndTestTree(cutsAll,trainValidStr);
 
-  TMVA::MethodKNN * knnErrMethod = dynamic_cast<TMVA::MethodKNN*>(knnErrFactory->BookMethod(TMVA::Types::kKNN, baseName_knnErr,(TString)optKNN+verbLvlM));
+  #if ROOT_TMVA_V0
+  TMVA::MethodKNN * knnErrMethod = dynamic_cast<TMVA::MethodKNN*>(
+    knnErrFactory->BookMethod(TMVA::Types::kKNN, baseName_knnErr, (TString)optKNN+verbLvlM)
+  );
+  #else
+  TMVA::MethodKNN * knnErrMethod = dynamic_cast<TMVA::MethodKNN*>(
+    knnErrFactory->BookMethod(((def_dataLoader*)knnErrDataLdr), TMVA::Types::kKNN, baseName_knnErr, (TString)optKNN+verbLvlM)
+  );
+  #endif
+  
   knnErrModule = knnErrMethod->fModule;
 
   // fill the module with events made from the tree entries and create the binary tree
@@ -357,16 +378,29 @@ void ANNZ::setupKdTreeKNN(TChain * aChainKnn, TFile *& knnErrOutFile, TMVA::Fact
  * @brief                - Clean up the objects created for KNN error estimation.
  * 
  * @param knnErrOutFile  - A TFile which was created as part of the setup of the TMVA::Factory in setupKdTreeKNN().
- * @param knnErrFactory  - A pointed to the TMVA::Factory which was created in setupKdTreeKNN().
+ * @param knnErrFactory  - A pointer to the TMVA::Factory which was created in setupKdTreeKNN().
+ * @param knnErrDataLdr  - A pointer to the TMVA::DataLoader, needed for ROOT versions > 6.8.
  * @param verb           - Flag for activating debugging output.
  */
 // ===========================================================================================================
-void ANNZ::cleanupKdTreeKNN(TFile *& knnErrOutFile, TMVA::Factory *& knnErrFactory, bool verb) {
-// =============================================================================================
+void ANNZ::cleanupKdTreeKNN(TFile *& knnErrOutFile, TMVA::Factory *& knnErrFactory,
+                            TMVA::Configurable *& knnErrDataLdr, bool verb) {
+// ==========================================================================
   TString message("");
   
   message = "knnErrFactory"; if(knnErrFactory) message += (TString)": "+knnErrFactory->GetName();
   DELNULL_(LOCATION,knnErrFactory,message,verb);
+
+  // we use the if-condition for knnErrDataLdr even for ROOT_TMVA_V0, and avoid an "unused warning"
+  if(knnErrDataLdr) {
+    #if !ROOT_TMVA_V0
+    // since knnErrDataLdr points to knnErrFactory in case of ROOT_TMVA_V0, then the "if(knnErrDataLdr)"
+    // check will result in a seg fault - knnErrDataLdr will be valid, but not point to an object...
+    // therefore we must bracket all of this block within the ROOT_TMVA_V0 check!
+    message = "knnErrDataLdr"; if(knnErrDataLdr) message += (TString)": "+knnErrDataLdr->GetName();
+    DELNULL_(LOCATION,knnErrDataLdr,message,verb);
+    #endif
+  }
 
   message = "knnErrOutFile"; if(knnErrOutFile) message += (TString)": "+knnErrOutFile->GetName();
   DELNULL_(LOCATION,knnErrOutFile,message,verb);

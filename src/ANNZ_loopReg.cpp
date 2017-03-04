@@ -1379,8 +1379,9 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
         }
 
         double intgrZtrg = funcModelV[nModelNow]->Integral(minValZ,zTrg);
-        double intgrNorm  = funcModelV[nModelNow]->Integral(minValZ,maxValZ);
-        double intgrRelZs = 0;
+        double intgrNorm = funcModelV[nModelNow]->Integral(minValZ,maxValZ);
+        
+        double intgrRelZs(0);
         if(intgrNorm > 0) intgrRelZs = intgrZtrg / intgrNorm;
         else              intgrRelZs = (delta > 0) ? 1 - EPS : EPS;
 
@@ -1393,8 +1394,12 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
       double intgr =     hisIntgrZtrgSimV[nPDFnow][nModelNow]->Integral();
       if(intgr > 0)      hisIntgrZtrgSimV[nPDFnow][nModelNow]->Scale(1/intgr);
 
-      if(nModelNow < 4)  hisIntgrZtrgSimV[nPDFnow][nModelNow]->SetTitle(TString::Format("G(%2.2f #sigma_{68})"         ,sigFracForTitle[nModelNow]));
-      else               hisIntgrZtrgSimV[nPDFnow][nModelNow]->SetTitle(TString::Format("G(%2.2f #sigma_{68}) #oplus G",sigFracForTitle[nModelNow]));
+      if(nModelNow < 4) {
+        hisIntgrZtrgSimV[nPDFnow][nModelNow]->SetTitle(TString::Format("G(%2.2f #sigma_{68})"         ,sigFracForTitle[nModelNow]));
+      }
+      else {
+        hisIntgrZtrgSimV[nPDFnow][nModelNow]->SetTitle(TString::Format("G(%2.2f #sigma_{68}) #oplus G",sigFracForTitle[nModelNow]));
+      }
     }
 
     sigFracForTitle.clear();
@@ -2345,6 +2350,7 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
       VarMaps                                   * varKNN(NULL);            vector <TChain *>        aChainKnn(2,NULL);
       vector <TFile *>                          knnErrOutFile(nMLMs,NULL); vector <TMVA::Factory *> knnErrFactory(nMLMs,NULL);
       vector <TMVA::kNN::ModulekNN *>           knnErrModule(nMLMs,NULL);  vector <int>             trgIndexV;
+      vector <TMVA::Configurable *>             knnErrDataLdr(nMLMs,NULL);
 
       if(hasErrKNN && nLoopTypeNow == 0) {
         TString inTreeNameKnn = getKeyWord("","treeErrKNN","treeErrKNNname");
@@ -2385,13 +2391,17 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
             aLOG(Log::DEBUG_2) <<coutBlue<<" - registering a new cmbination of input-variables and cuts ["<<coutYellow<<inputComboNow<<coutBlue
                                <<"] - in "<<coutGreen<<MLMname<<coutDef<<endl;
 
-            setupKdTreeKNN(aChainKnn[0],knnErrOutFile[nMLMnow],knnErrFactory[nMLMnow],knnErrModule[nMLMnow],trgIndexV,nMLMnow,cutsNow,wgtReg);
+            setupKdTreeKNN( aChainKnn[0],knnErrOutFile[nMLMnow],knnErrFactory[nMLMnow],knnErrDataLdr[nMLMnow],
+                            knnErrModule[nMLMnow],trgIndexV,nMLMnow,cutsNow,wgtReg );
           }
           // if existing combination of variables and cuts, assign to the correct index
           else {
             int nMLMprev = allInputCombos[inputComboNow];
 
-            knnErrOutFile[nMLMnow] = knnErrOutFile[nMLMprev]; knnErrFactory[nMLMnow] = knnErrFactory[nMLMprev]; knnErrModule[nMLMnow] = knnErrModule[nMLMprev];
+            knnErrOutFile[nMLMnow] = knnErrOutFile[nMLMprev];
+            knnErrFactory[nMLMnow] = knnErrFactory[nMLMprev];
+            knnErrDataLdr[nMLMnow] = knnErrDataLdr[nMLMprev];
+            knnErrModule [nMLMnow] = knnErrModule [nMLMprev];
 
             aLOG(Log::DEBUG_1) <<coutPurple<<" - For "<<coutYellow<<MLMname<<coutPurple<<" found existing combination of variables/cuts"
                                <<" for kd-tree from "<<coutGreen<<getTagName(nMLMprev)<<coutDef<<endl;
@@ -2876,7 +2886,7 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
         for(map <TString,int>::iterator Itr=allInputCombos.begin(); Itr!=allInputCombos.end(); ++Itr) {
           int nMLMnow = Itr->second; TString MLMname = getTagName(nMLMnow);
 
-          cleanupKdTreeKNN(knnErrOutFile[nMLMnow],knnErrFactory[nMLMnow]);
+          cleanupKdTreeKNN(knnErrOutFile[nMLMnow],knnErrFactory[nMLMnow],knnErrDataLdr[nMLMnow]);
 
           utils->safeRM(getKeyWord(MLMname,"knnErrXML","outFileDirKnnErr"), inLOG(Log::DEBUG_1));
           utils->safeRM(getKeyWord(MLMname,"knnErrXML","outFileNameKnnErr"),inLOG(Log::DEBUG_1));
@@ -2884,7 +2894,8 @@ void  ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * s
         DELNULL(varKNN);
         aChainKnn[0]->RemoveFriend(aChainKnn[1]); DELNULL(aChainKnn[0]); DELNULL(aChainKnn[1]);
       }
-      knnErrOutFile.clear(); knnErrFactory.clear(); knnErrModule.clear(); trgIndexV.clear(); aChainKnn.clear(); getErrKNN.clear(); allInputCombos.clear();
+      knnErrOutFile.clear(); knnErrFactory.clear(); knnErrDataLdr.clear(); knnErrModule.clear();
+      trgIndexV.clear(); aChainKnn.clear(); getErrKNN.clear(); allInputCombos.clear();
 
       mlmSkipDivded.clear();
 

@@ -609,7 +609,9 @@ void myANNZ::Init() {
   // -----------------------------------------------------------------------------------------------------------
   // current version-tag for the code
   // -----------------------------------------------------------------------------------------------------------
-  TString basePrefix("ANNZ_"), versionTag("2.2.1");
+  TString basePrefix("ANNZ_"), versionTag("2.2.2");
+  // sanity check on allowed root versions with corresponding supported TMVA versions
+  VERIFY(LOCATION,(TString)" - Using unsupported ROOT version ... ?!?!?",(ROOT_TMVA_V0 || ROOT_TMVA_V1));
   // -----------------------------------------------------------------------------------------------------------
 
   // check user string-input
@@ -676,11 +678,17 @@ void myANNZ::Init() {
   
   // after possible re-setting of GetOptB("useCoutCol"), run setColors() again
   setColors();
+  
   // initialize the logger
   Log::theLog::ReportingLevel() = Log::theLog::FromString((std::string)glob->GetOptC("logLevel"));
 
-  aLOG(Log::INFO)<<glob->coutGreen<<" ----------------------------------------------"       <<glob->coutDef<<endl;
-  aLOG(Log::INFO)<<glob->coutGreen<<" - Welcome to ANNZ v"<<versionTag<<" !"                <<glob->coutDef<<endl;
+  // gErrorIgnoreLevel, the global verbosity setting for ROOT, may be one of:
+  //   kPrint, kInfo, kWarning, kError, kBreak, kSysError, kFatal
+  gErrorIgnoreLevel = (glob->GetOptC("logLevel").BeginsWith("DEBUG")) ? kWarning : kFatal;
+
+  aLOG(Log::INFO)<<glob->coutGreen<<" -----------------------------------------------------"<<glob->coutDef<<endl;
+  aLOG(Log::INFO)<<glob->coutGreen<<" - Welcome to ANNZ v"<<versionTag
+                                  <<" (using ROOT v"<<ROOT_RELEASE<<") -"                   <<glob->coutDef<<endl;
   aLOG(Log::INFO)<<glob->coutGreen<<" -----------------------------------------------------"
                                   <<"------------------------------------------------------"<<glob->coutDef<<endl;
 

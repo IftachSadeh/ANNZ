@@ -1,4 +1,4 @@
-# ANNZ v2.2.1
+# ANNZ v2.2.2
 
 ## Introduction
 ANNZ uses both regression and classification techniques for estimation of single-value photo-z (or any regression problem) solutions and PDFs. In addition it is suitable for classification problems, such as star/galaxy classification.
@@ -46,36 +46,13 @@ Randomized classification may be used for general classification problems. In th
 
   - python 2.7 or higher.
   - gcc 4.3 or higher.
-  - ROOT 5.34/11 to 6.06.
+  - ROOT 5.34/11 or higher.
 
 ### Download (and if needed install) ROOT
 
-ROOT is available [here](https://root.cern.ch/drupal/content/downloading-root). ROOT v5.34/25 was used for development, and v6.06 for testing. At the moment, ROOT version 6.08 is NOT supported.
-<!-- Later ROOT versions should also be compatible (please report any issues). -->
+ROOT is available [here](https://root.cern.ch/downloading-root). ROOT v5.34/25 was used for development, and v6.06 for testing. Later ROOT versions should also be compatible (please report any issues).
 
-Lets assume we want to install ROOT at `/home/work/root`. We can get ROOT, in one of two ways (as explained on the ROOT site):
-
-  1. It is possible to download a pre-compiled directory for modern operating systems. For instance, for OSX 10.10 x86-64 with clang 6.0 (ROOT version   5.34.25), do:
-  ```bash
-  cd /home/work
-  wget http://root.cern.ch/download/root_v5.34.25.macosx64-10.10-i386.tar.gz
-  tar xvfz root_v5.34.25.macosx64-10.10-i386.tar.gz
-  ```
-
-  2. Alternatively, one may download the source files and compile from scratch. This would require something like:
-  ```bash
-  cd /home/work
-  wget http://root.cern.ch/download/root_v5.34.25.source.tar.gz
-  tar xvfz root_v5.34.25.source.tar.gz
-  cd root
-  ./configure
-  make
-  ```
-
-In order to check that ROOT is properly installed, do:
-```bash
-/home/work/root/bin/root -b -q
-```
+For installation instructions, go [here](https://root.cern.ch/building-root). Notice the pre-compiled versions available for common operating systems.
 
 ### Install ANNZ
 

@@ -196,6 +196,7 @@ void ANNZ::onlyKnnErr_eval() {
   // -----------------------------------------------------------------------------------------------------------
   VarMaps * varKNN(NULL);        vector <TChain *> aChainKnn(2,NULL);   vector <int>         trgIndexV;
   TFile   * knnErrOutFile(NULL); TMVA::Factory *   knnErrFactory(NULL); TMVA::kNN::ModulekNN * knnErrModule(NULL);
+  TMVA::Configurable * knnErrDataLdr(NULL);
 
   TString inTreeNameKnn = getKeyWord("","treeErrKNN","treeErrKNNname");
   TString inFileNameKnn = glob->GetOptC("inputTreeDirName")+inTreeNameKnn+"*.root";
@@ -219,7 +220,8 @@ void ANNZ::onlyKnnErr_eval() {
   TString wgtReg  = (TString)((knnErrWgt == "") ? weightKNN : (TString)"("+weightKNN+")*("+knnErrWgt+")");
   wgtReg = getRegularStrForm(wgtReg,varKNN);
 
-  setupKdTreeKNN(aChainKnn[0],knnErrOutFile,knnErrFactory,knnErrModule,trgIndexV,nMLMnow,cutsNow,wgtReg);
+  setupKdTreeKNN( aChainKnn[0],knnErrOutFile,knnErrFactory,knnErrDataLdr,
+                  knnErrModule,trgIndexV,nMLMnow,cutsNow,wgtReg );
 
   // -----------------------------------------------------------------------------------------------------------
   // define VarMaps to access the evaluated dataset and for writing the output
@@ -371,7 +373,7 @@ void ANNZ::onlyKnnErr_eval() {
   // cleanup
   addVarV.clear(); varTypeNameV.clear(); nMLMv.clear(); regErrV.clear();
 
-  DELNULL(aChain); DELNULL(varKNN); cleanupKdTreeKNN(knnErrOutFile,knnErrFactory);
+  DELNULL(aChain); DELNULL(varKNN); cleanupKdTreeKNN(knnErrOutFile,knnErrFactory,knnErrDataLdr);
 
   aChainKnn[0]->RemoveFriend(aChainKnn[1]); DELNULL(aChainKnn[0]); DELNULL(aChainKnn[1]);
 

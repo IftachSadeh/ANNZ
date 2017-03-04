@@ -571,6 +571,7 @@ void  ANNZ::doEvalCls() {
   VarMaps                                   * varKNN(NULL);            vector <TChain *>        aChainKnn(2,NULL);
   vector <TFile *>                          knnErrOutFile(nMLMs,NULL); vector <TMVA::Factory *> knnErrFactory(nMLMs,NULL);
   vector <TMVA::kNN::ModulekNN *>           knnErrModule(nMLMs,NULL);  vector <int>             trgIndexV;
+  vector <TMVA::Configurable *>             knnErrDataLdr(nMLMs,NULL);
 
   if(hasErrKNN) {
     TString inTreeNameKnn = getKeyWord("","treeErrKNN","treeErrKNNname");
@@ -610,13 +611,17 @@ void  ANNZ::doEvalCls() {
         aLOG(Log::DEBUG_2) <<coutBlue<<" - registering a new cmbination of input-variables and cuts ["<<coutYellow<<inputComboNow<<coutBlue
                            <<"] - in "<<coutGreen<<MLMname<<coutDef<<endl;
 
-        setupKdTreeKNN(aChainKnn[0],knnErrOutFile[nMLMnow],knnErrFactory[nMLMnow],knnErrModule[nMLMnow],trgIndexV,nMLMnow,cutsNow,wgtCls);
+        setupKdTreeKNN( aChainKnn[0],knnErrOutFile[nMLMnow],knnErrFactory[nMLMnow],knnErrDataLdr[nMLMnow],
+                        knnErrModule[nMLMnow],trgIndexV,nMLMnow,cutsNow,wgtCls );
       }
       // if existing combination of variables and cuts, assign to the correct index
       else {
         int nMLMprev = allInputCombos[inputComboNow];
 
-        knnErrOutFile[nMLMnow] = knnErrOutFile[nMLMprev]; knnErrFactory[nMLMnow] = knnErrFactory[nMLMprev]; knnErrModule[nMLMnow] = knnErrModule[nMLMprev];
+        knnErrOutFile[nMLMnow] = knnErrOutFile[nMLMprev];
+        knnErrFactory[nMLMnow] = knnErrFactory[nMLMprev];
+        knnErrDataLdr[nMLMnow] = knnErrDataLdr[nMLMprev];
+        knnErrModule [nMLMnow] = knnErrModule [nMLMprev];
 
         aLOG(Log::DEBUG_1) <<coutPurple<<" - For "<<coutYellow<<MLMname<<coutPurple<<" found existing combination of variables/cuts"
                            <<" for kd-tree from "<<coutGreen<<getTagName(nMLMprev)<<coutDef<<endl;
@@ -801,7 +806,7 @@ void  ANNZ::doEvalCls() {
     for(map <TString,int>::iterator Itr=allInputCombos.begin(); Itr!=allInputCombos.end(); ++Itr) {
       int nMLMnow = Itr->second; TString MLMname = getTagName(nMLMnow);
 
-      cleanupKdTreeKNN(knnErrOutFile[nMLMnow],knnErrFactory[nMLMnow]);
+      cleanupKdTreeKNN(knnErrOutFile[nMLMnow],knnErrFactory[nMLMnow],knnErrDataLdr[nMLMnow]);
 
       utils->safeRM(getKeyWord(MLMname,"knnErrXML","outFileDirKnnErr"), inLOG(Log::DEBUG_1));
       utils->safeRM(getKeyWord(MLMname,"knnErrXML","outFileNameKnnErr"),inLOG(Log::DEBUG_1));
@@ -809,7 +814,8 @@ void  ANNZ::doEvalCls() {
     DELNULL(varKNN);
     aChainKnn[0]->RemoveFriend(aChainKnn[1]); DELNULL(aChainKnn[0]); DELNULL(aChainKnn[1]);
   }
-  knnErrOutFile.clear(); knnErrFactory.clear(); knnErrModule.clear(); trgIndexV.clear(); aChainKnn.clear(); getErrKNN.clear(); allInputCombos.clear();
+  knnErrOutFile.clear(); knnErrFactory.clear(); knnErrDataLdr.clear(); knnErrModule.clear();
+  trgIndexV.clear(); aChainKnn.clear(); getErrKNN.clear(); allInputCombos.clear();
 
 
   DELNULL(aChain);

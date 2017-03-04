@@ -1,6 +1,7 @@
 # Changelog
 
-## Master version (20/11/2016)
+<!-- ## Master version (???????) -->
+## ANNZ v2.2.2 (04/03/2017)
 
 - Added the option to to *not* store the full value of pdfs in the output of optimization/evaluation, by setting
   ```python
@@ -17,7 +18,7 @@ In this case, only the average metrics of a pdf are included in the output.
 
 - Added support for input ROOT files with different Tree names.
 
-- Updated `README.md`.
+- Added support for ROOT version `6.8.*`.
 
 - Other minor modifications and bug fixes.
 

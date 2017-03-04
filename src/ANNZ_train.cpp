@@ -63,7 +63,13 @@ void ANNZ::Train_singleCls() {
   TFile         * outputFile     = new TFile(outFileNameTrain,"RECREATE");
   TMVA::Factory * factory        = new TMVA::Factory(glob->GetOptC("typeANNZ"), outputFile, glob->GetOptC("factoryFlags"));    
 
-  prepFactory(nMLMnow,factory);
+  #if ROOT_TMVA_V0
+  TMVA::Factory    * dataLdr = factory;
+  #else
+  TMVA::DataLoader * dataLdr =  new TMVA::DataLoader("./");
+  #endif
+
+  prepFactory(nMLMnow,dataLdr);
 
   // generate the MLM type/options and store the results in optMap
   // -----------------------------------------------------------------------------------------------------------
@@ -131,14 +137,14 @@ void ANNZ::Train_singleCls() {
                                                                      && nTrain_sig >= minObjTrainTest && nValid_sig >= minObjTrainTest ));
 
   double  clsWeight(1.0); // weight for the entire sample
-  factory->AddSignalTree    (chainM["_train_sig"],clsWeight,TMVA::Types::kTraining);
-  factory->AddSignalTree    (chainM["_valid_sig"],clsWeight,TMVA::Types::kTesting );
-  factory->AddBackgroundTree(chainM["_train_bck"],clsWeight,TMVA::Types::kTraining);
-  factory->AddBackgroundTree(chainM["_valid_bck"],clsWeight,TMVA::Types::kTesting );
+  dataLdr->AddSignalTree    (chainM["_train_sig"],clsWeight,TMVA::Types::kTraining);
+  dataLdr->AddSignalTree    (chainM["_valid_sig"],clsWeight,TMVA::Types::kTesting );
+  dataLdr->AddBackgroundTree(chainM["_train_bck"],clsWeight,TMVA::Types::kTraining);
+  dataLdr->AddBackgroundTree(chainM["_valid_bck"],clsWeight,TMVA::Types::kTesting );
 
   // set the sample-weights
-  factory->SetWeightExpression(wgtTrain,"Signal");
-  factory->SetWeightExpression(wgtTrain,"Background");
+  dataLdr->SetWeightExpression(wgtTrain,"Signal");
+  dataLdr->SetWeightExpression(wgtTrain,"Background");
 
   TString trainValidStr = (TString)sigBckStr+":SplitMode=Random:"+factoryNorm;
 
@@ -155,10 +161,17 @@ void ANNZ::Train_singleCls() {
   aLOG(Log::INFO) <<coutCyan<<LINE_FILL('-',100)<<coutDef<<endl;
 
   // cuts have already been applied during splitToSigBckTrees(), so leave empty here
-  factory->PrepareTrainingAndTestTree((TCut)"",trainValidStr);
+  dataLdr->PrepareTrainingAndTestTree((TCut)"",trainValidStr);
 
   TMVA::Types::EMVA typeNow = getTypeMLMbyName(mlmType);
-  factory->BookMethod(typeNow,MLMname,mlmOpt+glob->GetOptC("trainFlagsMLM")); typeMLM[nMLMnow] = typeNow;
+  
+  #if ROOT_TMVA_V0
+  factory->BookMethod(typeNow,MLMname,mlmOpt+glob->GetOptC("trainFlagsMLM"));
+  #else
+  factory->BookMethod(dataLdr,typeNow,MLMname,mlmOpt+glob->GetOptC("trainFlagsMLM"));
+  #endif
+
+  typeMLM[nMLMnow] = typeNow;
   
   // -----------------------------------------------------------------------------------------------------------
   // train the factory  
@@ -193,6 +206,10 @@ void ANNZ::Train_singleCls() {
   // -----------------------------------------------------------------------------------------------------------
   DELNULL_(LOCATION,outputFile,(TString)"outputFile",inLOG(Log::DEBUG));
   DELNULL_(LOCATION,factory,   (TString)"factory",   inLOG(Log::DEBUG));
+
+  #if !ROOT_TMVA_V0
+  DELNULL_(LOCATION,dataLdr,   (TString)"dataLdr",   inLOG(Log::DEBUG));
+  #endif
 
   if(!glob->GetOptB("keepTrainingTrees_factory")) utils->safeRM(outFileNameTrain,inLOG(Log::DEBUG));
 
@@ -254,7 +271,13 @@ void ANNZ::Train_singleReg() {
   TFile         * outputFile     = new TFile(outFileNameTrain,"RECREATE");
   TMVA::Factory * factory        = new TMVA::Factory(glob->GetOptC("typeANNZ"), outputFile, glob->GetOptC("factoryFlags"));    
 
-  prepFactory(nMLMnow,factory);
+  #if ROOT_TMVA_V0
+  TMVA::Factory    * dataLdr = factory;
+  #else
+  TMVA::DataLoader * dataLdr =  new TMVA::DataLoader("./");
+  #endif
+
+  prepFactory(nMLMnow,dataLdr);
 
   // generate the MLM type/options and store the results in optMap
   // -----------------------------------------------------------------------------------------------------------
@@ -322,11 +345,11 @@ void ANNZ::Train_singleReg() {
   }
 
   double regWeight(1.0); // weight for the entire sample
-  factory->AddRegressionTree(chainM["_train_cut"], regWeight, TMVA::Types::kTraining);
-  factory->AddRegressionTree(chainM["_valid_cut"], regWeight, TMVA::Types::kTesting );
+  dataLdr->AddRegressionTree(chainM["_train_cut"], regWeight, TMVA::Types::kTraining);
+  dataLdr->AddRegressionTree(chainM["_valid_cut"], regWeight, TMVA::Types::kTesting );
 
   // set the sample-weights  
-  factory->SetWeightExpression(wgtTrain,"Regression");
+  dataLdr->SetWeightExpression(wgtTrain,"Regression");
 
   // deprecated
   TCanvas * tmpCnvs = new TCanvas("tmpCnvs","tmpCnvs");
@@ -353,10 +376,18 @@ void ANNZ::Train_singleReg() {
   aLOG(Log::INFO) <<coutLightBlue<<"   - weights:            "<<coutCyan<<wgtTrain                                        <<coutDef<<endl;
   aLOG(Log::INFO) <<coutCyan<<LINE_FILL('-',100)<<coutDef<<endl;
 
-  factory->PrepareTrainingAndTestTree(cutM["_combined"],trainValidStr);
+  dataLdr->PrepareTrainingAndTestTree(cutM["_combined"],trainValidStr);
+
 
   TMVA::Types::EMVA typeNow = getTypeMLMbyName(mlmType);
-  factory->BookMethod(typeNow,MLMname,mlmOpt+glob->GetOptC("trainFlagsMLM")); typeMLM[nMLMnow] = typeNow;
+
+  #if ROOT_TMVA_V0
+  factory->BookMethod(typeNow,MLMname,mlmOpt+glob->GetOptC("trainFlagsMLM"));
+  #else
+  factory->BookMethod(dataLdr,typeNow,MLMname,mlmOpt+glob->GetOptC("trainFlagsMLM"));
+  #endif
+
+  typeMLM[nMLMnow] = typeNow;
   
   // -----------------------------------------------------------------------------------------------------------
   // train the factory  
@@ -391,6 +422,10 @@ void ANNZ::Train_singleReg() {
   // -----------------------------------------------------------------------------------------------------------
   DELNULL_(LOCATION,outputFile,(TString)"outputFile",inLOG(Log::DEBUG));
   DELNULL_(LOCATION,factory,   (TString)"factory",   inLOG(Log::DEBUG));
+
+  #if !ROOT_TMVA_V0
+  DELNULL_(LOCATION,dataLdr,   (TString)"dataLdr",   inLOG(Log::DEBUG));
+  #endif
 
   if(!glob->GetOptB("keepTrainingTrees_factory")) utils->safeRM(outFileNameTrain,inLOG(Log::DEBUG));
 
@@ -627,14 +662,20 @@ void ANNZ::Train_singleRegBiasCor() {
   TFile         * outputFile     = new TFile(outFileNameTrain,"RECREATE");
   TMVA::Factory * factory        = new TMVA::Factory(glob->GetOptC("typeANNZ"), outputFile, glob->GetOptC("factoryFlags"));    
 
+  #if ROOT_TMVA_V0
+  TMVA::Factory    * dataLdr = factory;
+  #else
+  TMVA::DataLoader * dataLdr =  new TMVA::DataLoader("./");
+  #endif
+
   // prepare the factory, setting [isBiasMLM=true] to use the bias-correction dir structure
-  prepFactory(nMLMnow,factory,true);
+  prepFactory(nMLMnow,dataLdr,true);
 
   double regWeight(1.0); // weight for the entire sample
-  factory->AddRegressionTree(chainM["_train"], regWeight, TMVA::Types::kTraining);
-  factory->AddRegressionTree(chainM["_valid"], regWeight, TMVA::Types::kTesting );
+  dataLdr->AddRegressionTree(chainM["_train"], regWeight, TMVA::Types::kTraining);
+  dataLdr->AddRegressionTree(chainM["_valid"], regWeight, TMVA::Types::kTesting );
 
-  factory->SetWeightExpression(wgtTrain,"Regression");
+  dataLdr->SetWeightExpression(wgtTrain,"Regression");
 
   TString trainValidStr = TString::Format("nTrain_Regression=%d:nTest_Regression=%d:SplitMode=Random:",0,0)+factoryNorm;
 
@@ -646,10 +687,15 @@ void ANNZ::Train_singleRegBiasCor() {
   aLOG(Log::INFO) <<coutLightBlue<<"   - weights:            "<<coutCyan<<wgtTrain<<coutDef<<endl;
   aLOG(Log::INFO) <<coutCyan<<LINE_FILL('-',100)<<coutDef<<endl;
 
-  factory->PrepareTrainingAndTestTree("",trainValidStr);
+  dataLdr->PrepareTrainingAndTestTree("",trainValidStr);
 
   TMVA::Types::EMVA typeNow = getTypeMLMbyName(mlmType);
+
+  #if ROOT_TMVA_V0
   factory->BookMethod(typeNow,biasName,mlmOpt+glob->GetOptC("trainFlagsMLM"));
+  #else
+  factory->BookMethod(dataLdr,typeNow,biasName,mlmOpt+glob->GetOptC("trainFlagsMLM"));
+  #endif
   
   // train the factory  
   // -----------------------------------------------------------------------------------------------------------
@@ -660,6 +706,10 @@ void ANNZ::Train_singleRegBiasCor() {
   // -----------------------------------------------------------------------------------------------------------
   DELNULL_(LOCATION,outputFile,(TString)"outputFile",inLOG(Log::DEBUG));
   DELNULL_(LOCATION,factory,   (TString)"factory",   inLOG(Log::DEBUG));
+
+  #if !ROOT_TMVA_V0
+  DELNULL_(LOCATION,dataLdr,   (TString)"dataLdr",   inLOG(Log::DEBUG));
+  #endif
 
   for(map <TString,TChain*>::iterator itr = chainM.begin(); itr!=chainM.end(); ++itr) {
     if(!dynamic_cast<TChain*>(itr->second)) continue;
@@ -984,7 +1034,13 @@ void ANNZ::Train_binnedCls() {
     TFile         * outputFile     = new TFile(outFileNameTrain,"RECREATE");
     TMVA::Factory * factory        = new TMVA::Factory(glob->GetOptC("typeANNZ"), outputFile, glob->GetOptC("factoryFlags"));    
 
-    prepFactory(nMLMnow,factory);
+    #if ROOT_TMVA_V0
+    TMVA::Factory    * dataLdr = factory;
+    #else
+    TMVA::DataLoader * dataLdr =  new TMVA::DataLoader("./");
+    #endif
+
+    prepFactory(nMLMnow,dataLdr);
 
     // generate the MLM type/options and store the results in optMap
     // -----------------------------------------------------------------------------------------------------------
@@ -1120,19 +1176,19 @@ void ANNZ::Train_binnedCls() {
       fullWgtCut = utils->cleanWeightExpr((TString)"("+(TString)fullCut+")*("+wgtTrain+")");
 
       clsWeight = chainM["_train_sig"]->Draw(zTrgName,wgtTrain); clsWeight = (clsWeight > 0) ? 1/clsWeight : 0;
-      factory->AddTree(chainM["_train_sig"],"Signal",clsWeight,"",TMVA::Types::kTraining);
+      dataLdr->AddTree(chainM["_train_sig"],"Signal",clsWeight,"",TMVA::Types::kTraining);
 
       clsWeight = chainM["_valid_sig"]->Draw(zTrgName,wgtTrain); clsWeight = (clsWeight > 0) ? 1/clsWeight : 0;
-      factory->AddTree(chainM["_valid_sig"],"Signal",clsWeight,"",TMVA::Types::kTesting );
+      dataLdr->AddTree(chainM["_valid_sig"],"Signal",clsWeight,"",TMVA::Types::kTesting );
 
       clsWeight = chainM["_train_bck"]->Draw(zTrgName,fullWgtCut); clsWeight = (clsWeight > 0) ? 1/clsWeight : 0;
-      factory->AddTree(chainM["_train_bck"],"Background",clsWeight,fullCut,TMVA::Types::kTraining);
+      dataLdr->AddTree(chainM["_train_bck"],"Background",clsWeight,fullCut,TMVA::Types::kTraining);
 
       clsWeight = chainM["_valid_bck"]->Draw(zTrgName,fullWgtCut); clsWeight = (clsWeight > 0) ? 1/clsWeight : 0;
-      factory->AddTree(chainM["_valid_bck"],"Background",clsWeight,fullCut,TMVA::Types::kTesting );
+      dataLdr->AddTree(chainM["_valid_bck"],"Background",clsWeight,fullCut,TMVA::Types::kTesting );
 
-      factory->SetWeightExpression(wgtTrain,"Signal");
-      factory->SetWeightExpression(wgtTrain,"Background");
+      dataLdr->SetWeightExpression(wgtTrain,"Signal");
+      dataLdr->SetWeightExpression(wgtTrain,"Background");
     }
 
     // -----------------------------------------------------------------------------------------------------------
@@ -1145,12 +1201,12 @@ void ANNZ::Train_binnedCls() {
       TCanvas * tmpCnvs  = new TCanvas("tmpCnvs","tmpCnvs");
 
       clsWeight = chainM["_train_sig"]->Draw(zTrgName,wgtTrain); clsWeight = (clsWeight > 0) ? 1/clsWeight : 0;
-      factory->AddTree(chainM["_train_sig"],"Signal",clsWeight,"",TMVA::Types::kTraining);
+      dataLdr->AddTree(chainM["_train_sig"],"Signal",clsWeight,"",TMVA::Types::kTraining);
 
       clsWeight = chainM["_valid_sig"]->Draw(zTrgName,wgtTrain); clsWeight = (clsWeight > 0) ? 1/clsWeight : 0;
-      factory->AddTree(chainM["_valid_sig"],"Signal",clsWeight,"",TMVA::Types::kTesting );
+      dataLdr->AddTree(chainM["_valid_sig"],"Signal",clsWeight,"",TMVA::Types::kTesting );
 
-      factory->SetWeightExpression(wgtTrain,"Signal");
+      dataLdr->SetWeightExpression(wgtTrain,"Signal");
 
       for(int nClsBinNow=0; nClsBinNow<(int)zBinCls_binE.size()-1; nClsBinNow++) {
         if(nClsBinNow == nMLMnow) continue;
@@ -1165,12 +1221,12 @@ void ANNZ::Train_binnedCls() {
         if(clsWeight < minObjTrainTest) continue;
 
         clsWeight = chainM["_train_bck"]->Draw(zTrgName,fullWgtCut); clsWeight = (clsWeight > 0) ? 1/clsWeight : 0;
-        factory->AddTree(chainM["_train_bck"],bckName,clsWeight,bckCut,TMVA::Types::kTraining);
+        dataLdr->AddTree(chainM["_train_bck"],bckName,clsWeight,bckCut,TMVA::Types::kTraining);
 
         clsWeight = chainM["_valid_bck"]->Draw(zTrgName,fullWgtCut); clsWeight = (clsWeight > 0) ? 1/clsWeight : 0;
-        factory->AddTree(chainM["_valid_bck"],bckName,clsWeight,bckCut,TMVA::Types::kTesting );
+        dataLdr->AddTree(chainM["_valid_bck"],bckName,clsWeight,bckCut,TMVA::Types::kTesting );
         
-        factory->SetWeightExpression(wgtTrain,bckName);
+        dataLdr->SetWeightExpression(wgtTrain,bckName);
       }
 
       DELNULL(tmpCnvs);
@@ -1215,10 +1271,17 @@ void ANNZ::Train_binnedCls() {
     aLOG(Log::INFO)   <<coutCyan<<LINE_FILL('-',100)<<coutDef<<endl;
 
     // cuts have already been applied during splitToSigBckTrees(), so leave empty here
-    factory->PrepareTrainingAndTestTree((TCut)"",trainValidStr);
+    dataLdr->PrepareTrainingAndTestTree((TCut)"",trainValidStr);
 
     TMVA::Types::EMVA typeNow = getTypeMLMbyName(mlmType);
-    factory->BookMethod(typeNow,MLMname,mlmOpt+glob->GetOptC("trainFlagsMLM")); typeMLM[nMLMnow] = typeNow;
+    
+    #if ROOT_TMVA_V0
+    factory->BookMethod(typeNow,MLMname,mlmOpt+glob->GetOptC("trainFlagsMLM"));
+    #else
+    factory->BookMethod(dataLdr,typeNow,MLMname,mlmOpt+glob->GetOptC("trainFlagsMLM"));
+    #endif
+
+    typeMLM[nMLMnow] = typeNow;
 
     // -----------------------------------------------------------------------------------------------------------
     // train the factory  
@@ -1258,6 +1321,10 @@ void ANNZ::Train_binnedCls() {
     // -----------------------------------------------------------------------------------------------------------
     DELNULL_(LOCATION,outputFile,(TString)"outputFile",inLOG(Log::DEBUG));
     DELNULL_(LOCATION,factory,   (TString)"factory",   inLOG(Log::DEBUG));
+
+    #if !ROOT_TMVA_V0
+    DELNULL_(LOCATION,dataLdr,   (TString)"dataLdr",   inLOG(Log::DEBUG));
+    #endif
 
     if(!glob->GetOptB("keepTrainingTrees_factory")) utils->safeRM(outFileNameTrain,inLOG(Log::DEBUG));
 

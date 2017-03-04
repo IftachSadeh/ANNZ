@@ -16,11 +16,13 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // ===========================================================================================================
 
+
+// -----------------------------------------------------------------------------------------------------------
+// common included libraries
+// -----------------------------------------------------------------------------------------------------------
 #ifndef __COMMONINCLUDE_H__
 #define __COMMONINCLUDE_H__
 
-// -----------------------------------------------------------------------------------------------------------
-// standard includes:
 #include <stdio.h>
 #include <limits>
 #include <cmath>
@@ -38,7 +40,6 @@
 #include <map>
 #include <set>
 
-// root includes:
 #include <TROOT.h>
 #include <TSystem.h>
 #include <TEnv.h>
@@ -63,9 +64,6 @@
 #include <TGraphAsymmErrors.h>
 #include <TLine.h>
 
-// using namespace std;
-// using namespace TMath;
-
 using std::cout;
 using std::endl;
 using std::vector;
@@ -73,10 +71,6 @@ using std::map;
 using std::pair;
 using std::min;
 using std::max;
-
-// #include "RVersion.h"
-// #if ROOT_VERSION_CODE >= 393218  // 393218 is for ROOT_RELEASE "6.00/02"
-// #endif // ROOT_VERSION_CODE > 393218
 
 #include <unordered_map>
 using std::unordered_map;
@@ -91,11 +85,8 @@ namespace std {
   };
 }
 
-#define Map unordered_map
-// #define Map map // can use this to go back to std::map instead of unordered_map
-
-
 #endif // __COMMONINCLUDE_H__
+
 
 // -----------------------------------------------------------------------------------------------------------
 // logging class, adapted from the code of Petru Marginean.
@@ -158,7 +149,7 @@ namespace Log {
 
   inline std::string MyLog::ToString(LOGtypes level) {
     static const char* const buffer[] = {"  ERROR", "WARNING", "   INFO", "  DEBUG", "DEBUG_1", "DEBUG_2", "DEBUG_3", "DEBUG_4"};
-//static const char* const buffer[] = {" ERR", "WARN", "INFO", " DBG", "DBG1", "DBG2", "DBG3", "DBG4"};
+    //static const char* const buffer[] = {" ERR", "WARN", "INFO", " DBG", "DBG1", "DBG2", "DBG3", "DBG4"};
     return buffer[level];
   }
 
@@ -193,48 +184,62 @@ namespace Log {
 #endif //__MyLOG1_H__
 
 
-
+// -----------------------------------------------------------------------------------------------------------
+// specific definitions of constants and macro functions
+// -----------------------------------------------------------------------------------------------------------
 #ifndef __MY_DEFINES__
 #define __MY_DEFINES__
 
-  // location and date/time string
-  #define LOCATION \
-    (TString)TString::Format((TString)"FILE: "+__FILE__+" , LINE: %d , ("+__DATE__+" "+__TIME__+")",__LINE__)
+#define Map unordered_map
+// #define Map map // can use this to go back to std::map instead of unordered_map
 
-  // very small number
-  #define EPS \
-    std::numeric_limits<double>::epsilon() 
+// general changes to TMVA affecting this code marked with ROOT_TMVA_V*
+#define ROOT_TMVA_V0 \
+  (ROOT_VERSION_CODE >= ROOT_VERSION(5,34,11) && ROOT_VERSION_CODE < ROOT_VERSION(6,8,0))
+#define ROOT_TMVA_V1 \
+  (ROOT_VERSION_CODE >= ROOT_VERSION(6,8,0))
 
-  // -----------------------------------------------------------------------------------------------------------
-  // "safe" delete/initialization macro for pointers
-  // ( the do {} while() suntax forces a semicolon to be placed after calls to DELNULL() )
-  // -----------------------------------------------------------------------------------------------------------
-  #define DELNULL(ptr) \
-    do { delete ptr; ptr = NULL; } while(false)
+// location and date/time string
+#define LOCATION \
+  (TString)TString::Format((TString)"FILE: "+__FILE__+" , LINE: %d , ("+__DATE__+" "+__TIME__+")",__LINE__)
 
-  // a version with some verbosity for debugging
-  #define DELNULL_(loc,ptr,name,verb) \
-    do { \
-      if(verb) { aCustomLOG("DELNULL")<<coutRed<<" - "<<coutGreen<<loc<<coutRed<<" - deleting "<<coutBlue<<name<<coutRed<<" ("<<coutPurple<<ptr<<coutRed<<") ..."<<coutDef<<endl; } \
-      delete ptr; ptr = NULL; \
-    } while(false)
+// very small number
+#define EPS \
+  std::numeric_limits<double>::epsilon() 
 
-  // -----------------------------------------------------------------------------------------------------------
-  // verify a condition, send a message and terminate if failed
-  // ( the do {} while() suntax forces a semicolon to be placed after calls to VERIFY() )
-  // -----------------------------------------------------------------------------------------------------------
-  #define VERIFY(location,message,state) \
-    do { if(!state) { \
-      aLOG(Log::ERROR) <<coutWhiteOnBlack<<" - ... ------------------------------------------------------------ "<<coutDef<< endl; \
-      aLOG(Log::ERROR) <<coutWhiteOnBlack<<coutRed<<" - MESSAGE - "<<coutWhiteOnBlack<<message <<" "             <<coutDef<< endl; \
-      aLOG(Log::ERROR) <<coutWhiteOnBlack<<coutRed<<" - FROM    - "<<coutWhiteOnBlack<<location<<" "             <<coutDef<< endl; \
-      aLOG(Log::ERROR) <<coutWhiteOnBlack<<coutRed<<" - ..... ABORTING !!! "                                     <<coutDef<< endl; \
-      aLOG(Log::ERROR) <<coutWhiteOnBlack<<" ------------------------------------------------------------ ... - "<<coutDef<< endl; \
-      exit(1); \
-    } } while(false)
+// -----------------------------------------------------------------------------------------------------------
+// "safe" delete/initialization macro for pointers
+// ( the do {} while() suntax forces a semicolon to be placed after calls to DELNULL() )
+// -----------------------------------------------------------------------------------------------------------
+#define DELNULL(ptr) \
+  do { \
+    delete ptr; \
+    ptr = NULL; \
+  } while(false)
 
-  #define LINE_FILL(charFill,len) \
-    std::setfill(charFill)<<std::setw(len)<<""<<std::setfill(' ')
+// a version with some verbosity for debugging
+#define DELNULL_(loc,ptr,name,verb) \
+  do { \
+    if(verb) { aCustomLOG("DELNULL")<<" - "<<loc<<" - deleting \""<<name<<"\" ("<<ptr<<") ..."<<endl; } \
+    DELNULL(ptr); \
+  } while(false)
+
+// -----------------------------------------------------------------------------------------------------------
+// verify a condition, send a message and terminate if failed
+// ( the do {} while() suntax forces a semicolon to be placed after calls to VERIFY() )
+// -----------------------------------------------------------------------------------------------------------
+#define VERIFY(location,message,state) \
+  do { if(!state) { \
+    aLOG(Log::ERROR) <<coutWhiteOnBlack<<" - ... ------------------------------------------------------------ "<<coutDef<< endl; \
+    aLOG(Log::ERROR) <<coutWhiteOnBlack<<coutRed<<" - MESSAGE - "<<coutWhiteOnBlack<<message <<" "             <<coutDef<< endl; \
+    aLOG(Log::ERROR) <<coutWhiteOnBlack<<coutRed<<" - FROM    - "<<coutWhiteOnBlack<<location<<" "             <<coutDef<< endl; \
+    aLOG(Log::ERROR) <<coutWhiteOnBlack<<coutRed<<" - ..... ABORTING !!! "                                     <<coutDef<< endl; \
+    aLOG(Log::ERROR) <<coutWhiteOnBlack<<" ------------------------------------------------------------ ... - "<<coutDef<< endl; \
+    exit(1); \
+  } } while(false)
+
+#define LINE_FILL(charFill,len) \
+  std::setfill(charFill)<<std::setw(len)<<""<<std::setfill(' ')
 
 #endif // __MY_DEFINES__
 

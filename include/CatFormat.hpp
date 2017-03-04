@@ -28,6 +28,10 @@
 #include "TMVA/MethodBase.h"
 #include "TMVA/PDF.h"
 
+#if ROOT_VERSION_CODE >= ROOT_VERSION(6,8,0) 
+#include "TMVA/DataLoader.h"
+#endif
+
 // -----------------------------------------------------------------------------------------------------------
 // hack to make all the private elements of MethodKNN accecible
 // -----------------------------------------------------------------------------------------------------------

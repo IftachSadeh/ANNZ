@@ -1403,27 +1403,31 @@ void Utils::getSortedArray(double * data, double *& sortedData) {
 }
 
 
-
 // ===========================================================================================================
-// see: https://cdcvs.fnal.gov/redmine/projects/des-photoz/wiki/DC6_Photo-z_Challenge
-// -----------------------------------------------------------------------------------------------------------
-// ===========================================================================================================
-int Utils::getQuantileV(vector <double> & fracV, vector <double> & quantV, double * dataArr) { return getQuantileV(fracV,quantV,dataArr,NULL); }
-int Utils::getQuantileV(vector <double> & fracV, vector <double> & quantV, TH1    * dataHis) { return getQuantileV(fracV,quantV,NULL,dataHis); }
+int Utils::getQuantileV(vector <double> & fracV, vector <double> & quantV, double * dataArr) {
+  return getQuantileV(fracV,quantV,dataArr,NULL);
+}
+int Utils::getQuantileV(vector <double> & fracV, vector <double> & quantV, TH1    * dataHis) {
+  return getQuantileV(fracV,quantV,NULL,dataHis);
+}
 // -----------------------------------------------------------------------------------------------------------
 int Utils::getQuantileV(vector <double> & fracV, vector <double> & quantV, vector <double> & dataArrV) {
-// ======================================================================================================
+// =====================================================================================================
   param->NewOptI("nArrEntries" , (int)dataArrV.size());
   return getQuantileV(fracV,quantV,dataArrV.data(),NULL);
 }
 // -----------------------------------------------------------------------------------------------------------
 int Utils::getQuantileV(vector <double> & fracV, vector <double> & quantV, double * dataArr, TH1 * dataHis) {
-// ===========================================================================================================
+// ==========================================================================================================
   int nQuant = (int)fracV.size();
   if(!param->HasOptI("nArrEntries")) param->NewOptI("nArrEntries" , 0);
 
   bool hasArr = dataArr && (param->GetOptI("nArrEntries") > 0);
-  bool hasHis = dynamic_cast<TH1*>(dataHis); if(hasHis) { dataHis->BufferEmpty(); hasHis = (dataHis->GetEntries() > EPS); }
+  bool hasHis = dynamic_cast<TH1*>(dataHis);
+  if(hasHis) {
+    dataHis->BufferEmpty();
+    hasHis = (dataHis->GetEntries() > EPS && dataHis->Integral() > EPS);
+  }
   if(!hasArr && !hasHis) return 0;
   if(nQuant == 0)        return 0;
 
@@ -1435,7 +1439,7 @@ int Utils::getQuantileV(vector <double> & fracV, vector <double> & quantV, doubl
   double * probQuant    = new double[nQuant];
 
   for(int nQuantNow=0; nQuantNow<nQuant; nQuantNow++) probQuant[nQuantNow] = fracV[nQuantNow];
-
+  
   if(hasHis) dataHis->GetQuantiles(nQuant,quantiles,probQuant);
   else       TMath::Quantiles(param->GetOptI("nArrEntries"),nQuant,dataArr,quantiles,probQuant,false,sortIndices,7);
 
@@ -1450,17 +1454,22 @@ int Utils::getInterQuantileStats(double * dataArr) { return getInterQuantileStat
 int Utils::getInterQuantileStats(TH1    * dataHis) { return getInterQuantileStats(NULL,dataHis); }
 // -----------------------------------------------------------------------------------------------------------
 int Utils::getInterQuantileStats(vector <double> & dataArrV) {
-// ============================================================
+// ===========================================================
   param->NewOptI("nArrEntries" , (int)dataArrV.size());
   return getInterQuantileStats(dataArrV.data(),NULL);
 }
 // -----------------------------------------------------------------------------------------------------------
 int Utils::getInterQuantileStats(double * dataArr, TH1 * dataHis) {
-// =================================================================
+// ================================================================
   if(!param->HasOptI("nArrEntries")) param->NewOptI("nArrEntries" , 0);
 
-  bool hasArr = (dataArr != NULL);           if(hasArr) { hasArr = (param->GetOptI("nArrEntries") > EPS);                 }
-  bool hasHis = dynamic_cast<TH1*>(dataHis); if(hasHis) { dataHis->BufferEmpty(); hasHis = (dataHis->GetEntries() > EPS); }
+  bool hasArr = (dataArr != NULL);
+  if(hasArr) { hasArr = (param->GetOptI("nArrEntries") > EPS); }
+  bool hasHis = dynamic_cast<TH1*>(dataHis);
+  if(hasHis) {
+    dataHis->BufferEmpty();
+    hasHis = (dataHis->GetEntries() > EPS && dataHis->Integral() > EPS);
+  }
   if(!hasArr && !hasHis) return 0;
   
   if(param->OptOrNullB("doFracLargerSigma"))  param->NewOptB("doNotComputeNominalParams" , false);
@@ -1592,8 +1601,8 @@ int Utils::getInterQuantileStats(double * dataArr, TH1 * dataHis) {
     double * madQuant = new double[1];
     double * madProb  = new double[1]; madProb[0] = 0.50;
 
-    if(madH->Integral() > EPS) madH->GetQuantiles(1,madQuant,madProb);
-    else                       madQuant[0] = DefOpts::DefF;
+    if(madH->GetEntries() > EPS && madH->Integral() > EPS) madH->GetQuantiles(1,madQuant,madProb);
+    else                                                   madQuant[0] = DefOpts::DefF;
     
     param->NewOptF("quant_MAD", madQuant[0]);
 

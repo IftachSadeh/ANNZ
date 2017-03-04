@@ -560,6 +560,7 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
     // -----------------------------------------------------------------------------------------------------------  
     VarMaps * varKNN(NULL);        vector <TChain *> aChainKnn(2,NULL);   vector <int>         trgIndexV;
     TFile   * knnErrOutFile(NULL); TMVA::Factory *   knnErrFactory(NULL); TMVA::kNN::ModulekNN * knnErrModule(NULL);
+    TMVA::Configurable * knnErrDataLdr(NULL);
 
     if(isErrKNN) {
       TString inTreeNameKnn = getKeyWord("","treeErrKNN","treeErrKNNname");
@@ -585,7 +586,8 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
       TCut    cutsNow = varKNN->getTreeCuts("_comn") + varKNN->getTreeCuts(MLMname+treeNamePostfix);
       TString wgtReg  = getRegularStrForm(userWgtsM[MLMname+treeNamePostfix],varKNN);
 
-      setupKdTreeKNN(aChainKnn[0],knnErrOutFile,knnErrFactory,knnErrModule,trgIndexV,nMLMnow,cutsNow,wgtReg);
+      setupKdTreeKNN( aChainKnn[0],knnErrOutFile,knnErrFactory,knnErrDataLdr,
+                      knnErrModule,trgIndexV,nMLMnow,cutsNow,wgtReg );
     }
 
     // -----------------------------------------------------------------------------------------------------------
@@ -798,7 +800,7 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
     DELNULL(var_0); DELNULL(var_1); DELNULL(aChain);
 
     if(isErrKNN) {
-      DELNULL(varKNN); cleanupKdTreeKNN(knnErrOutFile,knnErrFactory);
+      DELNULL(varKNN); cleanupKdTreeKNN(knnErrOutFile,knnErrFactory,knnErrDataLdr);
 
       aChainKnn[0]->RemoveFriend(aChainKnn[1]); DELNULL(aChainKnn[0]); DELNULL(aChainKnn[1]);
 
@@ -931,7 +933,7 @@ double ANNZ::getSeparation(TH1 * hisSig, TH1 * hisBck) {
 void ANNZ::deriveHisClsPrb(int nMLMnow) {
 // ======================================
   aLOG(Log::DEBUG) <<coutWhiteOnBlack<<coutGreen<<" - starting ANNZ::deriveHisClsPrb("<<coutPurple<<getTagName(nMLMnow)
-                   <<coutGreen<<") - will create cls->prb histogrma ... "<<coutDef<<endl;
+                   <<coutGreen<<") - will create cls->prb histogram ... "<<coutDef<<endl;
 
   int     bufSize        = glob->GetOptI("hisBufSize");
   int     nBinsHis       = glob->GetOptI("nTMVApdfBins");

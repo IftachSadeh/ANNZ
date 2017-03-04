@@ -345,11 +345,17 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TChain *
   vector <double> chainEntV(3,0);
 
   vector < TChain * >                        aChainV          (2, NULL);
-  vector < vector <TFile *> >                knnErrOutFile    (2, vector<TFile*>               (nKnnFracs,NULL));
-  vector < vector <TMVA::Factory *> >        knnErrFactory    (2, vector<TMVA::Factory*>       (nKnnFracs,NULL));
-  vector < vector <TMVA::MethodKNN *> >      knnErrMethod     (2, vector<TMVA::MethodKNN*>     (nKnnFracs,NULL));
-  vector < vector <TMVA::kNN::ModulekNN *> > knnErrModule     (2, vector<TMVA::kNN::ModulekNN*>(nKnnFracs,NULL));
-  vector < vector <TString> >                outFileNameKnnErr(2, vector<TString>              (nKnnFracs,"")  );
+  vector < vector <TFile *> >                knnErrOutFile    (2, vector<TFile *>               (nKnnFracs,NULL));
+  vector < vector <TMVA::Factory *> >        knnErrFactory    (2, vector<TMVA::Factory *>       (nKnnFracs,NULL));
+  vector < vector <TMVA::MethodKNN *> >      knnErrMethod     (2, vector<TMVA::MethodKNN *>     (nKnnFracs,NULL));
+  vector < vector <TMVA::kNN::ModulekNN *> > knnErrModule     (2, vector<TMVA::kNN::ModulekNN *>(nKnnFracs,NULL));
+  vector < vector <TString> >                outFileNameKnnErr(2, vector<TString>               (nKnnFracs,"")  );
+
+  #if ROOT_TMVA_V0
+  vector < vector <TMVA::Factory *> >        knnErrDataLdr    (2, vector<TMVA::Factory *>       (nKnnFracs,NULL));
+  #else
+  vector < vector <TMVA::DataLoader *> >     knnErrDataLdr    (2, vector<TMVA::DataLoader *>    (nKnnFracs,NULL));
+  #endif
 
   TString outFileDirKnnErrV = (TString)outBaseName+"_weights"+"/";
   (TMVA::gConfig().GetIONames()).fWeightFileDir = outFileDirKnnErrV;
@@ -397,6 +403,12 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TChain *
 
       knnErrOutFile[nChainNow][nFracNow] = new TFile(outFileNameKnnErr[nChainNow][nFracNow],"RECREATE");
       knnErrFactory[nChainNow][nFracNow] = new TMVA::Factory(wgtNameNow, knnErrOutFile[nChainNow][nFracNow], allOpts);    
+
+      #if ROOT_TMVA_V0
+      knnErrDataLdr[nChainNow][nFracNow] = knnErrFactory[nChainNow][nFracNow];
+      #else
+      knnErrDataLdr[nChainNow][nFracNow] = new TMVA::DataLoader("./");
+      #endif
     }
 
     // -----------------------------------------------------------------------------------------------------------
@@ -538,17 +550,28 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TChain *
 
       // define all (scaled) input variables as floats in the factory
       for(int nVarNow=0; nVarNow<nVars; nVarNow++) {
-        knnErrFactory[nChainNow][nFracNow]->AddVariable(varNamesScaled[nVarNow],varNamesScaled[nVarNow],"",'F');
+        knnErrDataLdr[nChainNow][nFracNow]->AddVariable(varNamesScaled[nVarNow],varNamesScaled[nVarNow],"",'F');
       }
 
-      knnErrFactory[nChainNow][nFracNow]->AddRegressionTree(aChainV[nChainNow], 1, TMVA::Types::kTesting);
-      knnErrFactory[nChainNow][nFracNow]->AddRegressionTree(aChainV[nChainNow], 1, TMVA::Types::kTraining);
-      knnErrFactory[nChainNow][nFracNow]->SetWeightExpression(chainWgtV[nChainNow],"Regression");
+      knnErrDataLdr[nChainNow][nFracNow]->AddRegressionTree(aChainV[nChainNow], 1, TMVA::Types::kTesting);
+      knnErrDataLdr[nChainNow][nFracNow]->AddRegressionTree(aChainV[nChainNow], 1, TMVA::Types::kTraining);
+      knnErrDataLdr[nChainNow][nFracNow]->SetWeightExpression(chainWgtV[nChainNow],"Regression");
 
-      knnErrFactory[nChainNow][nFracNow]->PrepareTrainingAndTestTree(finalCut,trainValidStr);
+      knnErrDataLdr[nChainNow][nFracNow]->PrepareTrainingAndTestTree(finalCut,trainValidStr);
 
-      knnErrMethod[nChainNow][nFracNow] =  dynamic_cast<TMVA::MethodKNN*>
-                                            (knnErrFactory[nChainNow][nFracNow]->BookMethod(TMVA::Types::kKNN, wgtNameNow,(TString)optKNN+verbLvlM));
+      #if ROOT_TMVA_V0
+      knnErrMethod[nChainNow][nFracNow] = dynamic_cast<TMVA::MethodKNN*>(
+        knnErrFactory[nChainNow][nFracNow]->BookMethod(
+          TMVA::Types::kKNN, wgtNameNow, (TString)optKNN+verbLvlM
+        )
+      );
+      #else
+      knnErrMethod[nChainNow][nFracNow] = dynamic_cast<TMVA::MethodKNN*>(
+        knnErrFactory[nChainNow][nFracNow]->BookMethod(
+          knnErrDataLdr[nChainNow][nFracNow], TMVA::Types::kKNN, wgtNameNow, (TString)optKNN+verbLvlM
+        )
+      );
+      #endif
       
       // fill the module with events made from the tree entries and create the binary tree
       knnErrMethod[nChainNow][nFracNow]->Train();
@@ -1045,6 +1068,8 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TChain *
       DELNULL(knnErrFactory[nChainNow][nFracNow]);
       DELNULL(knnErrOutFile[nChainNow][nFracNow]);
 
+      if(!ROOT_TMVA_V0) DELNULL(knnErrDataLdr[nChainNow][nFracNow]);
+
       // after closing a TFile, need to return to the correct directory, or else histogram pointers will be affected
       outputs->BaseDir->cd();
 
@@ -1053,7 +1078,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TChain *
   }
   utils->safeRM(outFileDirKnnErrV,inLOG(Log::DEBUG));
 
-  knnErrOutFile.clear(); knnErrFactory.clear(); knnErrMethod.clear(); knnErrModule.clear(); aChainV.clear();
+  knnErrOutFile.clear(); knnErrFactory.clear(); knnErrDataLdr.clear(); knnErrMethod.clear(); knnErrModule.clear(); aChainV.clear();
   minMaxVarVals.clear(); outFileNameKnnErr.clear(); varNames.clear(); chainWgtV.clear(); chainCutV.clear();
   varFormNames.clear(); objNowV.clear(); distV.clear(); weightSumV.clear(); distIndexV.clear();
   chainEntV.clear(); varNamesScaled.clear();

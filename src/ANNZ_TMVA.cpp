@@ -24,18 +24,23 @@
  * @param factory  - pointer to the TMVA::Factory which is set-up.
  */
 // ===========================================================================================================
-void ANNZ::prepFactory(int nMLMnow, TMVA::Factory * factory, bool isBiasMLM) {
-// ===========================================================================
+void ANNZ::prepFactory(int nMLMnow, TMVA::Configurable * configIn, bool isBiasMLM) {
+// =================================================================================
+  VERIFY(LOCATION,(TString)"Memory leak ?! ",(dynamic_cast<TMVA::Configurable*>(configIn)));
+
+  #if ROOT_TMVA_V0
+  TMVA::Factory    * config = dynamic_cast<TMVA::Factory   *>(configIn);
+  #else
+  TMVA::DataLoader * config = dynamic_cast<TMVA::DataLoader*>(configIn);
+  #endif
+
   TString MLMname  = getTagName(nMLMnow);
   TString biasName = getTagBias(nMLMnow);
-
-  // if(!dynamic_cast<TMVA::Factory*>(factory)) return;
-  VERIFY(LOCATION,(TString)"Memory leak ?! ",(dynamic_cast<TMVA::Factory*>(factory)));
 
   // since all variables are read-in from TTreeFormula, we define them as floats ("F") in the factory
   int nVars = (int)inNamesVar[nMLMnow].size();
   for(int nVarNow=0; nVarNow<nVars; nVarNow++) {
-    factory->AddVariable(inNamesVar[nMLMnow][nVarNow],inNamesVar[nMLMnow][nVarNow],"",'F');
+    config->AddVariable(inNamesVar[nMLMnow][nVarNow],inNamesVar[nMLMnow][nVarNow],"",'F');
 
     aLOG(Log::DEBUG) <<coutPurple<<" -- Adding input variable ("<<coutGreen
                      <<nVarNow<<coutPurple<<") - "<<coutCyan<<inNamesVar[nMLMnow][nVarNow]<<coutDef<<endl;
@@ -43,7 +48,7 @@ void ANNZ::prepFactory(int nMLMnow, TMVA::Factory * factory, bool isBiasMLM) {
   // the bias correction also take the original regression value as an input - the order of
   // defining the input variables is important, so take care !!
   if(isBiasMLM && hasBiasCorMLMinp[nMLMnow]) {
-    factory->AddVariable(MLMname,MLMname,"",'F');
+    config->AddVariable(MLMname,MLMname,"",'F');
 
     aLOG(Log::DEBUG) <<coutPurple<<" -- Adding input variable ("<<coutGreen
                      <<nVars<<coutPurple<<") - "<<coutCyan<<MLMname<<coutDef<<endl;
@@ -52,10 +57,10 @@ void ANNZ::prepFactory(int nMLMnow, TMVA::Factory * factory, bool isBiasMLM) {
   // add regression target if needed
   if(glob->GetOptB("doRegression") && !glob->GetOptB("doBinnedCls")) {
     if(isBiasMLM) {
-      factory->AddTarget(biasName, (TString)MLMname+" - "+glob->GetOptC("zTrgTitle")); 
+      config->AddTarget(biasName, (TString)MLMname+" - "+glob->GetOptC("zTrgTitle")); 
     }
     else {
-      factory->AddTarget(glob->GetOptC("zTrg"), glob->GetOptC("zTrgTitle")); 
+      config->AddTarget(glob->GetOptC("zTrg"), glob->GetOptC("zTrgTitle")); 
     }
   }
 
@@ -63,7 +68,7 @@ void ANNZ::prepFactory(int nMLMnow, TMVA::Factory * factory, bool isBiasMLM) {
   // (the directory must be re-set each time a new factory is defined, sometime before the training)
   TString mlmBiasName = (TString)(isBiasMLM ?  biasName : MLMname);
   (TMVA::gConfig().GetIONames()).fWeightFileDir = getKeyWord(mlmBiasName,"trainXML","outFileDirTrain");
-
+  
   return;
 }
 
