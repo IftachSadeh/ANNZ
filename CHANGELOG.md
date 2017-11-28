@@ -1,6 +1,10 @@
 # Changelog
 
 <!-- ## Master version (???????) -->
+## Master version (28/11/2017)
+
+- Bug fix in a few `python` scripts, where the example for the `weightInp_wgtKNN` option had previously been set to numerically insignificant values.
+
 ## ANNZ v2.2.2 (04/03/2017)
 
 - Added the option to to *not* store the full value of pdfs in the output of optimization/evaluation, by setting

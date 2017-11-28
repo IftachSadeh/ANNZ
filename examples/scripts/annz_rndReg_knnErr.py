@@ -70,7 +70,7 @@ if glob.annz["doOnlyKnnErr"]:
       glob.annz["inAsciiFiles_wgtKNN"]   = "boss_dr10_refForReWeight.csv"
       glob.annz["inAsciiVars_wgtKNN"]    = "F:MAG_U;F:MAGERR_U;F:MAG_G;F:MAGERR_G;" + \
                                            "F:MAG_R;F:MAGERR_R;F:MAG_I;F:MAGERR_I;F:MAG_Z;F:MAGERR_Z"
-      glob.annz["weightInp_wgtKNN"]      = "1/pow(MAG_G*MAG_U*MAG_R*MAG_I, 5)"
+      glob.annz["weightInp_wgtKNN"]      = "1/pow(MAG_G*MAG_U*MAG_R*MAG_I, 1.5)"
       glob.annz["weightRef_wgtKNN"]      = "1"
       glob.annz["weightVarNames_wgtKNN"] = "MAG_U;MAG_G;MAG_R;MAG_I;MAG_Z"
 

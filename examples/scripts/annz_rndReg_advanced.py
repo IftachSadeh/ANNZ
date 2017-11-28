@@ -179,7 +179,7 @@ if glob.annz["doGenInputTrees"]:
     
     # some random weird choice for [weightInp_wgtKNN, weightRef_wgtKNN] in this example, just to get different
     # distributions for the input and reference samples, so that we have something to calculate weights for...
-    glob.annz["weightInp_wgtKNN"]      = "1/pow(MAG_G*MAG_U*MAG_R*MAG_I, 5)"
+    glob.annz["weightInp_wgtKNN"]      = "1/pow(MAG_G*MAG_U*MAG_R*MAG_I, 1.5)"
     glob.annz["weightRef_wgtKNN"]      = "1/MAGERR_G"
 
     glob.annz["weightVarNames_wgtKNN"] = "MAG_U;MAG_G;MAG_R;MAG_I;MAG_Z"
