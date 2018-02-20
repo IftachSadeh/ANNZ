@@ -21,22 +21,22 @@
 #include "ANNZ_err.cpp"
 #include "ANNZ_onlyKnnErr.cpp"
 #include "ANNZ_TMVA.cpp"
-
 #include "ANNZ_train.cpp"
-
 #include "ANNZ_loopRegCls.cpp"
 #include "ANNZ_loopCls.cpp"
 #include "ANNZ_loopReg.cpp"
+#include "ANNZ_regEval.cpp"
+#include "ANNZ_clsEval.cpp"
 
 // ===========================================================================================================
-ANNZ::ANNZ   (TString aName, Utils * aUtils, OptMaps * aMaps, OutMngr * anOutMngr)
-       :BaseClass(        aName,         aUtils,           aMaps,       anOutMngr) {
-// =================================================================================
+ANNZ::ANNZ(TString aName, Utils * aUtils, OptMaps * aMaps, OutMngr * anOutMngr)
+     :BaseClass(   aName,         aUtils,           aMaps,       anOutMngr) {
+// ==========================================================================
   Init();
   return;
 }
 ANNZ::~ANNZ() {
-// ================
+// ============
   aLOG(Log::DEBUG) <<coutBlue<<" - starting ANNZ::~ANNZ() ... "<<coutDef<<endl;
 
   mlmTagName.clear();   mlmTagErr.clear();        mlmTagWeight.clear();   mlmTagClsVal.clear();
@@ -59,6 +59,72 @@ ANNZ::~ANNZ() {
   for(int nHisNow=0; nHisNow<(int)hisClsPrbV .size(); nHisNow++) DELNULL(hisClsPrbV [nHisNow]);
   regReaders.clear(); biasReaders.clear(); hisClsPrbV.clear();
 
+  evalRegErrCleanup();
+  DELNULL(aRegEval);
+
   return;
 }
 // ===========================================================================================================
+
+
+// ===========================================================================================================
+RegEval::RegEval(TString aName, Utils * aUtils, OptMaps * aMaps, OutMngr * anOutMngr)
+        :BaseClass(      aName,         aUtils,           aMaps,       anOutMngr) {
+// ================================================================================
+  
+  outDirName = "";   inTreeName = "";   inFileName = "";
+  loopChain  = NULL; inChain    = NULL; selctVarV  = NULL; varKNN = NULL;
+  
+  seed = glob->GetOptI("initSeedRnd"); if(seed > 0) seed += 11825;
+  rnd  = new TRandom(seed);
+  
+  varWrapper = new VarMaps(glob,utils,"varWrapper");
+  
+  return;
+}
+RegEval::~RegEval() {
+// ==================
+  aLOG(Log::DEBUG) <<coutBlue<<" - starting RegEval::~RegEval() ... "<<coutDef<<endl;
+
+  addVarV   .clear(); tagNameV     .clear(); isErrKNNv .clear(); mlmInV.clear();
+  isErrINPv .clear(); mlmAvg_val   .clear(); mlmAvg_err.clear();
+  mlmAvg_wgt.clear(); pdfBinWgt    .clear(); nClsBinsIn.clear();
+  pdfWeightV.clear(); addMLMv      .clear(); allMLMv   .clear();
+  mlmSkip.clear();    mlmSkipDivded.clear(); mlmSkipPdf.clear();
+  pdfWgtValV.clear(); pdfWgtNumV   .clear(); regErrV   .clear();
+
+  for(int nPDFnow=0; nPDFnow<(int)hisBiasCorV.size(); nPDFnow++) {
+    for(int nPDFbinNow=0; nPDFbinNow<(int)hisBiasCorV[nPDFnow].size(); nPDFbinNow++) {
+      DELNULL(hisBiasCorV[nPDFnow][nPDFbinNow]);
+    }
+  }
+  hisBiasCorV.clear();
+
+  if(!hasMlmChain && dynamic_cast<TChain*>(loopChain)) {
+    vector <TTree*> friendV = utils->getTreeFriends(loopChain);
+    for(int nTreeNow=0; nTreeNow<(int)friendV.size(); nTreeNow++) { loopChain->RemoveFriend(friendV[nTreeNow]); }
+    for(int nTreeNow=0; nTreeNow<(int)friendV.size(); nTreeNow++) { DELNULL(friendV[nTreeNow]);                 }
+    friendV.clear();
+
+    DELNULL(loopChain);
+  }
+
+  DELNULL(varWrapper);
+
+  for(int nPDFnow=0; nPDFnow<(int)hisPDF_w.size(); nPDFnow++) {
+    DELNULL(hisPDF_w[nPDFnow]);
+  }
+  hisPDF_w.clear();
+
+  if(!glob->GetOptB("keepEvalTrees") && !hasMlmChain && (inFileName != "")) {
+    utils->safeRM(inFileName,inLOG(Log::DEBUG));
+  }
+
+  DELNULL(rnd);
+
+  return;
+}
+// ===========================================================================================================
+
+
+

@@ -759,7 +759,8 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
           // TString trainCut   = (TString)var_0->getTreeCuts("_train");   // deprecated
           // if(trainCut != "") cutExprs += (TString)" && ("+trainCut+")"; // deprecated
           
-          int     nEvtPass   = aChainOut->Draw(drawExprs,cutExprs);
+          // int     nEvtPass   = aChainOut->Draw(drawExprs,cutExprs);
+          int nEvtPass = utils->drawTree(aChainOut,drawExprs,cutExprs);
           if(nEvtPass > 0) { his_all = (TH1F*)gDirectory->Get(hisName); his_all->BufferEmpty(); }
         }
         if(!his_all) continue;
@@ -776,7 +777,8 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
         // TString trainCut   = (TString)var_0->getTreeCuts("_train");   // deprecated
         // if(trainCut != "") cutExprs += (TString)" && ("+trainCut+")"; // deprecated
 
-        int     nEvtPass   = aChainOut->Draw(drawExprs,cutExprs);
+        // int     nEvtPass   = aChainOut->Draw(drawExprs,cutExprs);
+        int nEvtPass = utils->drawTree(aChainOut,drawExprs,cutExprs);
 
         if(nEvtPass > 0) {
           his1_sb->SetDirectory(0); his1_sb->BufferEmpty(); // allowed only after the chain fills the histogram

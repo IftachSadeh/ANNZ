@@ -16,31 +16,32 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // ===========================================================================================================
 
+#ifndef MyANNZ_h
+#define MyANNZ_h
+
 #include <commonInclude.hpp>
 class OutMngr;
 class Utils;
 class OptMaps;
 
 // ===========================================================================================================
-class myANNZ {
-// ===========
-public :
+class Manager {
+// ============
+  public :
 
-  myANNZ();
-  ~myANNZ();
+    Manager();
+    ~Manager();
 
-  void    Init();
-  void    DoANNZ();
-  void    GenerateInputTrees();
-  void    doOnlyKnnErr();
-  void    doInTrainFlag();
-  void    setColors();
+    void    Init(int argc, char ** argv);
+    void    DoANNZ();
+    void    GenerateInputTrees();
+    void    doOnlyKnnErr();
+    void    doInTrainFlag();
 
-  Utils         * utils;
-  OptMaps       * glob;
-  OutMngr       * outputs;
-
-  TString       CT;
-  TString       coutDef, coutRed, coutGreen, coutBlue, coutLightBlue, coutYellow, coutPurple, coutCyan,
-                coutUnderLine, coutWhiteOnBlack, coutWhiteOnRed, coutWhiteOnGreen, coutWhiteOnYellow;  
+    Utils         * utils;
+    OptMaps       * glob;
+    OutMngr       * outputs;
 };
+
+
+#endif

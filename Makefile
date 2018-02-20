@@ -7,37 +7,27 @@
 # ---------------------------------------------------------------------------------------------------
 # general ROOT flags etc.
 # ---------------------------------------------------------------------------------------------------
-RC     := root-config
+RC := root-config
 ifeq ($(shell which $(RC) 2>&1 | sed -ne "s@.*/$(RC)@$(RC)@p"),$(RC))
-MKARCH := $(wildcard $(shell $(RC) --etcdir)/Makefile.arch)
-RCONFIG := $(wildcard $(shell $(RC) --incdir)/RConfigure.h)
+	MKARCH := $(wildcard $(shell $(RC) --etcdir)/Makefile.arch)
+	RCONFIG := $(wildcard $(shell $(RC) --incdir)/RConfigure.h)
 endif
 ifneq ($(MKARCH),)
-include $(MKARCH)
+	include $(MKARCH)
 else
-ifeq ($(ROOTSYS),)
-ROOTSYS = ..
+	ifeq ($(ROOTSYS),)
+		ROOTSYS = ..
+	endif
+	include $(ROOTSYS)/etc/Makefile.arch
 endif
-include $(ROOTSYS)/etc/Makefile.arch
-endif
-# Tutorials dir needed by stressProof
-ifneq ($(RCONFIG),)
-# TUTDIR := $(wildcard $(shell grep ROOTDOCDIR $(RCONFIG) | sed "s|.*\"\(.*\)\"|\1|")/tutorials)
-TUTDIR := $(ROOTSYS)/tutorials
-endif
-ifeq ($(TUTDIR),)
-ifeq ($(ROOTSYS),)
-ROOTSYS = ..
-endif
-TUTDIR := $(ROOTSYS)/tutorials
-endif
--include ../MyConfig.mk
+# -include ../MyConfig.mk
 
 # ---------------------------------------------------------------------------------------------------
 # add rpath to LDFLAGS, which may be needed for precompiled root versions
 # ---------------------------------------------------------------------------------------------------
+CURRENT_DIR = $(shell pwd)
 ROOTLIB := $(wildcard $(shell $(RC) --libdir))
-LDFLAGS += -Wl,-rpath,$(ROOTLIB)
+LDFLAGS += -Wl,-rpath,$(ROOTLIB),-rpath,$(CURRENT_DIR)
 
 # ---------------------------------------------------------------------------------------------------
 # search path for included files and files-to-make; included ROOT libraries
@@ -54,318 +44,209 @@ LIBS     += $(MORELIBS)
 # ---------------------------------------------------------------------------------------------------
 CXXFLAGS += -std=c++0x
 
+# # ---------------------------------------------------------------------------------------------------
+# # for degudding only - cancel optimization (remove -O2 flag) to speed up compilation
+# # ---------------------------------------------------------------------------------------------------
+# OPT    = 
+# OPT2   = 
+# CXXOPT = 
+# # ---------------------------------------------------------------------------------------------------
+
 # ---------------------------------------------------------------------------------------------------
-# objects, libraries and shared libraries
+# objects and shared libraries
 # ---------------------------------------------------------------------------------------------------
-OptMapsO        = OptMaps.$(ObjSuf) 		
-UtilsO        	= Utils.$(ObjSuf) 			
-VarMapsO        = VarMaps.$(ObjSuf) 		
-OutMngrO        = OutMngr.$(ObjSuf)     
-BaseClassO      = BaseClass.$(ObjSuf) 	
-CatFormatO      = CatFormat.$(ObjSuf) 	
-ANNZO        		= ANNZ.$(ObjSuf) 				
+OptMaps_O    = OptMaps.$(ObjSuf)
+OptMaps_S    = OptMaps.$(SrcSuf)
+OptMaps_SO   = libOptMaps.$(DllSuf)
 
-OptMapsS        = OptMaps.$(SrcSuf) 		
-UtilsS          = Utils.$(SrcSuf) 			
-VarMapsS        = VarMaps.$(SrcSuf) 		
-OutMngrS        = OutMngr.$(SrcSuf)     
-BaseClassS      = BaseClass.$(SrcSuf) 	
-CatFormatS      = CatFormat.$(SrcSuf) 	
-ANNZS        		= ANNZ.$(SrcSuf) 				
+Utils_O      = Utils.$(ObjSuf)
+Utils_S      = Utils.$(SrcSuf)
+Utils_SO     = libUtils.$(DllSuf)
 
-SoSuf := so
+VarMaps_O    = VarMaps.$(ObjSuf)
+VarMaps_S    = VarMaps.$(SrcSuf)
+VarMaps_SO   = libVarMaps.$(DllSuf)
 
-OptMapsSO       = libOptMaps.$(SoSuf)
-UtilsSO       	= libUtils.$(SoSuf)
-VarMapsSO       = libVarMaps.$(SoSuf)
-OutMngrSO	      = libOutMngr.$(SoSuf)
-BaseClassSO			= libBaseClass.$(SoSuf)
-CatFormatSO			= libCatFormat.$(SoSuf)
-ANNZSO					= libANNZ.$(SoSuf)
+OutMngr_O    = OutMngr.$(ObjSuf)
+OutMngr_S    = OutMngr.$(SrcSuf)
+OutMngr_SO   = libOutMngr.$(DllSuf)
 
-ifeq ($(PLATFORM),win32)
-	OptMapsLIB      	= libOptMaps.lib
-	UtilsLIB      		= libUtils.lib
-	VarMapsLIB      	= libVarMaps.lib
-	OutMngrLIB        = libOutMngr.lib
-	BaseClassLIB      = libBaseClass.lib
-	CatFormatLIB      = libCatFormat.lib
-	ANNZLIB      			= libANNZ.lib
-else
-	OptMapsLIB        = $(shell pwd)/$(OptMapsSO)
-	UtilsLIB          = $(shell pwd)/$(UtilsSO)
-	VarMapsLIB        = $(shell pwd)/$(VarMapsSO)
-	OutMngrLIB      	= $(shell pwd)/$(OutMngrSO)
-	BaseClassLIB 			= $(shell pwd)/$(BaseClassSO)
-	CatFormatLIB 			= $(shell pwd)/$(CatFormatSO)
-	ANNZLIB 					= $(shell pwd)/$(ANNZSO)
-endif
+BaseClass_O  = BaseClass.$(ObjSuf)
+BaseClass_S  = BaseClass.$(SrcSuf)
+BaseClass_SO = libBaseClass.$(DllSuf)
 
-MYMAINO    = myANNZ.$(ObjSuf)
-MYMAINS    = myANNZ.$(SrcSuf)
-myANNZ     = myANNZ$(ExeSuf)
+CatFormat_O  = CatFormat.$(ObjSuf)
+CatFormat_S  = CatFormat.$(SrcSuf)
+CatFormat_SO = libCatFormat.$(DllSuf)
 
-OBJS       = $(OptMapsO) $(UtilsO) $(VarMapsO) $(OutMngrO) $(BaseClassO) $(CatFormatO) $(ANNZO)
-PROGRAMS   = $(myANNZ) 
+ANNZ_O       = ANNZ.$(ObjSuf)
+ANNZ_S       = ANNZ.$(SrcSuf)
+ANNZ_SO      = libANNZ.$(DllSuf)
 
-ifeq ($(ARCH),aix5)
-  MAKESHARED = /usr/vacpp/bin/makeC++SharedLib
-endif
+myANNZ_O     = myANNZ.$(ObjSuf)
+myANNZ_SO    = myANNZ.$(DllSuf)
+myANNZ_E     = myANNZ
 
-all:	$(PROGRAMS)
+Wrapper_O    = Wrapper.$(ObjSuf)
+Wrapper_S    = Wrapper.$(SrcSuf)
+Wrapper_SO   = Wrapper.$(DllSuf)
 
-# ===================================================================================================
-# classes
 # ---------------------------------------------------------------------------------------------------
-# OptMaps:
+# main rule
 # ---------------------------------------------------------------------------------------------------
-$(OptMapsSO): $(OptMapsO)
-ifeq ($(ARCH),aix5)
-		$(MAKESHARED) $(OutPutOpt) $@ $(LIBS) -p 0 $^
-else
+all: $(myANNZ_E) $(Wrapper_SO)
+
+# ---------------------------------------------------------------------------------------------------
+# messaging
+# ---------------------------------------------------------------------------------------------------
+txtred = $(shell tput setaf 1) # Red
+txtgrn = $(shell tput setaf 2) # Green
+txtylw = $(shell tput setaf 3) # Yellow
+txtblu = $(shell tput setaf 4) # Blue
+txtrst = $(shell tput sgr0)    # Reset
+
+msg0 = "$(txtblu)---------------------- DONE:"$(txtgrn)
+msg1 = "$(txtblu)---------------------- DONE:"$(txtylw)
+msg2 = "$(txtblu)----------------------$(txtrst)"
+
+
+# ---------------------------------------------------------------------------------------------------
+# pre-compile the header file
+# 	see e.g.,: http://itscompiling.eu/2017/01/12/precompiled-headers-cpp-compilation/
+# ---------------------------------------------------------------------------------------------------
+Common_H        = commonInclude.hpp
+Common_HGC      = $(Common_H).gch
+Common_HGC_FLAG = -include $(Common_H)
+
+$(Common_HGC): $(Common_H)
+	c++ $(CXXFLAGS)  -o $(Common_HGC) ../include/$(Common_H)
+	c++ $(CXXFLAGS) ../include/$(Common_H)
+	@echo $(msg1) $@ $(msg2)
+
+
+# ---------------------------------------------------------------------------------------------------
+# objects
+# ---------------------------------------------------------------------------------------------------
+$(OptMaps_O): OptMaps.hpp ../src/OptMaps*.cpp $(Common_HGC)
+	c++ $(CXXFLAGS) $(Common_HGC_FLAG) -c -o $(OptMaps_O) ../src/OptMaps.cpp
+	@echo $(msg1) $@ $(msg2)
+
+$(Utils_O): Utils.hpp ../src/Utils*.cpp OptMaps.hpp
+	c++ $(CXXFLAGS) $(Common_HGC_FLAG) -c -o $(Utils_O) ../src/Utils.cpp
+	@echo $(msg1) $@ $(msg2)
+
+$(VarMaps_O): VarMaps.hpp ../src/VarMaps*.cpp CntrMap.hpp OptMaps.hpp Utils.hpp 
+	c++ $(CXXFLAGS) $(Common_HGC_FLAG) -c -o $(VarMaps_O) ../src/VarMaps.cpp
+	@echo $(msg1) $@ $(msg2)
+
+$(OutMngr_O): OutMngr.hpp ../src/OutMngr*.cpp OptMaps.hpp Utils.hpp
+	c++ $(CXXFLAGS) $(Common_HGC_FLAG) -c -o $(OutMngr_O) ../src/OutMngr.cpp
+	@echo $(msg1) $@ $(msg2)
+
+$(BaseClass_O): BaseClass.hpp ../src/BaseClass*.cpp OptMaps.hpp Utils.hpp VarMaps.hpp OutMngr.hpp
+	c++ $(CXXFLAGS) $(Common_HGC_FLAG) -c -o $(BaseClass_O) ../src/BaseClass.cpp
+	@echo $(msg1) $@ $(msg2)
+
+$(CatFormat_O): CatFormat.hpp ../src/CatFormat*.cpp OptMaps.hpp Utils.hpp VarMaps.hpp OutMngr.hpp BaseClass.hpp
+	c++ $(CXXFLAGS) $(Common_HGC_FLAG) -c -o $(CatFormat_O) ../src/CatFormat.cpp
+	@echo $(msg1) $@ $(msg2)
+
+$(ANNZ_O): ANNZ.hpp ../src/ANNZ*.cpp OptMaps.hpp Utils.hpp VarMaps.hpp OutMngr.hpp BaseClass.hpp
+	c++ $(CXXFLAGS) $(Common_HGC_FLAG) -c -o $(ANNZ_O) ../src/ANNZ.cpp
+	@echo $(msg1) $@ $(msg2)
+
+$(myANNZ_O): myANNZ.hpp ../src/myANNZ*.cpp OptMaps.hpp Utils.hpp VarMaps.hpp OutMngr.hpp BaseClass.hpp CatFormat.hpp ANNZ.hpp
+	c++ $(CXXFLAGS) $(Common_HGC_FLAG) -c -o $(myANNZ_O) ../src/myANNZ.cpp
+	@echo $(msg1) $@ $(msg2)
+
+$(Wrapper_O): Wrapper.hpp ../src/Wrapper*.cpp OptMaps.hpp Utils.hpp VarMaps.hpp OutMngr.hpp BaseClass.hpp CatFormat.hpp ANNZ.hpp myANNZ.hpp
+	c++ $(CXXFLAGS) $(Common_HGC_FLAG) -c -o $(Wrapper_O) ../src/Wrapper.cpp
+	@echo $(msg1) $@ $(msg2)
+
+
+# ---------------------------------------------------------------------------------------------------
+# shared libraries
+# ---------------------------------------------------------------------------------------------------
+$(OptMaps_SO): $(OptMaps_O)
 ifeq ($(PLATFORM),macosx)
-# We need to make both the .dylib and the .so
-		$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@ $(EXPLLINKLIBS)
-ifneq ($(subst $(MACOSX_MINOR),,1234),1234)
-# ifeq ($(MACOSX_MINOR),4)
-# 		ln -sf $@ $(subst .$(DllSuf),.so,$@)
-# endif
-endif
+	$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@
 else
-ifeq ($(PLATFORM),win32)
-		bindexplib $* $^ > $*.def
-		lib -nologo -MACHINE:IX86 $^ -def:$*.def \
-		   $(OutPutOpt)$(OptMapsLIB)
-		$(LD) $(SOFLAGS) $(LDFLAGS) $^ $*.exp $(LIBS) \
-		   $(OutPutOpt)$@
-		$(MT_DLL)
-else
-		$(LD) $(SOFLAGS) $(LDFLAGS) $^ $(OutPutOpt) $@ $(EXPLLINKLIBS)
+	$(LD) $(SOFLAGS)   $(LDFLAGS) $^ $(OutPutOpt) $@
 endif
-endif
-endif
-		@echo "$@ done"
+	@echo $(msg0) $@ $(msg2)
 
-# ---------------------------------------------------------------------------------------------------
-# Utils
-# ---------------------------------------------------------------------------------------------------
-$(UtilsSO): $(UtilsO) $(OptMapsO)
-ifeq ($(ARCH),aix5)
-		$(MAKESHARED) $(OutPutOpt) $@ $(LIBS) -p 0 $^
-else
+$(Utils_SO): $(Utils_O) $(OptMaps_SO)
 ifeq ($(PLATFORM),macosx)
-# We need to make both the .dylib and the .so
-		$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@ $(EXPLLINKLIBS)
-ifneq ($(subst $(MACOSX_MINOR),,1234),1234)
-# ifeq ($(MACOSX_MINOR),4)
-# 		ln -sf $@ $(subst .$(DllSuf),.so,$@)
-# endif
-endif
+	$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@
 else
-ifeq ($(PLATFORM),win32)
-		bindexplib $* $^ > $*.def
-		lib -nologo -MACHINE:IX86 $^ -def:$*.def \
-		   $(OutPutOpt)$(UtilsLIB)
-		$(LD) $(SOFLAGS) $(LDFLAGS) $^ $*.exp $(LIBS) \
-		   $(OutPutOpt)$@
-		$(MT_DLL)
-else
-		$(LD) $(SOFLAGS) $(LDFLAGS) $^ $(OutPutOpt) $@ $(EXPLLINKLIBS)
+	$(LD) $(SOFLAGS)   $(LDFLAGS) $^ $(OutPutOpt) $@
 endif
-endif
-endif
-		@echo "$@ done"
+	@echo $(msg0) $@ $(msg2)
 
-# ---------------------------------------------------------------------------------------------------
-# VarMaps:
-# ---------------------------------------------------------------------------------------------------
-$(VarMapsSO): $(VarMapsO) $(OptMapsO) $(UtilsO)
-ifeq ($(ARCH),aix5)
-		$(MAKESHARED) $(OutPutOpt) $@ $(LIBS) -p 0 $^
-else
+$(VarMaps_SO): $(VarMaps_O) $(OptMaps_SO) $(Utils_SO)
 ifeq ($(PLATFORM),macosx)
-# We need to make both the .dylib and the .so
-		$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@ $(EXPLLINKLIBS)
-ifneq ($(subst $(MACOSX_MINOR),,1234),1234)
-# ifeq ($(MACOSX_MINOR),4)
-# 		ln -sf $@ $(subst .$(DllSuf),.so,$@)
-# endif
-endif
+	$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@
 else
-ifeq ($(PLATFORM),win32)
-		bindexplib $* $^ > $*.def
-		lib -nologo -MACHINE:IX86 $^ -def:$*.def \
-		   $(OutPutOpt)$(VarMapsLIB)
-		$(LD) $(SOFLAGS) $(LDFLAGS) $^ $*.exp $(LIBS) \
-		   $(OutPutOpt)$@
-		$(MT_DLL)
-else
-		$(LD) $(SOFLAGS) $(LDFLAGS) $^ $(OutPutOpt) $@ $(EXPLLINKLIBS)
+	$(LD) $(SOFLAGS)   $(LDFLAGS) $^ $(OutPutOpt) $@
 endif
-endif
-endif
-		@echo "$@ done"
+	@echo $(msg0) $@ $(msg2)
 
-
-# ---------------------------------------------------------------------------------------------------
-# OutMngr
-# ---------------------------------------------------------------------------------------------------
-$(OutMngrSO): $(OutMngrO) $(OptMapsO) $(UtilsO) $(VarMapsO)
-ifeq ($(ARCH),aix5)
-		$(MAKESHARED) $(OutPutOpt) $@ $(LIBS) -p 0 $^
-else
+$(OutMngr_SO): $(OutMngr_O) $(OptMaps_SO) $(Utils_SO) $(VarMaps_SO)
 ifeq ($(PLATFORM),macosx)
-# We need to make both the .dylib and the .so
-		$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@ $(EXPLLINKLIBS)
-ifneq ($(subst $(MACOSX_MINOR),,1234),1234)
-# ifeq ($(MACOSX_MINOR),4)
-# 		ln -sf $@ $(subst .$(DllSuf),.so,$@)
-# endif
-endif
+	$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@
 else
-ifeq ($(PLATFORM),win32)
-		bindexplib $* $^ > $*.def
-		lib -nologo -MACHINE:IX86 $^ -def:$*.def \
-		   $(OutPutOpt)$(OutMngrLIB)
-		$(LD) $(SOFLAGS) $(LDFLAGS) $^ $*.exp $(LIBS) \
-		   $(OutPutOpt)$@
-		$(MT_DLL)
-else
-		$(LD) $(SOFLAGS) $(LDFLAGS) $^ $(OutPutOpt) $@ $(EXPLLINKLIBS)
+	$(LD) $(SOFLAGS)   $(LDFLAGS) $^ $(OutPutOpt) $@
 endif
-endif
-endif
-		@echo "$@ done"
+	@echo $(msg0) $@ $(msg2)
 
-# ---------------------------------------------------------------------------------------------------
-# BaseClass
-# ---------------------------------------------------------------------------------------------------
-$(BaseClassSO): $(BaseClassO) $(OptMapsO) $(UtilsO) $(VarMapsO) $(OutMngrO)
-ifeq ($(ARCH),aix5)
-		$(MAKESHARED) $(OutPutOpt) $@ $(LIBS) -p 0 $^
-else
+$(BaseClass_SO): $(BaseClass_O) $(OptMaps_SO) $(Utils_SO) $(VarMaps_SO) $(OutMngr_SO)
 ifeq ($(PLATFORM),macosx)
-# We need to make both the .dylib and the .so
-		$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@ $(EXPLLINKLIBS)
-ifneq ($(subst $(MACOSX_MINOR),,1234),1234)
-# ifeq ($(MACOSX_MINOR),4)
-# 		ln -sf $@ $(subst .$(DllSuf),.so,$@)
-# endif
-endif
+	$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@
 else
-ifeq ($(PLATFORM),win32)
-		bindexplib $* $^ > $*.def
-		lib -nologo -MACHINE:IX86 $^ -def:$*.def \
-		   $(OutPutOpt)$(BaseClassLIB)
-		$(LD) $(SOFLAGS) $(LDFLAGS) $^ $*.exp $(LIBS) \
-		   $(OutPutOpt)$@
-		$(MT_DLL)
-else
-		$(LD) $(SOFLAGS) $(LDFLAGS) $^ $(OutPutOpt) $@ $(EXPLLINKLIBS)
+	$(LD) $(SOFLAGS)   $(LDFLAGS) $^ $(OutPutOpt) $@
 endif
-endif
-endif
-		@echo "$@ done"
+	@echo $(msg0) $@ $(msg2)
 
-# ---------------------------------------------------------------------------------------------------
-# CatFormat
-# ---------------------------------------------------------------------------------------------------
-$(CatFormatSO): $(CatFormatO) $(OptMapsO) $(UtilsO) $(VarMapsO) $(OutMngrO) $(BaseClassO)
-ifeq ($(ARCH),aix5)
-		$(MAKESHARED) $(OutPutOpt) $@ $(LIBS) -p 0 $^
-else
+$(CatFormat_SO): $(CatFormat_O) $(OptMaps_SO) $(Utils_SO) $(VarMaps_SO) $(OutMngr_SO) $(BaseClass_SO)
 ifeq ($(PLATFORM),macosx)
-# We need to make both the .dylib and the .so
-		$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@ $(EXPLLINKLIBS)
-ifneq ($(subst $(MACOSX_MINOR),,1234),1234)
-# ifeq ($(MACOSX_MINOR),4)
-# 		ln -sf $@ $(subst .$(DllSuf),.so,$@)
-# endif
-endif
+	$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@
 else
-ifeq ($(PLATFORM),win32)
-		bindexplib $* $^ > $*.def
-		lib -nologo -MACHINE:IX86 $^ -def:$*.def \
-		   $(OutPutOpt)$(CatFormatLIB)
-		$(LD) $(SOFLAGS) $(LDFLAGS) $^ $*.exp $(LIBS) \
-		   $(OutPutOpt)$@
-		$(MT_DLL)
-else
-		$(LD) $(SOFLAGS) $(LDFLAGS) $^ $(OutPutOpt) $@ $(EXPLLINKLIBS)
+	$(LD) $(SOFLAGS)   $(LDFLAGS) $^ $(OutPutOpt) $@
 endif
-endif
-endif
-		@echo "$@ done"
+	@echo $(msg0) $@ $(msg2)
 
-
-# ---------------------------------------------------------------------------------------------------
-# ANNZ
-# ---------------------------------------------------------------------------------------------------
-$(ANNZSO): $(ANNZO) $(OptMapsO) $(UtilsO) $(VarMapsO) $(OutMngrO) $(BaseClassO)
-ifeq ($(ARCH),aix5)
-		$(MAKESHARED) $(OutPutOpt) $@ $(LIBS) -p 0 $^
-else
+$(ANNZ_SO): $(ANNZ_O) $(OptMaps_SO) $(Utils_SO) $(VarMaps_SO) $(OutMngr_SO) $(BaseClass_SO)
 ifeq ($(PLATFORM),macosx)
-# We need to make both the .dylib and the .so
-		$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@ $(EXPLLINKLIBS)
-ifneq ($(subst $(MACOSX_MINOR),,1234),1234)
-# ifeq ($(MACOSX_MINOR),4)
-# 		ln -sf $@ $(subst .$(DllSuf),.so,$@)
-# endif
-endif
+	$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@
 else
-ifeq ($(PLATFORM),win32)
-		bindexplib $* $^ > $*.def
-		lib -nologo -MACHINE:IX86 $^ -def:$*.def \
-		   $(OutPutOpt)$(ANNZLIB)
-		$(LD) $(SOFLAGS) $(LDFLAGS) $^ $*.exp $(LIBS) \
-		   $(OutPutOpt)$@
-		$(MT_DLL)
+	$(LD) $(SOFLAGS)   $(LDFLAGS) $^ $(OutPutOpt) $@
+endif
+	@echo $(msg0) $@ $(msg2)
+
+$(myANNZ_SO): $(myANNZ_O) $(OptMaps_SO) $(Utils_SO) $(VarMaps_SO) $(OutMngr_SO) $(BaseClass_SO) $(CatFormat_SO) $(ANNZ_SO)
+ifeq ($(PLATFORM),macosx)
+	$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@ 
 else
-		$(LD) $(SOFLAGS) $(LDFLAGS) $^ $(OutPutOpt) $@ $(EXPLLINKLIBS)
+	$(LD) $(SOFLAGS)   $(LDFLAGS) $^ $(OutPutOpt) $@
 endif
-endif
-endif
-		@echo "$@ done"
+	@echo $(msg0) $@ $(msg2)
 
 # ---------------------------------------------------------------------------------------------------
-# myANNZ
+# myANNZ_E
 # ---------------------------------------------------------------------------------------------------
-$(myANNZ):  $(OptMapsSO) $(UtilsSO) $(VarMapsSO) $(OutMngrSO) $(BaseClassSO) $(CatFormatSO) $(ANNZSO) $(MYMAINO)
-		$(LD) $(LDFLAGS) $(MYMAINO) *.so* $(LIBS) $(OutPutOpt)$@
-		$(MT_EXE)
-		@echo "$@ done"
+$(myANNZ_E): $(myANNZ_SO) $(OptMaps_SO) $(Utils_SO) $(VarMaps_SO) $(OutMngr_SO) $(BaseClass_SO) $(CatFormat_SO) $(ANNZ_SO)
+	$(LD) $(LDFLAGS) $^ $(LIBS) $(OutPutOpt) $@ $(MT_EXE)
+	@echo $(msg0) $@ $(msg2)
 # ===================================================================================================
 
-
 # ---------------------------------------------------------------------------------------------------
-# recompile the objects if there is any change to the respective *.hpp *.cpp files
+# Wrapper_SO
 # ---------------------------------------------------------------------------------------------------
-OptMaps.$(ObjSuf): 				OptMaps.hpp                                                 ../src/OptMaps*.cpp 	 ../include/OptMaps*.hpp
-Utils.$(ObjSuf):   				OptMaps.hpp Utils.hpp 					          									../src/Utils*.cpp 		 ../include/Utils*.hpp
-VarMaps.$(ObjSuf):        OptMaps.hpp Utils.hpp VarMaps.hpp                           ../src/VarMaps*.cpp    ../include/VarMaps*.hpp   CntrMap.hpp
-OutMngr.$(ObjSuf):        OptMaps.hpp Utils.hpp VarMaps.hpp OutMngr.hpp               ../src/OutMngr*.cpp    ../include/OutMngr*.hpp
-BaseClass.$(ObjSuf):  		OptMaps.hpp Utils.hpp VarMaps.hpp OutMngr.hpp               ../src/BaseClass*.cpp  ../include/BaseClass*.hpp
-CatFormat.$(ObjSuf):  		OptMaps.hpp Utils.hpp VarMaps.hpp OutMngr.hpp BaseClass.hpp ../src/CatFormat*.cpp  ../include/CatFormat*.hpp
-ANNZ.$(ObjSuf):   				OptMaps.hpp Utils.hpp VarMaps.hpp OutMngr.hpp BaseClass.hpp ../src/ANNZ*.cpp 			 ../include/ANNZ*.hpp
-
-myANNZ.$(ObjSuf):  				../include/*.hpp ../src/*.cpp 
-
+$(Wrapper_SO): $(Wrapper_O) $(OptMaps_SO) $(Utils_SO) $(VarMaps_SO) $(OutMngr_SO) $(BaseClass_SO) $(CatFormat_SO) $(ANNZ_SO) $(myANNZ_SO)
+ifeq ($(PLATFORM),macosx)
+	$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@ 
+else
+	$(LD) $(SOFLAGS)   $(LDFLAGS) $^ $(OutPutOpt) $@
+endif
+	@echo $(msg0) $@ $(msg2)
 # ---------------------------------------------------------------------------------------------------
-# general stuff
-# ---------------------------------------------------------------------------------------------------
-.$(SrcSuf).$(ObjSuf):
-	$(CXX)  $(CXXFLAGS) -c $<
-
-objclean:
-		@rm -f $(OBJS) $(TRACKMATHSRC) core
-clean:      objclean
-		@rm -f $(PROGRAMS) $(OptMapsSO) $(OptMapsLIB) $(UtilsSO) $(UtilsLIB) $(VarMapsSO) $(VarMapsLIB) *.def *.exp \
-		   *.root *.ps *.o *.so *.lib *.dll *.d *.log .def so_locations \
-		   files/* testdb.sqlite
-
-.SUFFIXES: .$(SrcSuf) .$(ObjSuf) .$(DllSuf)
-
-
-
-

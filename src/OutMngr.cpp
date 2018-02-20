@@ -45,15 +45,6 @@ OutMngr::OutMngr(TString aName, Utils * aUtils, OptMaps * aMaps) {
   utils = aUtils;
   draw  = new OptMaps("draw");
 
-  // set the local color variables
-  CT                = glob->CT;               coutDef           = glob->coutDef;
-  coutRed           = glob->coutRed;          coutGreen         = glob->coutGreen;
-  coutBlue          = glob->coutBlue;         coutLightBlue     = glob->coutLightBlue;
-  coutYellow        = glob->coutYellow;       coutPurple        = glob->coutPurple;
-  coutCyan          = glob->coutCyan;         coutUnderLine     = glob->coutUnderLine;
-  coutWhiteOnBlack  = glob->coutWhiteOnBlack; coutWhiteOnRed    = glob->coutWhiteOnRed;
-  coutWhiteOnGreen  = glob->coutWhiteOnGreen; coutWhiteOnYellow = glob->coutWhiteOnYellow;
-
 	SetMyStyle();
   TH1::SetDefaultSumw2(true); 
 	BaseDir = gDirectory->CurrentDirectory();

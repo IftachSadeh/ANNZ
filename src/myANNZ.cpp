@@ -15,120 +15,67 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // ===========================================================================================================
-
+#include <commonInclude.hpp>
 #include "myANNZ.hpp"
 #include "Utils.hpp"
 #include "OptMaps.hpp"
-#include "OutMngr.cpp"
+#include "OutMngr.hpp"
 #include "ANNZ.hpp"
 #include "CatFormat.hpp"
+
 
 // ===========================================================================================================
 /**
  * @brief       - The main function
  * 
- * @details     - Parse input parameters from the user and run an instance of myANNZ.
+ * @details     - Parse input parameters from the user and run an instance of Manager.
  * 
  * @param argc  - Number of input parameters.
  * @param argv  - Input parameters of format [NAME=VAL], (e.g., [nPDFbins="30"]), with possible types of int, float, bool, string.
- *              The possibe values of NAME are listed in myANNZ::myANNZ(), along with the default correponsing values (VAL).
+ *              The possibe values of NAME are listed in Manager::Manager(), along with the default correponsing values (VAL).
  * 
  * @return      - return [0] if all went well.
  */
 // ===========================================================================================================
-int main(int argc, char * argv[]){
+int main(int argc, char ** argv){
 // ===============================
 
   // create the main object. It comes with built-in glob->() options which may be modified by user inputs in the following
   // -----------------------------------------------------------------------------------------------------------
-  myANNZ * aMyMain = new myANNZ();
+  Manager * aManager = new Manager();
 
-  vector <TString> optNames;
-  aMyMain->glob->GetAllOptNames(optNames);
-
-  // read-in user inputs and modify/add glob->() options
-  // -----------------------------------------------------------------------------------------------------------
-  int  optNow(1), strLength(0);
-  while (optNow < argc) {
-    std::string  optStrStart, optStrEnd, optStr( argv[optNow] ), optStrNow;
-    TString optTStr((TString)optStr), optNameNow, typeNow;
-    // remove spaces from string
-    std::string::iterator end_pos = std::remove(optStr.begin(), optStr.end(), ' ');  optStr.erase(end_pos, optStr.end());
-
-    // go over all options which were defined in the myANNZ constructor
-    for(int i=0; i<(int)optNames.size(); i++) {
-      optNameNow = optNames[i];
-      if(!(((TString)optStr).Contains(optNameNow))) continue;
-
-      typeNow   = aMyMain->glob->GetOptType(optNameNow);  optStrNow = (TString)optNameNow+"=";
-      strLength = optStrNow.length();                     optStrStart.assign(optStr,0,strLength);
-      optStrEnd = optStr;                                 optStrEnd.erase(0,strLength);
-
-      if( optStrStart == optStrNow && (typeNow == "C" || (typeNow != "C" && optStrEnd != "")) ) {
-        if     (typeNow == "I") aMyMain->glob->NewOptI(optNameNow , static_cast<int>   (atof((char*)optStrEnd.c_str())));
-        else if(typeNow == "F") aMyMain->glob->NewOptF(optNameNow , static_cast<double>(atof((char*)optStrEnd.c_str())));
-        else if(typeNow == "C") aMyMain->glob->NewOptC(optNameNow , (TString)optStrEnd);
-        else if(typeNow == "B") {
-          if     (optStrEnd == "0" || optStrEnd == "false" || optStrEnd == "False" || optStrEnd == "FALSE") aMyMain->glob->NewOptB(optNameNow , false);
-          else if(optStrEnd == "1" || optStrEnd == "true"  || optStrEnd == "True"  || optStrEnd == "TRUE")  aMyMain->glob->NewOptB(optNameNow , true );
-          else { cout <<"Unknown bool flag initializtion ("<<optNameNow<<" = "<<optStrEnd<<")... ABOTRING !!!"<<endl;  exit(1); }
-        }
-      }
-      if(optStrEnd == "" && typeNow == "B") aMyMain->glob->NewOptB(optTStr , true);
-    }
-
-    // general types according to patterns
-    if(optTStr.BeginsWith("debug")) aMyMain->glob->NewOptB(optTStr , true);  // debug,debugCutParser,...
-    if((optTStr(0,2)) == "do" )     aMyMain->glob->NewOptB(optTStr , true);  // doLoop,doMerge,doPlot,doDC6,doY1C1,...
-    if((optTStr(0,4)) == "int_" ) {
-      aMyMain->glob->NewOptI( optTStr(4,optTStr.First("=")-4) ,
-                              static_cast<int>(floor(((TString)(optTStr(optTStr.First("=")+1,optTStr.Length()))).Atof())) );
-    }
-    if((optTStr(0,4)) == "str_" ) {
-      // EXMAPLE: str_dir_0=rootIn/trainTest will do:   aMyMain->glob->optS["dir_0"] = "rootIn/trainTest";
-      aMyMain->glob->NewOptC( optTStr(4,optTStr.First("=")-4) , (TString)(optTStr(optTStr.First("=")+1,optTStr.Length())) );
-    }
-    if(optTStr.BeginsWith("inputVariables_")) {
-      aMyMain->glob->NewOptC( optTStr(0,optTStr.First("=")) , (TString)(optTStr(optTStr.First("=")+1,optTStr.Length())) );
-    }
-    if(optTStr.BeginsWith("inputVarErrors_")) {
-      aMyMain->glob->NewOptC( optTStr(0,optTStr.First("=")) , (TString)(optTStr(optTStr.First("=")+1,optTStr.Length())) );
-    }
-    if(optTStr.BeginsWith("userMLMopts_")) {
-      aMyMain->glob->NewOptC( optTStr(0,optTStr.First("=")) , (TString)(optTStr(optTStr.First("=")+1,optTStr.Length())) );
-    }
-    optNow++;  
-  }
-  optNames.clear();
-
-  // initialization after taking-in the user options
-  // -----------------------------------------------------------------------------------------------------------
-  aMyMain->Init();
+  // initialization, taking-in the user options
+  aManager->Init(argc, argv);
 
   // -----------------------------------------------------------------------------------------------------------
   // The various classes
   // -----------------------------------------------------------------------------------------------------------
-  if     (aMyMain->glob->GetOptB("doGenInputTrees")) aMyMain->GenerateInputTrees(); // create catalogue trees
-  else if(aMyMain->glob->GetOptB("doInTrainFlag"))   aMyMain->doInTrainFlag();      // inTrainFlag calculation, without the need for MLMs
-  else if(!aMyMain->glob->GetOptB("doOnlyKnnErr"))   aMyMain->DoANNZ();             // training, validation and evaluation modes
+  // create catalogue trees
+  if     (aManager->glob->GetOptB("doGenInputTrees")) aManager->GenerateInputTrees();
+  // inTrainFlag calculation, without the need for MLMs
+  else if(aManager->glob->GetOptB("doInTrainFlag"))   aManager->doInTrainFlag();
+  // training, validation and evaluation modes
+  else if(!aManager->glob->GetOptB("doOnlyKnnErr"))   aManager->DoANNZ();
 
   // knn-error calculation, without the need for MLMs
-  if(aMyMain->glob->GetOptB("doOnlyKnnErr")) aMyMain->doOnlyKnnErr();
+  if(aManager->glob->GetOptB("doOnlyKnnErr")) aManager->doOnlyKnnErr();
   
-  DELNULL(aMyMain);
+  DELNULL(aManager);
   cout<<endl;
 
   return 0;
 }
 
+
+
 // ===========================================================================================================
 /**
- * @brief    - Constructor of myANNZ.
+ * @brief    - Constructor of Manager.
  * @details  - Define all possible user input parameters (and default values) as members of the glob OptMaps.
  */
 // ===========================================================================================================
-myANNZ::myANNZ() {
-// ===============
+Manager::Manager() {
+// =================
 
   // -----------------------------------------------------------------------------------------------------------
   // initial setup - all of these glob->() options may may be overwritten by user inputs
@@ -169,6 +116,8 @@ myANNZ::myANNZ() {
   //   optional lists of input files defining if an object is of type signal or background
   glob->NewOptC("inpFiles_sig","");
   glob->NewOptC("inpFiles_bck","");
+  // list of input variables for evaluation (used exclusively by the Wrapper)
+  glob->NewOptC("inVars"  ,"");
 
   // nSplit - how to split into training/testing(/validation) - 
   //   nSplit = 2 -> split into 2 (training,testing) sub-sets - for trainig/optimization
@@ -489,8 +438,9 @@ myANNZ::myANNZ() {
   // -----------------------------------------------------------------------------------------------------------
   // general stuff
   // -----------------------------------------------------------------------------------------------------------
-  glob->NewOptB("useCoutCol"      ,true);      // whether or not to use colour output
-  glob->NewOptC("logLevel"        ,"INFO");    // logging output level ("ERROR","WARNING","INFO","DEBUG","DEBUG_1","DEBUG_2","DEBUG_3","DEBUG_4")
+  // possible log levels: ("ERROR","WARNING","INFO","DEBUG","DEBUG_1","DEBUG_2","DEBUG_3","DEBUG_4")
+  glob->NewOptC("logLevel"        ,"INFO");    // logging output level
+  
   glob->NewOptB("isBatch"         ,false);     // reduce output (especially progress bar) for batch running
   glob->NewOptC("outDirName"      ,"output");  // working directory for a given analysis
   glob->NewOptC("inDirName"       ,"rootIn");  // input directory for source-ascii files - only used for doGenInputTrees()
@@ -564,7 +514,7 @@ myANNZ::myANNZ() {
   glob->NewOptB("keepOptimTrees_randReg"     ,true);
   
   // copy these folders/files as backup from the current directory to the working directory
-  glob->NewOptC("copyCodeCmnd","rsync -Rrtaz --include 'examples/' --include 'scripts/' --include 'include/' --include 'src/' --include '*.py' --include '*.hpp' --include '*.cpp' --exclude '*' *");
+  glob->NewOptC("copyCodeCmnd","rsync -Rrtaz --include 'examples/' --include 'scripts/' --include 'py/' --include 'include/' --include 'src/' --include '*.py' --include '*.hpp' --include '*.cpp' --exclude '*' *");
 
   // set info-level for ROOT operations (messages like plot printing etc. will be written out)
   glob->NewOptB("set_kInfoROOT",false);
@@ -599,13 +549,13 @@ myANNZ::myANNZ() {
 
 // ===========================================================================================================
 /**
- * @brief    - Initialization of myANNZ after the user options have been read-in.
+ * @brief    - Initialization of Manager inc. user options.
  * @details  - Make sanity checks, input variable reformatting (e.g., add '/' at the
  *           end of directory names), and initialize instances of Utils and OutMngr.
  */
 // ===========================================================================================================
-void myANNZ::Init() {
-// ==================
+void Manager::Init(int argc, char ** argv) {
+// =========================================
   // -----------------------------------------------------------------------------------------------------------
   // current version-tag for the code
   // -----------------------------------------------------------------------------------------------------------
@@ -614,8 +564,67 @@ void myANNZ::Init() {
   VERIFY(LOCATION,(TString)" - Using unsupported ROOT version ... ?!?!?",(ROOT_TMVA_V0 || ROOT_TMVA_V1));
   // -----------------------------------------------------------------------------------------------------------
 
-  // check user string-input
+  // -----------------------------------------------------------------------------------------------------------
+  // read-in user inputs and modify/add glob->() options
+  // -----------------------------------------------------------------------------------------------------------
   vector <TString> optNames;
+  glob->GetAllOptNames(optNames);
+
+  int  optNow(0), strLength(0);
+  while(optNow < argc) {
+    std::string  optStrStart, optStrEnd, optStr( argv[optNow] ), optStrNow;
+    TString optTStr((TString)optStr), optNameNow, typeNow;
+    // remove spaces from string
+    std::string::iterator end_pos = std::remove(optStr.begin(), optStr.end(), ' ');  optStr.erase(end_pos, optStr.end());
+
+    // go over all options which were defined in the Manager constructor
+    for(int i=0; i<(int)optNames.size(); i++) {
+      optNameNow = optNames[i];
+      if(!(((TString)optStr).Contains(optNameNow))) continue;
+
+      typeNow   = glob->GetOptType(optNameNow);  optStrNow = (TString)optNameNow+"=";
+      strLength = optStrNow.length();            optStrStart.assign(optStr,0,strLength);
+      optStrEnd = optStr;                        optStrEnd.erase(0,strLength);
+
+      if( optStrStart == optStrNow && (typeNow == "C" || (typeNow != "C" && optStrEnd != "")) ) {
+        if     (typeNow == "I") glob->NewOptI(optNameNow , static_cast<int>   (atof((char*)optStrEnd.c_str())));
+        else if(typeNow == "F") glob->NewOptF(optNameNow , static_cast<double>(atof((char*)optStrEnd.c_str())));
+        else if(typeNow == "C") glob->NewOptC(optNameNow , (TString)optStrEnd);
+        else if(typeNow == "B") {
+          if     (optStrEnd == "0" || optStrEnd == "false" || optStrEnd == "False" || optStrEnd == "FALSE") glob->NewOptB(optNameNow , false);
+          else if(optStrEnd == "1" || optStrEnd == "true"  || optStrEnd == "True"  || optStrEnd == "TRUE")  glob->NewOptB(optNameNow , true );
+          else { cout <<"Unknown bool flag initializtion ("<<optNameNow<<" = "<<optStrEnd<<")... ABOTRING !!!"<<endl;  exit(1); }
+        }
+      }
+      if(optStrEnd == "" && typeNow == "B") glob->NewOptB(optTStr , true);
+    }
+
+    // general types according to patterns
+    if(optTStr.BeginsWith("debug")) glob->NewOptB(optTStr(0,optTStr.First("=")), true);  // debug,debugCutParser,...
+    if((optTStr(0,4)) == "int_" ) {
+      glob->NewOptI( optTStr(4,optTStr.First("=")-4) ,
+                     static_cast<int>(floor(((TString)(optTStr(optTStr.First("=")+1,optTStr.Length()))).Atof())) );
+    }
+    if((optTStr(0,4)) == "str_" ) {
+      // EXMAPLE: str_dir_0=rootIn/trainTest will do:   glob->optS["dir_0"] = "rootIn/trainTest";
+      glob->NewOptC( optTStr(4,optTStr.First("=")-4) , (TString)(optTStr(optTStr.First("=")+1,optTStr.Length())) );
+    }
+    if(optTStr.BeginsWith("inputVariables_")) {
+      glob->NewOptC( optTStr(0,optTStr.First("=")) , (TString)(optTStr(optTStr.First("=")+1,optTStr.Length())) );
+    }
+    if(optTStr.BeginsWith("inputVarErrors_")) {
+      glob->NewOptC( optTStr(0,optTStr.First("=")) , (TString)(optTStr(optTStr.First("=")+1,optTStr.Length())) );
+    }
+    if(optTStr.BeginsWith("userMLMopts_")) {
+      glob->NewOptC( optTStr(0,optTStr.First("=")) , (TString)(optTStr(optTStr.First("=")+1,optTStr.Length())) );
+    }
+    optNow++;  
+  }
+  optNames.clear();
+
+  // -----------------------------------------------------------------------------------------------------------
+  // sanity check of user string-input
+  // -----------------------------------------------------------------------------------------------------------
   glob->GetAllOptNames(optNames,"C");
   for(int nOptNow=0; nOptNow<(int)optNames.size(); nOptNow++) {
     glob->SetOptC(optNames[nOptNow],(glob->GetOptC(optNames[nOptNow])).ReplaceAll("\n","").ReplaceAll("\r",""));
@@ -653,13 +662,16 @@ void myANNZ::Init() {
   // -----------------------------------------------------------------------------------------------------------
   // working directory names
   // -----------------------------------------------------------------------------------------------------------
-  glob->NewOptC("trainDirName"      ,"train");                                   // name of sub-dir for training
-  glob->NewOptC("optimDirName"      ,"optim");                                   // name of sub-dir for optimization
-  glob->NewOptC("verifDirName"      ,"verif");                                   // name of sub-dir for verification
-  glob->NewOptC("evalDirName"       ,"eval");                                    // name of sub-dir for optimization
-  glob->NewOptC("evalTreePostfix"   ,(TString)"_"+glob->GetOptC("evalDirName")); // postfix for evaluation trees
-  glob->NewOptC("inTrainFlagDirName","inTrainFlag");                             // name of sub-dir for the inTrainFlag
-  glob->NewOptC("postTrainName"     ,"postTrain");                               // name of sub-dir for MLM input trees
+  glob->NewOptC("trainDirName"      ,"train");       // name of sub-dir for training
+  glob->NewOptC("optimDirName"      ,"optim");       // name of sub-dir for optimization
+  glob->NewOptC("verifDirName"      ,"verif");       // name of sub-dir for verification
+  glob->NewOptC("evalDirName"       ,"eval");        // name of sub-dir for optimization
+  glob->NewOptC("inTrainFlagDirName","inTrainFlag"); // name of sub-dir for the inTrainFlag
+  glob->NewOptC("postTrainName"     ,"postTrain");   // name of sub-dir for MLM input trees
+  
+  TString evalTreePostfix((TString)"_"+glob->GetOptC("evalDirName"));
+  glob->NewOptC("evalTreePostfix"       ,evalTreePostfix);                     // postfix for evaluation trees
+  glob->NewOptC("evalTreeWrapperPostfix",(TString)evalTreePostfix+"_Wrapper"); // postfix for wrapper of eval trees
   
   // -----------------------------------------------------------------------------------------------------------
   // special setup for the doOnlyKnnErr mode so that we can safely run ANNZ
@@ -676,9 +688,6 @@ void myANNZ::Init() {
   // update/finalize glob-> paramters after user inputs and initialize utils and outputs
   // -----------------------------------------------------------------------------------------------------------
   
-  // after possible re-setting of GetOptB("useCoutCol"), run setColors() again
-  setColors();
-  
   // initialize the logger
   Log::theLog::ReportingLevel() = Log::theLog::FromString((std::string)glob->GetOptC("logLevel"));
 
@@ -686,11 +695,11 @@ void myANNZ::Init() {
   //   kPrint, kInfo, kWarning, kError, kBreak, kSysError, kFatal
   gErrorIgnoreLevel = (glob->GetOptC("logLevel").BeginsWith("DEBUG")) ? kWarning : kFatal;
 
-  aLOG(Log::INFO)<<glob->coutGreen<<" -----------------------------------------------------"<<glob->coutDef<<endl;
-  aLOG(Log::INFO)<<glob->coutGreen<<" - Welcome to ANNZ v"<<versionTag
-                                  <<" (using ROOT v"<<ROOT_RELEASE<<") -"                   <<glob->coutDef<<endl;
-  aLOG(Log::INFO)<<glob->coutGreen<<" -----------------------------------------------------"
-                                  <<"------------------------------------------------------"<<glob->coutDef<<endl;
+  aLOG(Log::INFO)<<coutGreen<<" -----------------------------------------------------"<<coutDef<<endl;
+  aLOG(Log::INFO)<<coutGreen<<" - Welcome to ANNZ v"<<versionTag
+                            <<" (using ROOT v"<<ROOT_RELEASE<<") -"                   <<coutDef<<endl;
+  aLOG(Log::INFO)<<coutGreen<<" -----------------------------------------------------"
+                            <<"------------------------------------------------------"<<coutDef<<endl;
 
   // -----------------------------------------------------------------------------------------------------------
   // analysis type (used for directory naming)
@@ -852,7 +861,7 @@ void myANNZ::Init() {
   if(glob->GetOptI("initSeedRnd") < 0) glob->SetOptI("initSeedRnd",0);
   if(glob->GetOptI("maxNobj")     < 0) glob->SetOptI("maxNobj"    ,0);
 
-  if(glob->GetOptB("doClassification")) {
+  if(glob->GetOptB("doClassification") && !glob->GetOptB("doEval")) {
     // -----------------------------------------------------------------------------------------------------------
     // make sure that at least one of the two pairs, either "userCuts_sig" and "userCuts_bck", or
     // "inpFiles_sig" and "inpFiles_bck" is defined if "inpFiles_sig" or "inpFiles_bck" are defined, parse
@@ -900,8 +909,8 @@ void myANNZ::Init() {
  *           - May also include KNN weight calculation, based on a reference sample.
  */
 // ===========================================================================================================
-void myANNZ::GenerateInputTrees() {
-// ================================
+void Manager::GenerateInputTrees() {
+// =================================
   // initialize the outputs with the rootIn directory and reset it
   outputs->InitializeDir(glob->GetOptC("outDirNameFull"),glob->GetOptC("baseName"));
 
@@ -934,8 +943,8 @@ void myANNZ::GenerateInputTrees() {
  * @brief    - Calculate the knn-error estimator for a general input dataset.
  */
 // ===========================================================================================================
-void myANNZ::doOnlyKnnErr() {
-// ==========================
+void Manager::doOnlyKnnErr() {
+// ===========================
 
   VERIFY(LOCATION,(TString)"Can not define both \"doGenInputTrees\" and \"doEval\" at the same time ... run \"doGenInputTrees\" "
                           +"separately first, then \"doEval\"", !(glob->GetOptB("doGenInputTrees") && glob->GetOptB("doEval")));
@@ -974,8 +983,8 @@ void myANNZ::doOnlyKnnErr() {
  * @brief    - Calculate the inTrainFlag quality-flag, without the need to train/optimize/evaluate MLMs.
  */
 // ===========================================================================================================
-void myANNZ::doInTrainFlag() {
-// ===========================
+void Manager::doInTrainFlag() {
+// ============================
   // initialize the inTrainFlag directory
   outputs->InitializeDir(glob->GetOptC("outDirNameFull"),glob->GetOptC("baseName"));
 
@@ -994,8 +1003,8 @@ void myANNZ::doInTrainFlag() {
  * @brief  - Run selected ANNZ procedure (training, optimization, verification or evaluation).
  */
 // ===========================================================================================================
-void myANNZ::DoANNZ() {
-// ====================
+void Manager::DoANNZ() {
+// =====================
 
   ANNZ * aANNZ = new ANNZ("aANNZ",utils,glob,outputs);
 
@@ -1028,33 +1037,15 @@ void myANNZ::DoANNZ() {
   return;
 }
 
-// ===========================================================================================================
-/**
- * @brief  - Copy color definitions from glob.
- */
-// ===========================================================================================================
-void myANNZ::setColors() {
-// =======================
-  // set colours in global and then copy to the local variables
-  glob->setColors();
-
-  CT                = glob->CT;               coutDef           = glob->coutDef;
-  coutRed           = glob->coutRed;          coutGreen         = glob->coutGreen;
-  coutBlue          = glob->coutBlue;         coutLightBlue     = glob->coutLightBlue;
-  coutYellow        = glob->coutYellow;       coutPurple        = glob->coutPurple;
-  coutCyan          = glob->coutCyan;         coutUnderLine     = glob->coutUnderLine;
-  coutWhiteOnBlack  = glob->coutWhiteOnBlack; coutWhiteOnRed    = glob->coutWhiteOnRed;
-  coutWhiteOnGreen  = glob->coutWhiteOnGreen; coutWhiteOnYellow = glob->coutWhiteOnYellow;
-};
 
 // ===========================================================================================================
 /**
- * @brief  - Destructor of myANNZ.
+ * @brief  - Destructor of Manager.
  */
 // ===========================================================================================================
-myANNZ::~myANNZ() {
-// ======================
-  aLOG(Log::DEBUG)<<glob->coutWhiteOnBlack<<glob->coutBlue<<" - starting myANNZ::~myANNZ() ... "<<glob->coutDef<<endl;
+Manager::~Manager() {
+// ==================
+  aLOG(Log::DEBUG)<<coutWhiteOnBlack<<coutBlue<<" - starting Manager::~Manager() ... "<<coutDef<<endl;
 
   DELNULL(outputs);
   DELNULL(glob);

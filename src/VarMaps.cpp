@@ -21,13 +21,15 @@
 // ===========================================================================================================
 VarMaps::VarMaps(OptMaps * aOptMaps, Utils * aUtils, TString aName) {
 // ==================================================================
-  VERIFY(LOCATION,(TString)"Can't create VarMaps without a valid OptMaps ...",(dynamic_cast<OptMaps*>(aOptMaps)));
+  VERIFY(LOCATION,(TString)" - VarMaps("+name+") cant create VarMaps without a valid OptMaps ...",(dynamic_cast<OptMaps*>(aOptMaps)));
 
   glob              = aOptMaps;
   utils             = aUtils;
   name              = aName;
   treeWrite         = NULL;
   treeRead          = NULL;
+  treeWriteName     = "";
+  treeReadName      = "";
   nTreeInChain      = -1;
   areCutsEnabled    = true;
   needReaderUpdate  = true;
@@ -35,14 +37,6 @@ VarMaps::VarMaps(OptMaps * aOptMaps, Utils * aUtils, TString aName) {
   failedCutType     = "";
 
   cntrMap           = new CntrMap(glob,utils,(TString)name+"_cntrMap");
-
-  CT                = glob->CT;               coutDef           = glob->coutDef;
-  coutRed           = glob->coutRed;          coutGreen         = glob->coutGreen;
-  coutBlue          = glob->coutBlue;         coutLightBlue     = glob->coutLightBlue;
-  coutYellow        = glob->coutYellow;       coutPurple        = glob->coutPurple;
-  coutCyan          = glob->coutCyan;         coutUnderLine     = glob->coutUnderLine;
-  coutWhiteOnBlack  = glob->coutWhiteOnBlack; coutWhiteOnRed    = glob->coutWhiteOnRed;
-  coutWhiteOnGreen  = glob->coutWhiteOnGreen; coutWhiteOnYellow = glob->coutWhiteOnYellow;
 
   return;
 }
@@ -89,8 +83,24 @@ void VarMaps::clearVar() {
 void VarMaps::clearTrees() {
 // =========================
 
-  if(dynamic_cast<TTree*>(treeWrite)) { treeWrite->ResetBranchAddresses(); treeWrite = NULL; }
-  if(dynamic_cast<TTree*>(treeRead )) { treeRead ->ResetBranchAddresses(); treeRead  = NULL; }
+  if(dynamic_cast<TTree*>(treeWrite)) {
+    if(treeWriteName != "") {
+      aLOG(Log::DEBUG_2) <<coutYellow<<" - for VarMaps("<<coutGreen<<name<<coutYellow
+                         <<") - clear treeWrite("<<coutGreen<<treeWriteName<<coutYellow<<")"<<coutDef<<endl;
+
+      if(gROOT->FindObject(treeWriteName)) treeWrite->ResetBranchAddresses();
+    }
+    treeWrite = NULL;
+  }
+  if(dynamic_cast<TTree*>(treeRead )) {
+    if(treeReadName != "") {
+      aLOG(Log::DEBUG_2) <<coutYellow<<" - for VarMaps("<<coutGreen<<name<<coutYellow
+                         <<") - clear treeRead("<<coutGreen<<treeWriteName<<coutYellow<<")"<<coutDef<<endl;
+      
+      if(gROOT->FindObject(treeReadName)) treeRead ->ResetBranchAddresses();
+    }
+    treeRead = NULL;
+  }
 
   nTreeInChain = -1; chainFriendV.clear(); nTreeFriendInChainV.clear();
 
@@ -160,7 +170,7 @@ void VarMaps::NewForm(TString aName, TString input) {
   glob->checkName("VarMaps",aName);
 
   if(input == "" || input == DefOpts::DefC) {
-    VERIFY(LOCATION,(TString)"TTreeFormula is not valid (\""+aName+"\") ...",(aName != ""));
+    VERIFY(LOCATION,(TString)" - VarMaps("+name+") TTreeFormula is not valid (\""+aName+"\") ...",(aName != ""));
     aLOG(Log::WARNING) <<coutRed<<"initializing VarMaps::NewForm(aName=\""<<coutBlue<<aName<<coutRed<<"\", input\""<<coutBlue<<input
                        <<coutRed<<"\") by setting input=aName ... Better to explicitly define input !"<<coutDef<<endl;
     input = aName;
@@ -228,11 +238,44 @@ void VarMaps::SetVarF(TString aName, TString input) {
   else if(HasVarD_ (aName)) varD [aName] = utils->strToDouble(input); else AsrtVar(false,aName+" (SetVarF)"); return;
 }
 
+// ===========================================================================================================
+void VarMaps::SetVarAuto(TString aName, TString input) {
+// =====================================================
+    TString typeNow = GetVarType(aName);
+
+    if     (typeNow == "F"  || typeNow == "D"                     ) { SetVarF(aName, input); }
+    else if(typeNow == "S"  || typeNow == "I"  || typeNow == "L"  ) { SetVarI(aName, input); }
+    else if(typeNow == "B"                                        ) { SetVarB(aName, input); }
+    else if(typeNow == "C"                                        ) { SetVarC(aName, input); }
+    else if(typeNow == "UI" || typeNow == "US" || typeNow == "UL" ) { SetVarU(aName, input); }
+    else if(typeNow == "FM"                                       ) { SetForm(aName, input); }
+    else VERIFY(LOCATION,(TString)" - VarMaps("+name+") trying to set undefined variable ("+aName+")",false);
+
+  return;
+}
+// ===========================================================================================================
+void VarMaps::SetVarAuto(vector<TString> & nameV, vector<TString> & inputV) {
+// ==========================================================================
+  VERIFY(LOCATION,(TString)" - VarMaps("+name+") trying to use SetVarAuto() with different lengths of names/inputs",(nameV.size() == inputV.size()));
+
+  for(int nVarNow=0; nVarNow<(int)nameV.size(); nVarNow++) {
+    SetVarAuto(nameV[nVarNow], inputV[nVarNow]);
+  }
+  return;
+}
+// ===========================================================================================================
+void VarMaps::SetVarAuto(vector< pair<TString,TString> > & nameInputV) {
+// =====================================================================
+  for(int nVarNow=0; nVarNow<(int)nameInputV.size(); nVarNow++) {
+    SetVarAuto(nameInputV[nVarNow].first, nameInputV[nVarNow].second);
+  }
+  return;
+}
 
 // ===========================================================================================================
 void VarMaps::SetForm(TString aName, TString input) {
 // ==================================================
-  VERIFY(LOCATION,(TString)"TTreeFormula is not valid (\""+input+"\") ...",(input != ""));
+  VERIFY(LOCATION,(TString)" - VarMaps("+name+") TTreeFormula is not valid (\""+input+"\") ...",(input != ""));
   input = regularizeStringForm(input);
 
   SetForm_(aName,input);
@@ -243,7 +286,7 @@ Double_t VarMaps::GetForm(TString aName) {
 // =======================================
   bool        hasForm = (varFormM.find(aName) != varFormM.end());
   if(hasForm) hasForm = dynamic_cast<TTreeFormula*>(varFormM[aName]);
-  VERIFY(LOCATION,(TString)"Has not setup varFormM (\""+aName+"\") ...",hasForm);
+  VERIFY(LOCATION,(TString)" - VarMaps("+name+") - has not setup varFormM (\""+aName+"\") ...",hasForm);
 
   return varFormM[aName]->EvalInstance();
 }
@@ -604,16 +647,18 @@ void VarMaps::printVarNames(TString type, TString title) {
 // ===========================================================================================================
 void VarMaps::setTreeWrite(TTree * tree) { 
 // =======================================
-  VERIFY(LOCATION,(TString)"trying to use setTreeWrite() with undefined tree ...",(dynamic_cast<TTree*>(tree)));
-  treeWrite = tree;
+  VERIFY(LOCATION,(TString)" - VarMaps("+name+") trying to use setTreeWrite() with undefined tree ...",(dynamic_cast<TTree*>(tree)));
+  treeWrite     = tree;
+  treeWriteName = tree->GetName();
   return;
 }
 
 // ===========================================================================================================
 void VarMaps::setTreeRead(TTree * tree) { 
   // ====================================
-  VERIFY(LOCATION,(TString)"trying to use setTreeRead() with undefined tree ...",(dynamic_cast<TTree*>(tree)));
+  VERIFY(LOCATION,(TString)" - VarMaps("+name+") trying to use setTreeRead() with undefined tree ...",(dynamic_cast<TTree*>(tree)));
   treeRead     = tree;
+  treeReadName = tree->GetName();
   nTreeInChain = -1;
   chainFriendV.clear(); nTreeFriendInChainV.clear();
   return;
@@ -622,7 +667,7 @@ void VarMaps::setTreeRead(TTree * tree) {
 // ===========================================================================================================
 void VarMaps::fillTree() { 
 // =======================
-  VERIFY(LOCATION,(TString)"trying to use fillTree() with undefined tree ...",(dynamic_cast<TTree*>(treeWrite)));
+  VERIFY(LOCATION,(TString)" - VarMaps("+name+") trying to use fillTree() with undefined tree ...",(dynamic_cast<TTree*>(treeWrite)));
   treeWrite->Fill();
   return;
 }
@@ -682,7 +727,7 @@ void VarMaps::addTreeCuts(TString cutType, TCut aCut) {
 void VarMaps::setTreeCuts(TString cutType, TCut aCut, bool checkTreeRead) {
 // ========================================================================
   if(checkTreeRead) {
-    VERIFY(LOCATION,(TString)"Trying to set tree-cuts with no read-tree defined !!!", (getTreeRead() != NULL));
+    VERIFY(LOCATION,(TString)" - VarMaps("+name+") trying to set tree-cuts with no read-tree defined !!!", (getTreeRead() != NULL));
   }
   
   treeCutsM[cutType] = regularizeStringForm((TString)aCut);
@@ -702,7 +747,7 @@ void VarMaps::getTreeCutsM(map <TString,TCut> & aTreeCutsM) {
 void VarMaps::setTreeCutsM(map <TString,TCut> & aTreeCutsM, bool checkTreeRead) {
 // ==============================================================================
   if(checkTreeRead) {
-    VERIFY(LOCATION,(TString)"Trying to set tree-cuts with no read-tree defined !!!", (getTreeRead() != NULL));
+    VERIFY(LOCATION,(TString)" - VarMaps("+name+") trying to set tree-cuts with no read-tree defined !!!", (getTreeRead() != NULL));
   }
 
   treeCutsM.clear();
@@ -721,7 +766,7 @@ TCut VarMaps::getTreeCuts(TString cutType) {
     }
   }
   else {
-    VERIFY(LOCATION,(TString)"Has not setup treeCutsFormM (\""+cutType+"\") ...",(treeCutsM.find(cutType) != treeCutsM.end()));
+    VERIFY(LOCATION,(TString)" - VarMaps("+name+") has not setup treeCutsFormM (\""+cutType+"\") ...",(treeCutsM.find(cutType) != treeCutsM.end()));
     aCut = (TCut)treeCutsM[cutType];
   }
   return (TCut)regularizeStringForm((TString)aCut);
@@ -736,7 +781,7 @@ bool VarMaps::hasFailedTreeCuts(vector<TString> & cutTypeV) {
 
     bool        hasForm = (treeCutsFormM.find(cutType) != treeCutsFormM.end());
     if(hasForm) hasForm = dynamic_cast<TTreeFormula*>(treeCutsFormM[cutType]);
-    VERIFY(LOCATION,(TString)"Has not setup treeCutsFormM (\""+cutType+"\") ...",hasForm);
+    VERIFY(LOCATION,(TString)" - VarMaps("+name+") has not setup treeCutsFormM (\""+cutType+"\") ...",hasForm);
 
     if(treeCutsFormM[cutType]->EvalInstance() < 0.5)  { 
       failedCutType = (TString)cutType+" [ "+treeCutsM[cutType]+" ]";
@@ -762,7 +807,7 @@ bool VarMaps::hasFailedTreeCuts(TString cutType) {
 
     bool        hasForm = (treeCutsFormM.find(cutTypeNow) != treeCutsFormM.end());
     if(hasForm) hasForm = dynamic_cast<TTreeFormula*>(treeCutsFormM[cutTypeNow]);
-    VERIFY(LOCATION,(TString)"Has not setup treeCutsFormM (\""+cutTypeNow+"\") ...",hasForm);
+    VERIFY(LOCATION,(TString)" - VarMaps("+name+") has not setup treeCutsFormM (\""+cutTypeNow+"\") ...",hasForm);
 
     if(treeCutsFormM[cutTypeNow]->EvalInstance() < 0.5)  { 
       failedCutType = (TString)cutTypeNow+" [ "+treeCutsM[cutTypeNow]+" ]";
@@ -969,13 +1014,13 @@ void VarMaps::connectTreeBranches(TTree * tree, vector <TString> * excludedBranc
   // current addresses. Then, remove any possible reading tree.
   // The current vars are NOT CLEARED! just add more vars according to the tree branch names
   // -----------------------------------------------------------------------------------------------------------
-  VERIFY(LOCATION,(TString)"trying to use connectTreeBranches() with no input tree defined ...",    ( dynamic_cast<TTree*>(tree)     ));
-  VERIFY(LOCATION,(TString)"trying to use connectTreeBranches() with treeWrite already defined ...",(!dynamic_cast<TTree*>(treeWrite)));
+  VERIFY(LOCATION,(TString)" - VarMaps("+name+") trying to use connectTreeBranches() with no input tree defined ...",    ( dynamic_cast<TTree*>(tree)     ));
+  VERIFY(LOCATION,(TString)" - VarMaps("+name+") trying to use connectTreeBranches() with treeWrite already defined ...",(!dynamic_cast<TTree*>(treeWrite)));
 
   clearTrees();
 
-  Map < TString,int >           nBranchesVar;
-  Map < int,vector <TString> >  registeredBranches;
+  Map < TString,int >          nBranchesVar;
+  Map < int,vector <TString> > registeredBranches;
 
   int  width(20);
   bool debug(glob->OptOrNullB("debugBranches"));
@@ -1004,87 +1049,94 @@ void VarMaps::connectTreeBranches(TTree * tree, vector <TString> * excludedBranc
       if(debug) aCustomLOG("connectTreeBranches()") <<coutYellow<<"Now in tree-friend number "<<coutRed
                                                     <<nTreeNow<<coutYellow<<" with name: "<<coutRed<<friendName<<coutDef<<endl;
     }
-  
     TObjArray * brnchList = treeNow->GetListOfBranches();
-    for(int nBrnchNow=0; nBrnchNow<=brnchList->GetLast(); nBrnchNow++) {
-      TBranch * aBranch  = (TBranch*)(brnchList->At(nBrnchNow));
-      TString brnchName  = aBranch->GetName();
-      TString brnchTitle = aBranch->GetTitle();
-      TString brnchType  = (brnchTitle.Length() > 2) ? brnchTitle(brnchTitle.Length()-2,brnchTitle.Length()) : (TString)"";
+    if((dynamic_cast<TObjArray*>(brnchList))) {
+      for(int nBrnchNow=0; nBrnchNow<=brnchList->GetLast(); nBrnchNow++) {
+        TBranch * aBranch  = (TBranch*)(brnchList->At(nBrnchNow));
+        TString brnchName  = aBranch->GetName();
+        TString brnchTitle = aBranch->GetTitle();
+        TString brnchType  = (brnchTitle.Length() > 2) ? brnchTitle(brnchTitle.Length()-2,brnchTitle.Length()) : (TString)"";
 
-      bool skipBranch(false);
+        bool skipBranch(false);
+        // cout <<"XXXXXXXXXX "<< nBrnchNow <<CT<< brnchName<<endl;
 
-      // test for array variables, which e.g., have the format "varName[4]/D"
-      if(brnchTitle.Length() > 3) {
-        TString brnchPref = brnchTitle(brnchTitle.Length()-3,brnchTitle.Length());
-        if(brnchTitle.Contains("[") && brnchPref(0,1) == "]") skipBranch = true;
-      }
-
-      // go over exclusion list and search for skipped branches
-      // -----------------------------------------------------------------------------------------------------------
-      for(int nExlBranches=0; nExlBranches<nExludeBranches; nExlBranches++) {
-        if(brnchName == excludedBranchNames->at(nExlBranches)) { skipBranch = true; break; }
-      }
-      if(!treeNow->GetBranchStatus(brnchName)) skipBranch = true;
-
-      if(brnchType == "/C" || brnchType == "/B" || brnchType == "/b") {
-        if(brnchType == "/B" || brnchType == "/b") {
-          aLOG(Log::WARNING) <<coutRed<<" - Please cast: [Char_t(/B), to Int_t], "
-                             <<"or [UChar_t(/b) to UInt_t] ..."<<coutDef<<endl;
+        // test for array variables, which e.g., have the format "varName[4]/D"
+        if(brnchTitle.Length() > 3) {
+          TString brnchPref = brnchTitle(brnchTitle.Length()-3,brnchTitle.Length());
+          if(brnchTitle.Contains("[") && brnchPref(0,1) == "]") skipBranch = true;
         }
-        aLOG(Log::WARNING)  <<coutRed<<" - Skipping unsupported branch type ("<<coutBlue<<brnchTitle<<coutRed
-                            <<" , "<<coutBlue<<brnchType<<coutRed<<") "<<coutYellow<<brnchName<<coutDef<<endl;
 
-        skipBranch = true;
-      }
-
-      if(!skipBranch) {
-        // count number of times a branch is accepted
-        nBranchesVar[brnchName]++;
-        // exclude repeate variables from tree friends
+        // go over exclusion list and search for skipped branches
         // -----------------------------------------------------------------------------------------------------------
-        if(nTreeNow > 0 && nBranchesVar[brnchName] > 1) {
-          skipBranch = true; nBranchesVar[brnchName]--; assert(nBranchesVar[brnchName] == 1);
+        for(int nExlBranches=0; nExlBranches<nExludeBranches; nExlBranches++) {
+          if(brnchName == excludedBranchNames->at(nExlBranches)) { skipBranch = true; break; }
         }
-      }
-      if(debug) {
-        if(skipBranch) { aCustomLOG("connectTreeBranches()") <<coutPurple<<"Skip connect branch: "<<coutRed<<std::setw(width)<<brnchName
-                                                             <<CT<<coutBlue<<std::setw(width)<<brnchTitle<<CT<<brnchType<<coutDef<<endl; }
-        else           { aCustomLOG("connectTreeBranches()") <<coutGreen <<"Will connect branch: "<<coutRed<<std::setw(width)<<brnchName
-                                                             <<CT<<coutBlue<<std::setw(width)<<brnchTitle<<CT<<brnchType<<coutDef<<endl; }
-      }
-      
-      if(skipBranch) treeNow->SetBranchStatus(brnchName,0);
-      else           treeNow->SetBranchStatus(brnchName,1);
+        if(!treeNow->GetBranchStatus(brnchName)) skipBranch = true;
 
-      // -----------------------------------------------------------------------------------------------------------
-      // make sure all variables which will be connected to the tree are declared first. this is done
-      // before actually setting any branch address in order to avoid changes of variable address as
-      // the maps are filled up.
-      // -----------------------------------------------------------------------------------------------------------
-      if(!skipBranch) {
-        if     (brnchType == "/I") NewVarI_ (brnchName,DefOpts::DefI);
-        else if(brnchType == "/F") NewVarF_ (brnchName,DefOpts::DefF);
-        else if(brnchType == "/O") NewVarB_ (brnchName,DefOpts::DefB);
-        else if(brnchType == "/D") NewVarD_ (brnchName,DefOpts::DefD);
-        else if(brnchType == "/S") NewVarS_ (brnchName,DefOpts::DefS);
-        else if(brnchType == "/L") NewVarL_ (brnchName,DefOpts::DefL);
-        else if(brnchType == "/s") NewVarUS_(brnchName,DefOpts::DefUS);
-        else if(brnchType == "/i") NewVarUI_(brnchName,DefOpts::DefUI);
-        else if(brnchType == "/l") NewVarUL_(brnchName,DefOpts::DefUL);
-        else {
-          bool isTObjString = ((TString)aBranch->GetClassName() == "TObjString");
-          if(!isTObjString) {
-            aLOG(Log::ERROR) <<coutWhiteOnRed<<"Found un-supported branch type ("<<coutBlue<<brnchTitle<<coutWhiteOnRed
-                             <<" , "<<coutYellow<<brnchType<<coutWhiteOnRed<<").  ABORTING.... "<<coutDef<<endl;
-            assert(false);
+        if(brnchType == "/C" || brnchType == "/B" || brnchType == "/b") {
+          if(brnchType == "/B" || brnchType == "/b") {
+            aLOG(Log::WARNING) <<coutRed<<" - Please cast: [Char_t(/B), to Int_t], "
+                               <<"or [UChar_t(/b) to UInt_t] ..."<<coutDef<<endl;
           }
-          NewVarC_(brnchName,DefOpts::DefC);
+          aLOG(Log::WARNING)  <<coutRed<<" - Skipping unsupported branch type ("<<coutBlue<<brnchTitle<<coutRed
+                              <<" , "<<coutBlue<<brnchType<<coutRed<<") "<<coutYellow<<brnchName<<coutDef<<endl;
+
+          skipBranch = true;
         }
+
+        if(!skipBranch) {
+          // count number of times a branch is accepted
+          nBranchesVar[brnchName]++;
+          // exclude repeate variables from tree friends
+          // -----------------------------------------------------------------------------------------------------------
+          if(nTreeNow > 0 && nBranchesVar[brnchName] > 1) {
+            skipBranch = true; nBranchesVar[brnchName]--; assert(nBranchesVar[brnchName] == 1);
+          }
+        }
+        if(debug) {
+          if(skipBranch) {
+            aCustomLOG("connectTreeBranches()") <<coutPurple<<"Skip connect branch: "<<coutRed<<std::setw(width)<<brnchName
+                                                <<CT<<coutBlue<<std::setw(width)<<brnchTitle<<CT<<brnchType<<coutDef<<endl;
+          }
+          else {
+            aCustomLOG("connectTreeBranches()") <<coutGreen <<"Will connect branch: "<<coutRed<<std::setw(width)<<brnchName
+                                                <<CT<<coutBlue<<std::setw(width)<<brnchTitle<<CT<<brnchType<<coutDef<<endl;
+          }
+        }
+        
+        if(skipBranch) treeNow->SetBranchStatus(brnchName,0);
+        else           treeNow->SetBranchStatus(brnchName,1);
+
+        // -----------------------------------------------------------------------------------------------------------
+        // make sure all variables which will be connected to the tree are declared first. this is done
+        // before actually setting any branch address in order to avoid changes of variable address as
+        // the maps are filled up.
+        // -----------------------------------------------------------------------------------------------------------
+        if(!skipBranch) {
+          if     (brnchType == "/I") NewVarI_ (brnchName,DefOpts::DefI);
+          else if(brnchType == "/F") NewVarF_ (brnchName,DefOpts::DefF);
+          else if(brnchType == "/O") NewVarB_ (brnchName,DefOpts::DefB);
+          else if(brnchType == "/D") NewVarD_ (brnchName,DefOpts::DefD);
+          else if(brnchType == "/S") NewVarS_ (brnchName,DefOpts::DefS);
+          else if(brnchType == "/L") NewVarL_ (brnchName,DefOpts::DefL);
+          else if(brnchType == "/s") NewVarUS_(brnchName,DefOpts::DefUS);
+          else if(brnchType == "/i") NewVarUI_(brnchName,DefOpts::DefUI);
+          else if(brnchType == "/l") NewVarUL_(brnchName,DefOpts::DefUL);
+          else {
+            bool isTObjString = ((TString)aBranch->GetClassName() == "TObjString");
+            if(!isTObjString) {
+              aLOG(Log::ERROR) <<coutWhiteOnRed<<"Found un-supported branch type ("<<coutBlue<<brnchTitle<<coutWhiteOnRed
+                               <<" , "<<coutYellow<<brnchType<<coutWhiteOnRed<<").  ABORTING.... "<<coutDef<<endl;
+              assert(false);
+            }
+            NewVarC_(brnchName,DefOpts::DefC);
+          }
+        }
+        if(!skipBranch) registeredBranches[nTreeNow].push_back(brnchName);
       }
-      if(!skipBranch) registeredBranches[nTreeNow].push_back(brnchName);
     }
   }
+
   setDefaultVals();
 
   // -----------------------------------------------------------------------------------------------------------
@@ -1155,7 +1207,7 @@ void VarMaps::connectTreeBranches(TTree * tree, vector <TString> * excludedBranc
 // ===========================================================================================================
 void VarMaps::connectTreeBranchesForm(TTree * tree, vector < pair<TString,Float_t> > * readerInptV, vector <TString> * excludedBranchNames) {
 // ==========================================================================================================================================
-  VERIFY(LOCATION,(TString)"trying to use connectTreeBranchesForm() with no input readerInptV defined ...",
+  VERIFY(LOCATION,(TString)" - VarMaps("+name+") trying to use connectTreeBranchesForm() with no input readerInptV defined ...",
                            ( dynamic_cast< vector < pair<TString,Float_t> >* >(readerInptV) ));
 
   addReaderFormulae(*readerInptV);
@@ -1189,10 +1241,15 @@ void VarMaps::resetTreeBrancheAddresses(TTree * tree) {
 // ===========================================================================================================
 void VarMaps::addReaderFormulae(vector < pair<TString,Float_t> > & readerInptV) {
 // ==============================================================================
+  bool debug(glob->OptOrNullB("debugBranches"));
+  
   for(int nReaderInputNow=0; nReaderInputNow<(int)readerInptV.size(); nReaderInputNow++) {
     TString inputName = readerInptV[nReaderInputNow].first;
     TString formName  = readerFormNameKey+inputName;
     NewForm(formName,inputName);
+
+    if(debug) aCustomLOG("addReaderFormulae()") <<coutGreen<<"Now adding: "<<coutRed<<formName
+                                                <<CT<<coutBlue<<inputName<<coutDef<<endl;
   }
   return ;
 }
@@ -1216,7 +1273,7 @@ void VarMaps::updateReaderFormulae(vector < pair<TString,Float_t> > & readerInpt
 // special version for TString, as wihout the explicit type in the Branch() method, a TString* is written...
 bool VarMaps::getTreeEntry(int nEntry, bool getEntryIndex) {
 // =========================================================
-  VERIFY(LOCATION,(TString)"trying to use getTreeEntry() with no treeRead defined ...",(dynamic_cast<TTree*>(treeRead)));
+  VERIFY(LOCATION,(TString)" - VarMaps("+name+") trying to use getTreeEntry() with no treeRead defined ...",(dynamic_cast<TTree*>(treeRead)));
 
   needReaderUpdate = true;
 
@@ -1299,7 +1356,7 @@ bool VarMaps::getTreeEntry(int nEntry, bool getEntryIndex) {
 // ===========================================================================================================
 void VarMaps::setTreeForms(bool isFirstEntry) {
 // ============================================
-  VERIFY(LOCATION,(TString)"trying to use setTreeForms() with no treeRead defined ...",(dynamic_cast<TTree*>(treeRead)));
+  VERIFY(LOCATION,(TString)" - VarMaps("+name+") trying to use setTreeForms() with no treeRead defined ...",(dynamic_cast<TTree*>(treeRead)));
   
   for(int nFormType=0; nFormType<2; nFormType++) {
     Map <TString,TString>       * nameMap;
@@ -1330,7 +1387,7 @@ void VarMaps::setTreeForms(bool isFirstEntry) {
         if(formMap->find(itr->first) != formMap->end()) DELNULL((*formMap)[itr->first]);
         (*formMap)[itr->first] = new TTreeFormula(treeFormName,(TCut)aCut,treeRead);
        
-        VERIFY(LOCATION,(TString)"TTreeFormula is not valid (\""+(TString)aCut+"\") ...",((*formMap)[itr->first]->GetNdim() != 0));
+        VERIFY(LOCATION,(TString)" - VarMaps("+name+") TTreeFormula is not valid (\""+(TString)aCut+"\") ...",((*formMap)[itr->first]->GetNdim() != 0));
       }
     }
     else {
@@ -1347,8 +1404,8 @@ void VarMaps::storeTreeToAscii(TString outFilePrefix, TString outFileDir, int ma
 // =======================================================================================================
   aLOG(Log::INFO) <<coutWhiteOnBlack<<coutPurple<<" - starting storeTreeToAscii() ... "<<coutDef<<endl;
 
-  VERIFY(LOCATION,(TString)"trying to use storeTreeToAscii() with no treeRead defined ...",(dynamic_cast<TTree*>(treeRead)));
-  VERIFY(LOCATION,(TString)"did not define outFilePrefix in storeTreeToAscii() ...",(outFilePrefix != ""));
+  VERIFY(LOCATION,(TString)" - VarMaps("+name+") trying to use storeTreeToAscii() with no treeRead defined ...",(dynamic_cast<TTree*>(treeRead)));
+  VERIFY(LOCATION,(TString)" - VarMaps("+name+") did not define outFilePrefix in storeTreeToAscii() ...",(outFilePrefix != ""));
 
   TObjLink         * friends(NULL);
   TString          acceptedBranches(""), outFileName("");
@@ -1409,7 +1466,7 @@ void VarMaps::storeTreeToAscii(TString outFilePrefix, TString outFileDir, int ma
     }
     nVarsIn = (int)varNames.size();
   }
-  VERIFY(LOCATION,(TString)"trying to use setTreeForms() with no active branches ...",(nVarsIn > 0));
+  VERIFY(LOCATION,(TString)" - VarMaps("+name+") trying to use setTreeForms() with no active branches ...",(nVarsIn > 0));
 
   aLOG(Log::INFO) <<coutBlue<<" - will write to file the following branches: "<<acceptedBranches<<coutDef<<endl;
 
@@ -1446,7 +1503,7 @@ void VarMaps::storeTreeToAscii(TString outFilePrefix, TString outFileDir, int ma
       else if(typeNow == "L"                      ) { line += utils->lIntToStr  (     GetVarI(nameNow)        ); }
       else if(typeNow == "US" || typeNow == "UI"  ) { line += utils->uIntToStr  (     GetVarU(nameNow)        ); }
       else if(typeNow == "UL"                     ) { line += utils->ULIntToStr (     GetVarU(nameNow)        ); }
-      else VERIFY(LOCATION,(TString)"found unsupported variable-type ("+typeNow+")",false);
+      else VERIFY(LOCATION,(TString)" - VarMaps("+name+") found unsupported variable-type ("+typeNow+")",false);
 
       line += ",";
     }

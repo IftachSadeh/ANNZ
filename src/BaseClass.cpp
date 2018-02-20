@@ -21,7 +21,6 @@
 // ===========================================================================================================
 BaseClass::BaseClass(TString aName, Utils * aUtils, OptMaps * aMaps, OutMngr * anOutMngr) {
 // ========================================================================================
- 
   if(!dynamic_cast<Utils*>(aUtils) || !dynamic_cast<OptMaps*>(aMaps) || !dynamic_cast<OutMngr*>(anOutMngr)) {
     cout  <<coutWhiteOnBlack<<coutBlue<<" - Bad initialization of BaseClass(aName,aUtils,aMaps,anOutMngr = "
           <<aName<<","<<dynamic_cast<Utils*>(aUtils)<<","<<dynamic_cast<OptMaps*>(aMaps)<<","<<dynamic_cast<OutMngr*>(anOutMngr)
@@ -33,22 +32,6 @@ BaseClass::BaseClass(TString aName, Utils * aUtils, OptMaps * aMaps, OutMngr * a
   glob    = aMaps;
   utils   = aUtils;
   outputs = anOutMngr;
-
-  CT                = glob->CT;
-  coutDef           = glob->coutDef;
-  coutRed           = glob->coutRed; 
-  coutGreen         = glob->coutGreen;
-  coutBlue          = glob->coutBlue;
-  coutLightBlue     = glob->coutLightBlue;
-  coutYellow        = glob->coutYellow;
-  coutPurple        = glob->coutPurple;
-  coutCyan          = glob->coutCyan;
-  coutUnderLine     = glob->coutUnderLine;
-  coutWhiteOnBlack  = glob->coutWhiteOnBlack;
-  coutWhiteOnRed    = glob->coutWhiteOnRed;
-  coutWhiteOnGreen  = glob->coutWhiteOnGreen;
-  coutWhiteOnYellow = glob->coutWhiteOnYellow;
-
 }
 BaseClass::~BaseClass() { }
 // ===========================================================================================================

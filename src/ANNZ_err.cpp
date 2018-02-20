@@ -67,11 +67,15 @@ void ANNZ::createTreeErrKNN(int nMLMnow) {
   if(isCls) var_1->NewVarI(sigBckTypeName); else var_1->NewVarF(zTrgName);
   
   TString outTreeName = getKeyWord("","treeErrKNN","treeErrKNNname");
-  TTree   * outTree   = new TTree(outTreeName,outTreeName); outTree->SetDirectory(0); outputs->TreeMap[outTreeName] = outTree;
+  TTree   * outTree   = new TTree(outTreeName,outTreeName);
+  outTree->SetDirectory(0); outputs->TreeMap[outTreeName] = outTree;
 
   var_1->createTreeBranches(outTree); 
   var_1->setDefaultVals();
+  
+  vector <bool> errFakeShift(2,true);
 
+  // -----------------------------------------------------------------------------------------------------------
   // 
   // -----------------------------------------------------------------------------------------------------------
   bool  breakLoop(false), mayWriteObjects(false);
@@ -98,6 +102,13 @@ void ANNZ::createTreeErrKNN(int nMLMnow) {
       if     (!var_0->hasFailedTreeCuts("_bck")) { sigBckType = 0; errKNN =   clsPrb; }
       else if(!var_0->hasFailedTreeCuts("_sig")) { sigBckType = 1; errKNN = 1-clsPrb; }
 
+      // TMVA forces a check that a target variable is not constant. In order to avoid this,
+      // change the value of one signal and one background object by some insignificant amount
+      if(errFakeShift[sigBckType]) {
+        errFakeShift[sigBckType] = false;
+        errKNN += (sigBckType == 0 ? 1 : -1) * 0.000001;
+      }
+
       var_1->SetVarF(MLMname,        clsPrb);
       var_1->SetVarF(errKNNname,     errKNN);
       var_1->SetVarI(sigBckTypeName, sigBckType);
@@ -109,6 +120,11 @@ void ANNZ::createTreeErrKNN(int nMLMnow) {
       // the error of each object wrt its own true value
       // see: http://arxiv.org/abs/0810.2991 - Estimating the Redshift Distribution of Photometric Galaxy... - Sect. 4.2
       double errKNN = regVal - zTrg;
+
+      if(errFakeShift[0]) {
+        errFakeShift[0]  = false;
+        errKNN      *= 1.000001;
+      }
       
       var_1->SetVarF(MLMname,   regVal);
       var_1->SetVarF(errKNNname,errKNN);
@@ -121,7 +137,10 @@ void ANNZ::createTreeErrKNN(int nMLMnow) {
   }
   if(!breakLoop) { var_0->printCntr(inTreeName,Log::DEBUG); outputs->WriteOutObjects(false,true); outputs->ResetObjects(); }
 
-  DELNULL(var_0); DELNULL(var_1); DELNULL(aChain); DELNULL(outTree); outputs->TreeMap.erase(outTreeName);
+  DELNULL(var_0);  DELNULL(var_1);
+  DELNULL(aChain); DELNULL(outTree); outputs->TreeMap.erase(outTreeName);
+  
+  errFakeShift.clear();
 
   aLOG(Log::DEBUG) <<coutGreen<<" - finished ANNZ::createTreeErrKNN()"<<coutDef<<endl;
 
@@ -151,6 +170,8 @@ void ANNZ::setupKdTreeKNN(TChain * aChainKnn, TFile *& knnErrOutFile, TMVA::Fact
                           TMVA::Configurable *& knnErrDataLdr, TMVA::kNN::ModulekNN *& knnErrModule,
                           vector <int> & trgIndexV, int nMLMnow, TCut cutsAll, TString wgtAll) {
 // =============================================================================================
+  bool debug = inLOG(Log::DEBUG_2) || glob->OptOrNullB("debugErrANNZ");
+  if(debug) aCustomLOG("") <<coutWhiteOnBlack<<coutBlue<<" - starting ANNZ::setupKdTreeKNN() ... "<<coutDef<<endl;
 
   int     nMLMs           = glob->GetOptI("nMLMs");
   TString MLMname         = getTagName(nMLMnow);
@@ -159,12 +180,9 @@ void ANNZ::setupKdTreeKNN(TChain * aChainKnn, TFile *& knnErrOutFile, TMVA::Fact
   TString baseTag_errKNN  = glob->GetOptC("baseTag_errKNN");
   int     nErrKNN         = glob->GetOptI("nErrKNN");
   bool    doWidthRescale  = glob->GetOptB((TString)"doWidthRescale_errKNN");
-  bool    debug           = inLOG(Log::DEBUG_2) || glob->OptOrNullB("debugErrANNZ");
   TString indexName       = glob->GetOptC("indexName");
   int     minObjTrainTest = glob->GetOptI("minObjTrainTest");
   double  sampleFrac      = glob->GetOptF("sampleFrac_errKNN");
-
-  if(debug) aCustomLOG("") <<coutWhiteOnBlack<<coutBlue<<" - starting ANNZ::setupKdTreeKNN() ... "<<coutDef<<endl;
 
   TString verbLvlF        = (TString)(debug ? ":V:!Silent" : ":!V:Silent");
   TString verbLvlM        = (TString)(debug ? ":V:H"       : ":!V:!H");
@@ -202,7 +220,7 @@ void ANNZ::setupKdTreeKNN(TChain * aChainKnn, TFile *& knnErrOutFile, TMVA::Fact
   vector <double> fracV(2,0), quantV(2,0);
 
   if(doWidthRescale) inVarsScaleFunc[nMLMnow].resize(nInVar,NULL);
-  
+
   for(int nVarNow=0; nVarNow<nInVar; nVarNow++) {
     TString varScaled = inNamesVar[nMLMnow][nVarNow];
 
@@ -217,11 +235,12 @@ void ANNZ::setupKdTreeKNN(TChain * aChainKnn, TFile *& knnErrOutFile, TMVA::Fact
       TString wgtCut    = (TString)"("+(TString)cutsAll+")*("+wgtAll+")";
       wgtCut.ReplaceAll("()*()","").ReplaceAll("*()","").ReplaceAll("()*","").ReplaceAll("()","1");
 
-      TCanvas * tmpCnvs = new TCanvas("tmpCnvs","tmpCnvs");
-      aChainKnn->Draw(drawExprs,wgtCut); DELNULL(tmpCnvs);
-
+      utils->drawTree(aChainKnn,drawExprs,wgtCut);
+ 
       TH1 * his_var = (TH1F*)gDirectory->Get(hisName); 
-      VERIFY(LOCATION,(TString)"Could not derive histogram ("+hisName+") from chain ... Something is horribly wrong ?!?!",(dynamic_cast<TH1F*>(his_var)));
+      VERIFY(LOCATION,(TString)"Could not derive histogram ("+hisName+") from chain with drawExprs = \'"
+                              +drawExprs+"\' , wgtCut = \'"+wgtCut+"\'"+"... Something is horribly wrong ?!?!",
+                              (dynamic_cast<TH1F*>(his_var)));
 
       his_var->SetDirectory(0); his_var->BufferEmpty(); outputs->BaseDir->cd();
 
@@ -560,7 +579,7 @@ void ANNZ::getRegClsErrKNN(VarMaps * var, TMVA::kNN::ModulekNN * knnErrModule, v
  *         
  * @param var       - A VarMaps object which may update the values of the input-variables which are
  *                  linked to the TMVA::Reader object.
- * @param readType  - The type of MLM used (regression, or one of two classification estimators).
+ * @param isREG     - The type of MLM used (regression, or one of two classification estimators).
  * @param nMLMnow   - The index of the current MLM.
  * @param seedP     - A seed for random number generation, which should be dfferent every time the
  *                  function is called.
@@ -588,8 +607,10 @@ double ANNZ::getRegClsErrINP(VarMaps * var, bool isREG, int nMLMnow, UInt_t * se
   for(int nInVarNow=0; nInVarNow<nInVar; nInVarNow++) {
     inVarErrV[nInVarNow] = var->GetForm(getTagInVarErr(nMLMnow,nInVarNow));
 
-    aLOG(Log::DEBUG_3) <<coutGreen<<" - "<<coutRed<<nInVarNow<<coutGreen<<" - var,err: "<<coutYellow<<inNamesVar[nMLMnow][nInVarNow]<<coutGreen<<" , "
-                       <<coutYellow<<inNamesErr[nMLMnow][nInVarNow]<<coutGreen<<"\t -> current value of err: "<<coutRed<<inVarErrV[nInVarNow]<<coutDef<<endl;
+    aLOG(Log::DEBUG_3) <<coutGreen<<" - "<<coutRed<<nInVarNow<<coutGreen<<" - var,err: "
+                       <<coutYellow<<inNamesVar[nMLMnow][nInVarNow]<<coutGreen<<" , "
+                       <<coutYellow<<inNamesErr[nMLMnow][nInVarNow]<<coutGreen<<"\t -> current value of err: "
+                       <<coutRed<<inVarErrV[nInVarNow]<<coutDef<<endl;
   }
 
   // make sure the values of the variables which are connected to the reader are up to date

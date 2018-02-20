@@ -967,13 +967,15 @@ void ANNZ::Train_binnedCls() {
     for(int nOptNow=0; nOptNow<nOptIn; nOptNow++) {
       TString optNameNow = (TString)optTypeNameNow+utils->intToStr(nOptNow);
       
-      VERIFY(LOCATION,(TString)"Found conflict in options ... If setting \"inputVariables_X\", then X must be "
-                              +"consecutive, starting from zero. For example, you can set three options (in which ever order), "
-                              +"as e.g., [\"inputVariables_0\",\"inputVariables_2\",\"inputVariables_1\"] "
-                              +"but you can't set [\"inputVariables_0\",\"inputVariables_2\",\"inputVariables_5\"]. (Note - it is allowed "
-                              +" to define empty values for \"inputVarErrors_X\" and \"userMLMopts_X\", but not for \"inputVariables_X\"). "
-                              +"   -----> For this run, detected "+utils->intToStr(nOptIn)+" defined options of this type, and so expected "
-                              +"to find \"inputVariables_"+utils->intToStr(nOptNow)+"\", which is not defined ...",(glob->HasOptC(optNameNow)));
+      VERIFY(LOCATION,
+        (TString)"Found conflict in options ... If setting \"inputVariables_X\", then X must be "
+        +"consecutive, starting from zero. For example, you can set three options (in which ever order), "
+        +"as e.g., [\"inputVariables_0\",\"inputVariables_2\",\"inputVariables_1\"] "
+        +"but you can't set [\"inputVariables_0\",\"inputVariables_2\",\"inputVariables_5\"]. (Note - it is allowed "
+        +" to define empty values for \"inputVarErrors_X\" and \"userMLMopts_X\", but not for \"inputVariables_X\"). "
+        +"   -----> For this run, detected "+utils->intToStr(nOptIn)+" defined options of this type, and so expected "
+        +"to find \"inputVariables_"+utils->intToStr(nOptNow)+"\", which is not defined ...",(glob->HasOptC(optNameNow))
+      );
       
       if     (nOptTypeNow == 0) binClsInpVarV.push_back(glob->GetOptC(optNameNow));
       else if(nOptTypeNow == 1) binClsInpErrV.push_back(glob->GetOptC(optNameNow));
@@ -1059,7 +1061,8 @@ void ANNZ::Train_binnedCls() {
 
         inTreeName  = (TString)glob->GetOptC("treeName")+trainValidName;
         inFileName  = (TString)glob->GetOptC("inputTreeDirName")+inTreeName+"*.root";
-        chainM[trainValidName] = new TChain(inTreeName,inTreeName); chainM[trainValidName]->SetDirectory(0);  chainM[trainValidName]->Add(inFileName);
+        chainM[trainValidName] = new TChain(inTreeName,inTreeName);
+        chainM[trainValidName]->SetDirectory(0);  chainM[trainValidName]->Add(inFileName);
         aLOG(Log::DEBUG) <<coutRed<<" - added chain  "<<coutGreen<<inTreeName<<" from "<<coutBlue<<inFileName<<coutDef<<endl;
       }
       verifTarget(chainM["_train"]); verifTarget(chainM["_valid"]);
@@ -1633,9 +1636,9 @@ void ANNZ::generateOptsMLM(OptMaps * optMap, TString userMLMopts) {
 
 // ===========================================================================================================
 /**
- * @brief         - verify that a tree contains the zTrg branch
+ * @brief       - verify that a tree contains the zTrg branch
  *                     
- * @param aChain  - the input tree which is checked
+ * @param aTree - the input tree which is checked
  */
 // ===========================================================================================================
 void ANNZ::verifTarget(TTree * aTree) {

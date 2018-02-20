@@ -19,26 +19,6 @@
 #include "Utils.hpp"
 
 // ===========================================================================================================
-// namespace for sorting logic functions
-// ===========================================================================================================
-namespace sortFunctors {
-
-  bool double_descend(double a, double b) { return (a < b); }
-  bool double_ascend (double a, double b) { return (a > b); }
- 
-  bool pairIntInt_descendSecond(pair<int,int> a, pair<int,int> b) { return (a.second < b.second); }
-  bool pairIntInt_ascendSecond (pair<int,int> a, pair<int,int> b) { return (a.second > b.second); }
-  bool pairIntInt_descendFirst (pair<int,int> a, pair<int,int> b) { return (a.first  < b.first ); }
-  bool pairIntInt_ascendFirst  (pair<int,int> a, pair<int,int> b) { return (a.first  > b.first ); }
-
-  bool pairIntDouble_descendSecond(pair<int,double> a, pair<int,double> b) { return (a.second < b.second); }
-  bool pairIntDouble_ascendSecond (pair<int,double> a, pair<int,double> b) { return (a.second > b.second); }
-  bool pairIntDouble_descendFirst (pair<int,double> a, pair<int,double> b) { return (a.first  < b.first ); }
-  bool pairIntDouble_ascendFirst  (pair<int,double> a, pair<int,double> b) { return (a.first  > b.first ); }
-
-}
-
-// ===========================================================================================================
 // namespace for fitting functions
 // ===========================================================================================================
 namespace fitFuncs {
@@ -59,10 +39,42 @@ namespace fitFuncs {
 
     return  retVal;
   }
-
 }
 
 
+// ===========================================================================================================
+Utils::Utils(OptMaps * aMaps) { 
+// ============================
+  glob  = aMaps;
+  param = new OptMaps("param");
+  
+  setColors();
+
+  bool isLocked = glob->getLock(); if(isLocked) glob->setLock(false);
+
+  validDirExists(glob->GetOptC("outDirNamePath")); 
+  if(!glob->GetOptC("outDirNamePath").EndsWith("/")) glob->SetOptC("outDirNamePath",(TString)glob->GetOptC("outDirNamePath")+"/");
+
+  if(!glob->HasOptC("UserInfoStr")) glob->NewOptC("UserInfoStr","UserInfo;");
+
+  if(isLocked) glob->setLock(true);
+
+  rnd = new TRandom3(0);
+
+  return;
+}
+// ===========================================================================================================
+Utils::~Utils() { 
+// ==============
+  DELNULL(param); DELNULL(rnd);
+  colours.clear(); markers.clear(); greens.clear(); blues.clear(); reds.clear(); fillStyles.clear();
+  return;
+}
+// ===========================================================================================================
+
+
+// -----------------------------------------------------------------------------------------------------------
+// Utils functions
 // ===========================================================================================================
 void Utils::setColors() {
 // ======================
@@ -95,14 +107,6 @@ void Utils::setColors() {
     reds.push_back(kPink-3);      reds.push_back(kRed-4);       reds.push_back(kOrange-3);    reds.push_back(kPink+9);
     reds.push_back(kOrange+8);    reds.push_back(kRed-7);       reds.push_back(kPink-8);
   }
-  
-  CT                = glob->CT;               coutDef           = glob->coutDef;
-  coutRed           = glob->coutRed;          coutGreen         = glob->coutGreen;
-  coutBlue          = glob->coutBlue;         coutLightBlue     = glob->coutLightBlue;
-  coutYellow        = glob->coutYellow;       coutPurple        = glob->coutPurple;
-  coutCyan          = glob->coutCyan;         coutUnderLine     = glob->coutUnderLine;
-  coutWhiteOnBlack  = glob->coutWhiteOnBlack; coutWhiteOnRed    = glob->coutWhiteOnRed;
-  coutWhiteOnGreen  = glob->coutWhiteOnGreen; coutWhiteOnYellow = glob->coutWhiteOnYellow;
 
   return;
 }
@@ -776,13 +780,16 @@ vector <TTree*> Utils::getTreeFriends(TTree * tree) {
 };
 
 // ===========================================================================================================
-void Utils::getSetActiveTreeBranches(TTree * tree, vector < pair<TString,bool> > & branchNameStatusV, bool isGetStatus, bool verbose) {
-// ====================================================================================================================================
+void Utils::getSetActiveTreeBranches(TTree * tree, vector < pair<TString,bool> > & branchNameStatusV, TString getSet, bool verbose) {
+// ==================================================================================================================================
   VERIFY(LOCATION,(TString)"Trying to use getSetActiveTreeBranches() with invalid tree" ,dynamic_cast<TTree*>(tree));
 
-  if(verbose) aCleanLOG()<<coutWhiteOnYellow<<"Starting getSetActiveTreeBranches("<<coutRed<<tree->GetName()<<coutWhiteOnYellow<<")..."<<coutDef<<endl;
+  if(verbose) {
+    aCleanLOG()<<coutBlue<<"Starting getSetActiveTreeBranches("
+               <<coutRed<<tree->GetName()<<" , "<<getSet<<coutBlue<<")..."<<coutDef<<endl;
+  }
 
-  if(isGetStatus) {
+  if(getSet == "get") {
     // -----------------------------------------------------------------------------------------------------------
     // go over all branches from the tree and all it's friends, and store the status of each branch
     // -----------------------------------------------------------------------------------------------------------
@@ -793,31 +800,44 @@ void Utils::getSetActiveTreeBranches(TTree * tree, vector < pair<TString,bool> >
     
     TObjLink * friends(NULL);  // = aChainTrainTest->GetListOfFriends()->FirstLink();
     for(int nTreeNow=0; nTreeNow<nTreeFriends+1; nTreeNow++) {
+      TString treeName(tree->GetName());
       TTree * treeNow(NULL);
       if(nTreeNow == 0)   treeNow = tree;
       else {
         if(nTreeNow == 1) friends = tree->GetListOfFriends()->FirstLink();
         else              friends = friends->Next();
         
-        TString friendName = ((TTree*)friends->GetObject())->GetName();
-        treeNow = (TTree*)tree->GetFriend(friendName);
-        if(verbose)
-          aCleanLOG()<<coutYellow<<"Now in tree-friend number "<<coutRed<<nTreeNow<<coutYellow<<" with name: "<<coutRed<<friendName<<coutDef<<endl;
+        treeName = ((TTree*)friends->GetObject())->GetName();
+        treeNow  = (TTree*)tree->GetFriend(treeName);
+        if(verbose) aCleanLOG()<<coutYellow<<"Now in tree-friend number "<<coutRed<<nTreeNow
+                               <<coutYellow<<" with name: "<<coutRed<<treeName<<coutDef<<endl;
       }
 
-      TObjArray * brnchList = treeNow->GetListOfBranches();
-      for(int nBrnchNow=0; nBrnchNow<=brnchList->GetLast(); nBrnchNow++) {
-        TBranch * aBranch  = (TBranch*)(brnchList->At(nBrnchNow));
-        TString brnchName  = aBranch->GetName();
-        bool    brnchStat  = treeNow->GetBranchStatus(brnchName);
+      if(dynamic_cast<TTree*>(treeNow)) {
+        TObjArray * brnchList = treeNow->GetListOfBranches();
+        if(dynamic_cast<TObjArray*>(brnchList)) {
+          for(int nBrnchNow=0; nBrnchNow<=brnchList->GetLast(); nBrnchNow++) {
+            TBranch * aBranch  = (TBranch*)(brnchList->At(nBrnchNow));
+            if(dynamic_cast<TBranch*>(aBranch)) {
+              TString brnchName  = aBranch->GetName();
+              bool    brnchStat  = treeNow->GetBranchStatus(brnchName);
 
-        branchNameStatusV.push_back( pair<TString,bool>(brnchName,brnchStat) );
+              branchNameStatusV.push_back( pair<TString,bool>(brnchName,brnchStat) );
 
-        if(verbose) aCleanLOG()<<coutGreen<<"getSetActiveTreeBranches() - Got "<<coutRed<<brnchName<<CT<<coutBlue<<brnchStat<<coutDef<<endl;
+              if(verbose) aCleanLOG()<<coutGreen<<"getSetActiveTreeBranches() - Got "<<coutRed
+                                     <<brnchName<<CT<<coutBlue<<brnchStat<<coutDef<<endl;
+            }
+            else aLOG(Log::WARNING) <<coutWhiteOnRed<<" --- no aBranch "<<nBrnchNow<<CT
+                                    <<treeName<<CT<<treeNow->GetName()<<coutDef<<endl;
+          }
+        }
+        else aLOG(Log::WARNING) <<coutWhiteOnRed<<" --- no brnchList "<<CT
+                                <<treeName<<treeNow->GetName()<<coutDef<<endl;
       }
+      else aLOG(Log::WARNING) <<coutWhiteOnRed<<" --- no tree "<<treeName<<coutDef<<endl;
     }
   }
-  else {
+  else if(getSet == "set") {
     // -----------------------------------------------------------------------------------------------------------
     // go over the list of branches and set the corresponding status of each
     // -----------------------------------------------------------------------------------------------------------
@@ -828,8 +848,12 @@ void Utils::getSetActiveTreeBranches(TTree * tree, vector < pair<TString,bool> >
       
       tree->SetBranchStatus(brnchName,brnchStat);
        
-      if(verbose) aCleanLOG()<<coutGreen<<"getSetActiveTreeBranches() - Set "<<coutRed<<brnchName<<CT<<coutBlue<<brnchStat<<coutDef<<endl;
+      if(verbose) aCleanLOG()<<coutGreen<<"getSetActiveTreeBranches() - Set "<<coutRed
+                             <<brnchName<<CT<<coutBlue<<brnchStat<<coutDef<<endl;
     }
+  }
+  else {
+    VERIFY(LOCATION,(TString)"Trying to use getSetActiveTreeBranches() with invalid option (getSet = \'"+getSet+"\')" ,false);
   }
 
   return;
@@ -963,6 +987,31 @@ TString Utils::getTreeUserInfoStr(TTree * tree, bool debug) {
     aCustomLOG("DBG1")<<coutBlue<<" - found in tree "<<coutRed<<tree->GetName()<<coutBlue<<" user-info: "<<coutYellow<<outStr<<coutDef<<endl;
   
   return outStr;
+}
+
+
+// ===========================================================================================================
+int Utils::drawTree(TTree * tree, TString drawExprs, TString wgtCut) {
+// ===================================================================
+  VERIFY(LOCATION,(TString)"Trying to use drawTree() with invalid tree" ,dynamic_cast<TTree*>(tree));
+  VERIFY(LOCATION,(TString)"Trying to use drawTree() with empty drawExprs" ,(drawExprs != ""));
+
+  bool debug(inLOG(Log::DEBUG_2));
+  vector < pair<TString,bool> > branchNameStatusV;
+  getSetActiveTreeBranches(tree, branchNameStatusV, "get", debug);
+  tree->SetBranchStatus("*",1);
+
+  TString cnvsName  = (TString)tree->GetName()+"_tmpCnvs_"+(doubleToStr(rnd->Rndm(),"%.20f"));
+  TCanvas * tmpCnvs = new TCanvas(cnvsName,cnvsName);
+  
+  int nEvt = tree->Draw(drawExprs,wgtCut);
+  
+  DELNULL(tmpCnvs);
+  
+  getSetActiveTreeBranches(tree, branchNameStatusV, "set", debug);
+  branchNameStatusV.clear();
+  
+  return nEvt;
 }
 
 // ===========================================================================================================
@@ -1661,33 +1710,3 @@ int Utils::getInterQuantileStats(double * dataArr, TH1 * dataHis) {
   delete [] sortIndices; delete [] quantiles; delete [] probQuant;
   return 1;
 }
-
-// ===========================================================================================================
-Utils::Utils(OptMaps * aMaps) { 
-// ============================
-  glob  = aMaps;
-  param = new OptMaps("param");
-  
-  setColors();
-
-  bool isLocked = glob->getLock(); if(isLocked) glob->setLock(false);
-
-  validDirExists(glob->GetOptC("outDirNamePath")); 
-  if(!glob->GetOptC("outDirNamePath").EndsWith("/")) glob->SetOptC("outDirNamePath",(TString)glob->GetOptC("outDirNamePath")+"/");
-
-  if(!glob->HasOptC("UserInfoStr")) glob->NewOptC("UserInfoStr","UserInfo;");
-
-  if(isLocked) glob->setLock(true);
-
-  rnd = new TRandom3(0);
-
-  return;
-}
-// ===========================================================================================================
-Utils::~Utils() { 
-// ==============
-  DELNULL(param); DELNULL(rnd);
-  colours.clear(); markers.clear(); greens.clear(); blues.clear(); reds.clear(); fillStyles.clear();
-  return;
-}
-// ===========================================================================================================

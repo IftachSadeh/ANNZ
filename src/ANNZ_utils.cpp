@@ -19,6 +19,7 @@
 // ===========================================================================================================
 /**
  * @brief    - Initialization of ANNZ
+ *
  * @details  - Set internal glob variables and name-tags, perform sanity checks for the different
  *           configurations (training, optimization, verification or evaluation) and fix defualt values.
  *           - Validate consistency with the parameters used for the initial tree generation with CatFormat.
@@ -45,8 +46,8 @@ void ANNZ::Init() {
   // -----------------------------------------------------------------------------------------------------------
   // internal names
   // -----------------------------------------------------------------------------------------------------------
-  glob->NewOptC("sigBckTypeName","ANNZ_sigBckType"); // internal flag name for truth information
-  glob->NewOptC("aTimeName","ANNZ_aTime"); // internal flag name for time operations
+  glob->NewOptC("sigBckTypeName","ANNZ_sigBckType");  // internal flag name for truth information
+  glob->NewOptC("aTimeName","ANNZ_aTime");            // internal flag name for time operations
   glob->NewOptB("hasTruth",!glob->GetOptB("doEval")); // internal flag for adding a cut on the range of values of zTrg
 
   // deprecated
@@ -70,6 +71,36 @@ void ANNZ::Init() {
   }
   glob->NewOptC("typeANNZ",typeANNZ); glob->NewOptC("_typeANNZ",(TString)+"_"+typeANNZ);
 
+  // -----------------------------------------------------------------------------------------------------------
+  // get some previously used options if in evaluation
+  // -----------------------------------------------------------------------------------------------------------
+  if(glob->GetOptB("doEval")) {
+    OptMaps * optMap = new OptMaps("localOptMap");
+    optMap->copyOptStruct(glob);
+
+    TString optimType    = glob->GetOptB("doBinnedCls") ? "verif" : "optim";
+    TString saveFileName = getKeyWord("","baseConfig",optimType);
+    aLOG(Log::DEBUG_1)<<coutYellow<<" - Getting some previous run information from "<<coutGreen
+                      <<saveFileName<<coutYellow<<" ..."<<coutDef<<endl;
+
+    vector <TString> prevOptNames; glob->GetAllOptNames(prevOptNames);
+    utils->optToFromFile(&prevOptNames,optMap,saveFileName,"READ","SILENT_KeepFile",inLOG(Log::DEBUG_2));
+    prevOptNames.clear();
+  
+    glob->copyOpt("nMLMs",         optMap,Log::DEBUG_1);
+    glob->copyOpt("zTrg",          optMap,Log::DEBUG_1);
+    glob->copyOpt("minValZ",       optMap,Log::DEBUG_1);
+    glob->copyOpt("maxValZ",       optMap,Log::DEBUG_1);
+    glob->copyOpt("binCls_nBins",  optMap,Log::DEBUG_1);
+    glob->copyOpt("binCls_maxBinW",optMap,Log::DEBUG_1);
+    glob->copyOpt("binCls_clsBins",optMap,Log::DEBUG_1);
+    glob->copyOpt("userCuts_sig",  optMap,Log::DEBUG_1);
+    glob->copyOpt("userCuts_bck",  optMap,Log::DEBUG_1);
+
+    DELNULL(optMap);
+  }
+
+  // -----------------------------------------------------------------------------------------------------------
   // internal variables for controlling the debugging output of the TMVA factory
   // -----------------------------------------------------------------------------------------------------------
   TString analysisType(":AnalysisType=");
@@ -79,7 +110,7 @@ void ANNZ::Init() {
 
   TString factoryFlags(analysisType);
   factoryFlags += (TString)((glob->GetOptC("transANNZ") == "")  ? ""                  : (TString)":Transformations="+glob->GetOptC("transANNZ"));
-  factoryFlags += (TString)( glob->GetOptB("useCoutCol")        ? ":Color"            : ":!Color");
+  factoryFlags += (TString)( UseCoutCol                         ? ":Color"            : ":!Color");
   factoryFlags += (TString)( glob->GetOptB("isBatch")           ? ":!DrawProgressBar" : ":DrawProgressBar");
   factoryFlags += (TString)( inLOG(Log::DEBUG_1)                ? ":!Silent:V"        : ":Silent:!V");
 
@@ -352,7 +383,14 @@ void ANNZ::Init() {
 
   // a lower acceptance bound to check if too few MLMs are trained or if something went wrong with the optimization procedure
   // (e.g., not enough trained MLMs have 'good' combinations of scatter, bias and outlier-fraction metrics).
-  if(glob->GetOptI("minAcptMLMsForPDFs") < 5) glob->NewOptI("minAcptMLMsForPDFs",5);
+  int minAcptMLMsForPDFs(5);
+  if(glob->GetOptI("minAcptMLMsForPDFs") < minAcptMLMsForPDFs) {
+    aLOG(Log::WARNING) <<coutRed <<" - Found minAcptMLMsForPDFs = "
+                       <<coutBlue<<glob->GetOptI("minAcptMLMsForPDFs")
+                       <<coutRed<<" Setting to minimal value: "
+                       <<coutYellow<<minAcptMLMsForPDFs<<coutDef<<endl;
+    glob->NewOptI("minAcptMLMsForPDFs",minAcptMLMsForPDFs);
+  }
 
   // number of times to divide the collection of MLMs needed for evaluation - in principle, no division is neccessary, however,
   // some MLMs (notable BDTs) require a lot of memory. Therefore, it might be better to only evaluate a sub-sample of the MLMs
@@ -376,9 +414,9 @@ void ANNZ::Init() {
   int nDrawBins_zTrg = glob->GetOptI("nDrawBins_zTrg");
   if(nDrawBins_zTrg < 2) { nDrawBins_zTrg = 10; glob->SetOptI("nDrawBins_zTrg",10); }
 
-  int closHisN     = glob->GetOptI("closHisN");
-  int roundFact    = static_cast<int>(floor(10*EPS+closHisN/double(nDrawBins_zTrg)));
-  closHisN         = static_cast<int>(closHisN/float(roundFact)) *roundFact;
+  int closHisN  = glob->GetOptI("closHisN");
+  int roundFact = static_cast<int>(floor(10*EPS+closHisN/double(nDrawBins_zTrg)));
+  closHisN      = static_cast<int>(closHisN/float(roundFact)) * roundFact;
   glob->SetOptI("closHisN",closHisN);
 
   // which types of MLM should be randomely generated
@@ -521,13 +559,17 @@ void ANNZ::Init() {
   // -----------------------------------------------------------------------------------------------------------
   bool saveConfig = ( (glob->GetOptB("doTrain") && trainingNeeded) || !glob->GetOptB("doTrain") );
   if(saveConfig) {
-    TString saveFileName = glob->GetOptC("outDirNameFull")+"saveOpt.txt";
+    TString saveFileName = getKeyWord("","baseConfig","current");
     aLOG(Log::INFO)<<coutYellow<<" - Saving run information in "<<coutGreen<<saveFileName<<coutYellow<<" ..."<<coutDef<<endl;
 
     vector <TString> optNames; glob->GetAllOptNames(optNames);
     utils->optToFromFile(&optNames,glob,saveFileName,"WRITE");
     optNames.clear();
   }
+
+  // safe initialization for the eval manager
+  // -----------------------------------------------------------------------------------------------------------
+  aRegEval = NULL;
 
   return;
 }
@@ -793,6 +835,16 @@ TString ANNZ::getKeyWord(TString MLMname, TString sequence, TString key) {
     else if(key == "biasCorHisTag")      return biasCorHisTag;
     else                                 VERIFY(LOCATION,(TString)"Unknown key (\""+key+"\") in ketKeyWord()",false);
   }
+  // -----------------------------------------------------------------------------------------------------------
+  else if(sequence == "baseConfig") {
+    // -----------------------------------------------------------------------------------------------------------
+    TString baseName = "saveOpt.txt";
+
+    if     (key == "current") return glob->GetOptC("outDirNameFull")  +baseName;
+    else if(key == "optim")   return glob->GetOptC("optimDirNameFull")+baseName;
+    else if(key == "verif")   return glob->GetOptC("verifDirNameFull")+baseName;
+    else                      VERIFY(LOCATION,(TString)"Unknown key (\""+key+"\") in ketKeyWord()",false);
+  }
   
   VERIFY(LOCATION,(TString)"Unknown sequence (\""+sequence+"\") in ketKeyWord()",false);
   return "";
@@ -802,9 +854,9 @@ TString ANNZ::getKeyWord(TString MLMname, TString sequence, TString key) {
 /**
  * @brief          - get the weight expression from userWgtsM using either a VarMaps or a TChain
  * 
+ * @param strIn   - the input string to be regularized
  * @param var     - The associated chain (needed for string variable identification)
  * @param aChain  - The associated chain (needed for string variable identification)
- * @param tagName - The access string from userWgtsM
  * 
  * @return         - The requested string
  */
@@ -833,6 +885,7 @@ TString ANNZ::getRegularStrForm(TString strIn, VarMaps * var, TChain * aChain) {
 // ===========================================================================================================
 /**
  * @brief    - Load options for different setups.
+ *
  * @details  - For training: setup internal maps for cuts and weights (userCutsM, userWgtsM) based on user
  *           inputs, and fill the nominal parameters for training, using setNominalParams().
  *           - While not in training: Extract the options used from training for each MLM from file, perform
@@ -1032,9 +1085,12 @@ void ANNZ::loadOptsMLM() {
         // for bonned classification, make sure all the required MLMs are accepted (use zBinCls_binC which is set in binClsStrToV())
         if(glob->GetOptB("doBinnedCls")) {
           int nClsBins = (int)zBinCls_binC.size();
-          VERIFY(LOCATION,(TString)"The derived number of classification bins ("+utils->intToStr(nClsBins)+") does not match the number "
-                                  +"of accepted MLMs (has nMLMs = "+utils->intToStr(nMLMs)+"). Found \"binCls_nBins\" = "+utils->intToStr(nClsBins)
-                                  +" ... Is this consistent with the value used for training ?!?", (nClsBins == nMLMs));
+          VERIFY(LOCATION,
+            (TString)"The derived number of classification bins ("+utils->intToStr(nClsBins)+") does not match the number "
+            +"of accepted MLMs (has nMLMs = "+utils->intToStr(nMLMs)+"). Found \"binCls_nBins\" = "+utils->intToStr(nClsBins)
+            +" ... Is this consistent with the value used for training ?!?",
+            (nClsBins == nMLMs)
+          );
         }
       }
 
@@ -1252,12 +1308,15 @@ void ANNZ::setMethodCuts(VarMaps * var, int nMLMnow, bool verbose) {
 
 // ===========================================================================================================
 /**
- * @brief               - Get a given cut from the nominal options
+ * @brief          - Get a given cut from the nominal options
  * 
- * @param cutType        - The name-tag of the requested cut
- * @param nMLMnow        - Current number of the MLM for which the cuts are defined
- * @param split0,split1  - Ratio of objects to accept using a "split" cut,
- *                       e.g., for [split0=2 , split1=3], accept two out of every three objects.
+ * @param cutType  - The name-tag of the requested cut
+ * @param nMLMnow  - Current number of the MLM for which the cuts are defined
+ * @param split0
+ * @param split1   - Ratio of objects to accept using a "split" cut,
+ *                 e.g., for [split0=2 , split1=3], accept two out of every three objects.
+ * @param var      - The associated VarMaps() object
+ * @param aChain   - The associated chain
  */
 // ===========================================================================================================
 TCut ANNZ::getTrainTestCuts(TString cutType, int nMLMnow, int split0, int split1, VarMaps * var, TChain * aChain) {
@@ -1514,6 +1573,7 @@ void ANNZ::setInfoBinsZ() {
  *                   
  * @param valZ       - The floatin-point position for which we look for a bin-number.
  * @param binEdgesV  - Vector of bin-edges.
+ * @param forceCheck - option to constrain value to be within the predefined range.
  * 
  * @return           - The requested bin-number
  */
@@ -1646,8 +1706,9 @@ TString ANNZ::deriveBinClsBins(map < TString,TChain* > & chainM, map < TString,T
     if(nHisNow == 1 && wgtTrain != "") {
       cutExprs          += (TString)" * ("+wgtTrain+")";
     }
-    TCanvas * tmpCnvs    = new TCanvas("tmpCnvs","tmpCnvs");
-    int     nEvtPass     = chainM["_train"]->Draw(drawExprs,cutExprs); DELNULL(tmpCnvs);
+    // TCanvas * tmpCnvs    = new TCanvas("tmpCnvs","tmpCnvs");
+    // int     nEvtPass     = chainM["_train"]->Draw(drawExprs,cutExprs); DELNULL(tmpCnvs);
+    int nEvtPass = utils->drawTree(chainM["_train"],drawExprs,cutExprs);
 
     if(nHisNow == 1) {
       aLOG(Log::INFO)  <<coutYellow<<" - Found "<<coutPurple<<nEvtPass<<coutYellow<<" objects (weighted integral = "<<coutPurple

@@ -1,5 +1,8 @@
 import  sys,os,time,logging,argparse,subprocess
 from    math                    import floor
+# import  ast
+# import  ctypes
+# from    ctypes                  import cdll
 from    scripts.generalSettings import *
 import  scripts.commonImports   as     glob
 from    scripts.commonImports   import Assert, log, blue, red, green, lBlue, yellow, purple, cyan, whtOnBlck, redOnBlck
@@ -127,7 +130,7 @@ def initParse():
   # default values for options which should be overridden in generalSettings()
   # --------------------------------------------------------------------------------------------------
   glob.annz["isBatch"] = (glob.pars["logFileName"] != "" or glob.pars["isBatch"])
-  glob.annz["useCoutCol"] = glob.annz["doPlots"] = True
+  glob.annz["doPlots"] = True
   glob.annz["printPlotExtension"] = "pdf"
 
 # setup the logger
@@ -151,7 +154,8 @@ def initLogger():
 # output colors
 # --------------------------------------------------------------------------------------------------
 def setCols():
-  if glob.annz["useCoutCol"]:
+  useCoutCol = True
+  if useCoutCol:
     glob.ColBlue="\033[34m"              ; glob.ColRed="\033[31m"               ; glob.ColGreen="\033[32m"           ; glob.ColDef="\033[0m"
     glob.ColLightBlue="\033[94m"         ; glob.ColYellow="\033[33m"            ; glob.ColPurple="\033[35m"          ; glob.ColCyan="\033[36m"
     glob.ColUnderLine="\033[4;30m"       ; glob.ColWhiteOnBlack="\33[40;37;1m"  ; glob.ColWhiteOnRed="\33[41;37;1m"
@@ -247,7 +251,6 @@ def doMake():
 
   if glob.pars["onlyMake"]: exit(0)
 
-
 # --------------------------------------------------------------------------------------------------
 # run the code
 # --------------------------------------------------------------------------------------------------
@@ -256,22 +259,25 @@ def runOneANNZ():
   for key in glob.annz:
     if key == "":
       continue
-    if key == "generalOpt":
-      cmnd += str(glob.annz[key])+" " ; cmndPrint += blue(str(glob.annz[key]))+" , "
-
-    cmnd      += key+"="+"\'"+str(glob.annz[key])+"\' "
-    cmndPrint += blue(str(key))+red(str("="))+"\'"+green(str(glob.annz[key]))+"\' , "
+    elif key == "generalOpt":
+      cmnd      += str(glob.annz[key])+" "
+      cmndPrint += blue(str(glob.annz[key]))+" , "
+    else:
+      cmnd      += key+"="+"\'"+str(glob.annz[key])+"\' "
+      cmndPrint += blue(str(key))+red(str("="))+"\'"+green(str(glob.annz[key]))+"\' , "
 
   if glob.pars["logFileName"] != "":
-    cmnd += " > "+glob.pars["logFileName"]+"_annz 2>&1"  ; cmndPrint += purple(" > "+glob.pars["logFileName"]+"_annz 2>&1")
+    cmnd      += " > "+glob.pars["logFileName"]+"_annz 2>&1"
+    cmndPrint += purple(" > "+glob.pars["logFileName"]+"_annz 2>&1")
 
-  log.info(yellow(" - Will run "+glob.exeName+" with the following user-options: ")) ; log.info("   "+cmndPrint) ; log.info("")
+  log.info(yellow(" - Will run "+glob.exeName+" with the following user-options: "))
+  log.info("   "+cmndPrint)
+  log.info("")
 
   return os.system(cmnd)
 
 # --------------------------------------------------------------------------------------------------
 def runANNZ():
-
   exitStatus = runOneANNZ()
   if exitStatus == 0: return
 

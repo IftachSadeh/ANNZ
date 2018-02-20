@@ -1,9 +1,24 @@
 # Changelog
 
-<!-- ## Master version (???????) -->
-## Master version (28/11/2017)
+## Master version (20/02/2018)
+
+### For users:
+- Added a wrapper class, which allows calling the evaluation phase for regression/classification directly from python. This can be used to integrate ANNZ directly within pipelines. The python interface is defined in `py/ANNZ.py`, with a full example given in `scripts/annz_evalWrapper.py`. (See README.md for details.)
 
 - Bug fix in a few `python` scripts, where the example for the `weightInp_wgtKNN` option had previously been set to numerically insignificant values.
+
+- Changed the interface to turn off colour output (see `README.md`).
+
+### For developers:
+- Major revamp of the `Makefile`, including adding a step of precompilation of the shared `include/commonInclude.hpp` header.
+
+- Reorganization of shared namespaces.
+
+- Created a new `Manager` class as part of `include/myANNZ.hpp`, `src/myANNZ.cpp`.
+
+- Added a wrapper class for e.g., python integration, implemented in `include/Wrapper.hpp`, `src/Wrapper.cpp` and `py/ANNZ.py`.
+
+- Completely rewrote `ANNZ::doEvalReg()` to comply with pipeline integration. Added new interfaces for regression evaluation, as implemented in `src/ANNZ_regEval.cpp`.
 
 ## ANNZ v2.2.2 (04/03/2017)
 

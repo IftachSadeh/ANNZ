@@ -12,9 +12,6 @@ def generalSettings():
   # set the output level (by default set to ["INFO"]) - ["ERROR","WARNING","INFO","DEBUG","DEBUG_1","DEBUG_2","DEBUG_3","DEBUG_4"]
   # glob.annz["logLevel"] = "DEBUG_1"
 
-  # set to [False] in order to avoid color output
-  # glob.annz["useCoutCol"]  = False
-
   # if isBatch is [True] then a progress bar is not drawn during training (if writing the output to a log file this is important to avoid)
   # while it may be set from the command line (--isBatch), we can also be override it globally here
   # glob.annz["isBatch"] = True

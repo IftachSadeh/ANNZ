@@ -27,6 +27,7 @@
 #include <limits>
 #include <cmath>
 #include <cstdlib>
+#include <sys/stat.h>
 #include <string>
 #include <fstream>
 #include <sstream>
@@ -63,6 +64,27 @@
 #include <TGraphErrors.h>
 #include <TGraphAsymmErrors.h>
 #include <TLine.h>
+#include <TKey.h>
+
+#include "TMVA/Tools.h"
+#include "TMVA/Config.h"
+#include "TMVA/Factory.h"
+#include "TMVA/Reader.h"
+#include "TMVA/MethodBase.h"
+#include "TMVA/PDF.h"
+
+#if ROOT_VERSION_CODE >= ROOT_VERSION(6,8,0) 
+#include "TMVA/DataLoader.h"
+#endif
+
+// -----------------------------------------------------------------------------------------------------------
+// hack to make all the private elements of MethodKNN accecible
+// -----------------------------------------------------------------------------------------------------------
+#define private public
+#include "TMVA/MethodKNN.h"
+#undef  private
+// -----------------------------------------------------------------------------------------------------------
+
 
 using std::cout;
 using std::endl;
@@ -84,6 +106,89 @@ namespace std {
     };
   };
 }
+
+// -----------------------------------------------------------------------------------------------------------
+// namespace for default options/variable values - see http://root.cern.ch/root/html/Rtypes.h
+// (needs namespace in order to use values in default initialization of OptMaps functions)
+// -----------------------------------------------------------------------------------------------------------
+namespace DefOpts {
+  Bool_t    DefB  = false;                                           Bool_t    NullB  = false;
+  TString   DefC  = "";                                              TString   NullC  = "";
+  Short_t   DefS  = std::numeric_limits<short int>         ::max();  Short_t   NullS  = 0;
+  Int_t     DefI  = std::numeric_limits<int>               ::max();  Int_t     NullI  = 0;
+  Long64_t  DefL  = std::numeric_limits<long int>          ::max();  Long64_t  NullL  = 0;
+  UShort_t  DefUS = std::numeric_limits<unsigned short int>::max();  UShort_t  NullUS = 0;
+  UInt_t    DefUI = std::numeric_limits<unsigned int>      ::max();  UInt_t    NullUI = 0;
+  ULong64_t DefUL = std::numeric_limits<unsigned long int> ::max();  ULong64_t NullUL = 0;
+  Float_t   DefF  = std::numeric_limits<float>             ::max();  Float_t   NullF  = 0;
+  Double_t  DefD  = std::numeric_limits<double>            ::max();  Double_t  NullD  = 0;
+}
+
+
+
+// ===========================================================================================================
+// namespace for sorting logic functions
+// ===========================================================================================================
+namespace sortFunctors {
+
+  bool double_descend(double a, double b) { return (a < b); }
+  bool double_ascend (double a, double b) { return (a > b); }
+ 
+  bool pairIntInt_descendSecond(pair<int,int> a, pair<int,int> b) { return (a.second < b.second); }
+  bool pairIntInt_ascendSecond (pair<int,int> a, pair<int,int> b) { return (a.second > b.second); }
+  bool pairIntInt_descendFirst (pair<int,int> a, pair<int,int> b) { return (a.first  < b.first ); }
+  bool pairIntInt_ascendFirst  (pair<int,int> a, pair<int,int> b) { return (a.first  > b.first ); }
+
+  bool pairIntDouble_descendSecond(pair<int,double> a, pair<int,double> b) { return (a.second < b.second); }
+  bool pairIntDouble_ascendSecond (pair<int,double> a, pair<int,double> b) { return (a.second > b.second); }
+  bool pairIntDouble_descendFirst (pair<int,double> a, pair<int,double> b) { return (a.first  < b.first ); }
+  bool pairIntDouble_ascendFirst  (pair<int,double> a, pair<int,double> b) { return (a.first  > b.first ); }
+
+  struct pairIntDouble_equalFirst {
+    int b;
+    pairIntDouble_equalFirst(int input) : b(input) { }
+    bool operator () (pair<int,double> const& a) { return (a.first == b); }
+  };
+  
+}
+
+
+
+// -----------------------------------------------------------------------------------------------------------
+// color output
+// -----------------------------------------------------------------------------------------------------------
+#define UseCoutCol true
+namespace CoutCols {
+  TString CT                = " \t ";
+  TString coutDef           = UseCoutCol ? "\033[0m"      : "";
+  TString coutRed           = UseCoutCol ? "\033[31m"     : "";
+  TString coutGreen         = UseCoutCol ? "\033[32m"     : "";
+  TString coutBlue          = UseCoutCol ? "\033[34m"     : "";
+  TString coutLightBlue     = UseCoutCol ? "\033[94m"     : "";
+  TString coutYellow        = UseCoutCol ? "\033[33m"     : "";
+  TString coutPurple        = UseCoutCol ? "\033[35m"     : "";
+  TString coutCyan          = UseCoutCol ? "\033[36m"     : "";
+  TString coutUnderLine     = UseCoutCol ? "\033[4;30m"   : "";
+  TString coutWhiteOnBlack  = UseCoutCol ? "\33[40;37;1m" : "";
+  TString coutWhiteOnRed    = UseCoutCol ? "\33[41;37;1m" : "";
+  TString coutWhiteOnGreen  = UseCoutCol ? "\33[42;37;1m" : "";
+  TString coutWhiteOnYellow = UseCoutCol ? "\33[43;37;1m" : "";
+}
+
+using CoutCols::CT;
+using CoutCols::coutDef;
+using CoutCols::coutRed;
+using CoutCols::coutGreen;
+using CoutCols::coutBlue;
+using CoutCols::coutLightBlue;
+using CoutCols::coutYellow;
+using CoutCols::coutPurple;
+using CoutCols::coutCyan;
+using CoutCols::coutUnderLine;
+using CoutCols::coutWhiteOnBlack;
+using CoutCols::coutWhiteOnRed;
+using CoutCols::coutWhiteOnGreen;
+using CoutCols::coutWhiteOnYellow;
 
 #endif // __COMMONINCLUDE_H__
 
@@ -220,7 +325,7 @@ namespace Log {
 // a version with some verbosity for debugging
 #define DELNULL_(loc,ptr,name,verb) \
   do { \
-    if(verb) { aCustomLOG("DELNULL")<<" - "<<loc<<" - deleting \""<<name<<"\" ("<<ptr<<") ..."<<endl; } \
+    if(verb) { aCustomLOG("DELNULL")<<coutRed<<" - "<<loc<<" - deleting \""<<coutYellow<<name<<coutRed<<"\" ("<<ptr<<") ..."<<coutDef<<endl; } \
     DELNULL(ptr); \
   } while(false)
 

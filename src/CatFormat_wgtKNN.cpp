@@ -230,7 +230,7 @@ void CatFormat::inputToFullTree_wgtKNN(TString inAsciiFiles, TString inAsciiVars
  * 
  * @param aChainInp     - a chain corresponding to the main dataset
  * @param aChainRef     - a chain corresponding to the reference dataset
- * @param aChainRef     - a chain corresponding to the evaluated dataset
+ * @param aChainEvl     - a chain corresponding to the evaluated dataset
  * @param outTreeName   - optional tree name (or else the name is extracted from aChainInp)
  */
 // ===========================================================================================================
@@ -420,8 +420,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TChain *
       TString wgtCut    = (TString)"("+chainCutV[nChainNow]+")*("+chainWgtV[nChainNow]+")";
       wgtCut.ReplaceAll("()*()","").ReplaceAll("*()","").ReplaceAll("()*","").ReplaceAll("()","1");
 
-      TCanvas * tmpCnvs = new TCanvas("tmpCnvs","tmpCnvs");
-      aChain->Draw(drawExprs,wgtCut); DELNULL(tmpCnvs);
+      utils->drawTree(aChain,drawExprs,wgtCut);
 
       hisVarV[nChainNow][nVarNow] = (TH1F*)gDirectory->Get(hisName); 
       VERIFY(LOCATION,(TString)"Could not derive histogram ("+hisName+") from chain ... Something is horribly wrong ?!?!",(dynamic_cast<TH1F*>(hisVarV[nChainNow][nVarNow])));
@@ -439,8 +438,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TChain *
           hisName   += (TString)"_TMP";
           drawExprs  = (TString)"("+varNames[nVarNow]+")>>"+hisName;
 
-          TCanvas * tmpCnvs = new TCanvas("tmpCnvs","tmpCnvs");
-          aChainEvl->Draw(drawExprs,wgtCut); DELNULL(tmpCnvs);
+          utils->drawTree(aChainEvl,drawExprs,wgtCut);
 
           TH1 * hisTMP = (TH1F*)gDirectory->Get(hisName);
           VERIFY(LOCATION,(TString)"Could not derive histogram ("+hisName+") from chain ... Something is horribly wrong ?!?!",(dynamic_cast<TH1F*>(hisTMP)));
@@ -498,8 +496,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TChain *
     TString wgtCut    = (TString)"("+chainCutV[nChainNow]+")*("+chainWgtV[nChainNow]+")";
     wgtCut.ReplaceAll("()*()","").ReplaceAll("*()","").ReplaceAll("()*","").ReplaceAll("()","1");
 
-    TCanvas * tmpCnvs = new TCanvas("tmpCnvs","tmpCnvs");
-    aChainV[nChainNow]->Draw(drawExprs,wgtCut); DELNULL(tmpCnvs);
+    utils->drawTree(aChainV[nChainNow],drawExprs,wgtCut);
   
     TH1 * his1        = (TH1F*)gDirectory->Get(hisName);
     VERIFY(LOCATION,(TString)"Could not derive histogram ("+hisName+") from chain ... Something is horribly wrong ?!?!",(dynamic_cast<TH1F*>(his1)));
@@ -1020,8 +1017,7 @@ void CatFormat::addWgtKNNtoTree(TChain * aChainInp, TChain * aChainRef, TChain *
           if(nDrawNow == 1) drawExprs += TString::Format("(%d,%f,%f)",nDrawBins,drawLim0,drawLim1);
           // cout <<drawExprs<<" \t --> "<<weightNow <<endl;
 
-          TCanvas * tmpCnvs = new TCanvas("tmpCnvs","tmpCnvs");
-          aChain->Draw(drawExprs,weightNow); DELNULL(tmpCnvs);
+          utils->drawTree(aChain,drawExprs,weightNow);
 
           TH1 * his1 = (TH1F*)gDirectory->Get(hisName); his1->SetDirectory(0); his1->BufferEmpty(); his1->SetTitle(hisTitle);
           VERIFY(LOCATION,(TString)"Could not derive histogram ("+hisName+") from chain ... Something is horribly wrong ?!?!",(dynamic_cast<TH1F*>(his1)));

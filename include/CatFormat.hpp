@@ -21,26 +21,6 @@
 
 #include "BaseClass.hpp"
 
-#include "TMVA/Tools.h"
-#include "TMVA/Config.h"
-#include "TMVA/Factory.h"
-#include "TMVA/Reader.h"
-#include "TMVA/MethodBase.h"
-#include "TMVA/PDF.h"
-
-#if ROOT_VERSION_CODE >= ROOT_VERSION(6,8,0) 
-#include "TMVA/DataLoader.h"
-#endif
-
-// -----------------------------------------------------------------------------------------------------------
-// hack to make all the private elements of MethodKNN accecible
-// -----------------------------------------------------------------------------------------------------------
-#define private public
-#include "TMVA/MethodKNN.h"
-#undef  private
-// -----------------------------------------------------------------------------------------------------------
-
-
 // ===========================================================================================================
 /**
  * @brief  - convert input ascii files into root trees
@@ -48,22 +28,20 @@
 // ===========================================================================================================
 class CatFormat : public BaseClass {
 // =================================
+  public:  
+    CatFormat(TString aName = "CatFormat", Utils * aUtils = NULL, OptMaps * aMaps = NULL, OutMngr * anOutMngr = NULL);
+    ~CatFormat();
 
-public:  
-  CatFormat(TString aName = "CatFormat", Utils * aUtils = NULL, OptMaps * aMaps = NULL, OutMngr * anOutMngr = NULL);
-  ~CatFormat();
-
-  // member functions
-  // -----------------------------------------------------------------------------------------------------------
-  void    Init();
-  void    inputToSplitTree(TString inAsciiFiles, TString inAsciiVars);
-  void    inputToFullTree(TString inAsciiFiles, TString inAsciiVars, TString treeNamePostfix = "", TString inTreeName = "");
-  void    inputToSplitTree_wgtKNN(TString inAsciiFiles, TString inAsciiVars, TString inAsciiFiles_wgtKNN, TString inAsciiVars_wgtKNN);
-  void    inputToFullTree_wgtKNN(TString inAsciiFiles, TString inAsciiVars, TString treeNamePostfix);
-  void    parseInputVars(VarMaps * var, TString inAsciiVars, vector <TString> & inVarNames, vector <TString> & inVarTypes);
-  bool    inputLineToVars(TString line, VarMaps * var, vector <TString> & inVarNames, vector <TString> & inVarTypes);
-  void    setSplitVars(VarMaps * var, TRandom * rnd, map <TString,int> & intMap);
-  void    addWgtKNNtoTree(TChain * aChainInp = NULL, TChain * aChainRef = NULL, TChain * aChainEvl = NULL, TString outTreeName = "");
-
+    // member functions
+    // -----------------------------------------------------------------------------------------------------------
+    void Init();
+    void inputToSplitTree(TString inAsciiFiles, TString inAsciiVars);
+    void inputToFullTree(TString inAsciiFiles, TString inAsciiVars, TString treeNamePostfix = "", TString inTreeName = "");
+    void inputToSplitTree_wgtKNN(TString inAsciiFiles, TString inAsciiVars, TString inAsciiFiles_wgtKNN, TString inAsciiVars_wgtKNN);
+    void inputToFullTree_wgtKNN(TString inAsciiFiles, TString inAsciiVars, TString treeNamePostfix);
+    void parseInputVars(VarMaps * var, TString inAsciiVars, vector <TString> & inVarNames, vector <TString> & inVarTypes);
+    bool inputLineToVars(TString line, VarMaps * var, vector <TString> & inVarNames, vector <TString> & inVarTypes);
+    void setSplitVars(VarMaps * var, TRandom * rnd, map <TString,int> & intMap);
+    void addWgtKNNtoTree(TChain * aChainInp = NULL, TChain * aChainRef = NULL, TChain * aChainEvl = NULL, TString outTreeName = "");
 };
 #endif  // #ifndef CatFormat_h

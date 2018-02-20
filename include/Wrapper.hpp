@@ -16,26 +16,46 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // ===========================================================================================================
 
-#ifndef BaseClass_h
-#define BaseClass_h
+#ifndef Wrapper_h
+#define Wrapper_h
 
 #include "commonInclude.hpp"
-#include "OptMaps.hpp"
-#include "Utils.hpp"
-#include "VarMaps.hpp"
-#include "OutMngr.hpp"
+class OutMngr;
+class Utils;
+class OptMaps;
+class Manager;
+class ANNZ;
 
 // ===========================================================================================================
-class BaseClass {
-// ==============
+class Wrapper {
+// ============
   public:
-    BaseClass(TString aName = "BaseClass", Utils * aUtils = NULL, OptMaps * aMaps = NULL, OutMngr * anOutMngr = NULL);
-    virtual ~BaseClass();
-
+    Wrapper(std::string nameIn);
+    ~Wrapper();
+    
     TString name;
-    Utils   * utils;
-    OptMaps * glob;
-    OutMngr * outputs;
+    void    Init(int argc, char ** argv);
+    char *  Eval(char * evalId, char * nObjsVars, char ** varNames, char ** varVals);
+    void    Release(char * evalId);
+
+    Utils    * utils;
+    OptMaps  * glob;
+    OutMngr  * outputs;
+    Manager  * aManager;
+    ANNZ     * aANNZ;
+
+    TTree                  * loopTree;
+    map <TString,TString*> registry;
+};
+
+// ===========================================================================================================
+/**
+ * @brief  - shared registry for Wrapper instances, which is used for bookkeeping for python calls
+ */
+// ===========================================================================================================
+class WrapperRegistry {
+  public:
+    static map <TString, Wrapper*> wrapper;
 };
 
 #endif

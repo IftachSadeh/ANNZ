@@ -19,57 +19,18 @@
 #include "OptMaps.hpp"
 
 // ===========================================================================================================
-// namespace for default options/variable values
-// =============================================
-namespace DefOpts {
-  Bool_t    DefB  = false;                                           Bool_t    NullB  = false;
-  TString   DefC  = "";                                              TString   NullC  = "";
-  Short_t   DefS  = std::numeric_limits<short int>         ::max();  Short_t   NullS  = 0;
-  Int_t     DefI  = std::numeric_limits<int>               ::max();  Int_t     NullI  = 0;
-  Long64_t  DefL  = std::numeric_limits<long int>          ::max();  Long64_t  NullL  = 0;
-  UShort_t  DefUS = std::numeric_limits<unsigned short int>::max();  UShort_t  NullUS = 0;
-  UInt_t    DefUI = std::numeric_limits<unsigned int>      ::max();  UInt_t    NullUI = 0;
-  ULong64_t DefUL = std::numeric_limits<unsigned long int> ::max();  ULong64_t NullUL = 0;
-  Float_t   DefF  = std::numeric_limits<float>             ::max();  Float_t   NullF  = 0;
-  Double_t  DefD  = std::numeric_limits<double>            ::max();  Double_t  NullD  = 0;
-}
-// ===========================================================================================================
 OptMaps::OptMaps(TString aName) {
 // ==============================
   // set the name of the object
   name = aName;
   // initial lock status
   isLocked = false;
-  // set the cout colour scheme
-  setColors();
   return;
 }
 // ===========================================================================================================
 OptMaps::~OptMaps() {
 // ==================
   clearAll();
-  return;
-}
-// ===========================================================================================================
-void OptMaps::setColors() {
-// ========================
-  bool useCoutCol = OptOrNullB("useCoutCol");
-
-  CT                = " \t ";
-  coutDef           = useCoutCol ? "\033[0m"       : "";
-  coutRed           = useCoutCol ? "\033[31m"      : "";
-  coutGreen         = useCoutCol ? "\033[32m"      : "";
-  coutBlue          = useCoutCol ? "\033[34m"      : "";
-  coutLightBlue     = useCoutCol ? "\033[94m"      : "";
-  coutYellow        = useCoutCol ? "\033[33m"      : "";
-  coutPurple        = useCoutCol ? "\033[35m"      : "";
-  coutCyan          = useCoutCol ? "\033[36m"      : "";
-  coutUnderLine     = useCoutCol ? "\033[4;30m"    : "";
-  coutWhiteOnBlack  = useCoutCol ? "\33[40;37;1m"  : "";
-  coutWhiteOnRed    = useCoutCol ? "\33[41;37;1m"  : "";
-  coutWhiteOnGreen  = useCoutCol ? "\33[42;37;1m"  : "";
-  coutWhiteOnYellow = useCoutCol ? "\33[43;37;1m"  : "";
-
   return;
 }
 
@@ -92,6 +53,39 @@ void OptMaps::checkName(TString messageTag, TString aName) {
   }
 
   return;    
+};
+
+// ===========================================================================================================
+void OptMaps::copyOpt(TString aName, OptMaps * inObj, Log::LOGtypes log) {
+// =======================================================================
+  TString aType(GetOptType(aName));
+  if(aType == "B") {
+    if(GetOptB(aName) != inObj->GetOptB(aName)) {
+      aLOG(log)<<coutYellow<<" - overriding \""<<aName<<"\" with "<<coutGreen<<inObj->GetOptB(aName)<<coutDef<<endl;
+      SetOptB(aName,inObj->GetOptB(aName));
+    }
+  }
+  else if(aType == "I") {
+    if(GetOptI(aName) != inObj->GetOptI(aName)) {
+      aLOG(log)<<coutYellow<<" - overriding \""<<aName<<"\" with "<<coutGreen<<inObj->GetOptI(aName)<<coutDef<<endl;
+      SetOptI(aName,inObj->GetOptI(aName));
+    }
+  }
+  else if(aType == "F") {
+    double a(GetOptF(aName)), b(inObj->GetOptF(aName));
+    // a non-perfect float comparison..... FIXME
+    if(fabs((a-b)/min(a,b)) > 10*std::numeric_limits<float>::min()) {
+      aLOG(log)<<coutYellow<<" - overriding \""<<aName<<"\" with "<<coutGreen<<b<<coutDef<<endl;
+      SetOptF(aName,b);
+    }
+  }
+  else if(aType == "C") {
+    if(GetOptC(aName) != inObj->GetOptC(aName)) {
+      aLOG(log)<<coutYellow<<" - overriding \""<<aName<<"\" with "<<coutGreen<<inObj->GetOptC(aName)<<coutDef<<endl;
+      SetOptC(aName,inObj->GetOptC(aName));
+    }
+  }
+  return;
 };
 
 // ===========================================================================================================

@@ -26,71 +26,73 @@
 // ===========================================================================================================
 class CntrMap {
 // ============
-public:
-  CntrMap(OptMaps * aOptMaps = NULL, Utils * aUtils = NULL, TString aName = "aCntrMap") {
-    glob  = aOptMaps;
-    utils = aUtils;
-    name  = aName;
-  };
-  ~CntrMap() {
-    clearCntr();
-    return;
-  };
+  public:
+    CntrMap(OptMaps * aOptMaps = NULL, Utils * aUtils = NULL, TString aName = "aCntrMap") {
+      glob  = aOptMaps;
+      utils = aUtils;
+      name  = aName;
+    };
+    ~CntrMap() {
+      clearCntr();
+      return;
+    };
 
-private:
-  TString           name;
-  map <TString,int> cntr;
-  OptMaps           * glob;
-  Utils             * utils;
+  private:
+    TString           name;
+    map <TString,int> cntr;
+    OptMaps           * glob;
+    Utils             * utils;
 
-public:
-  inline void     resetCntr() { for(map <TString,int>::iterator itr = cntr.begin(); itr!=cntr.end(); ++itr) itr->second = 0; return; };
-  inline void     clearCntr() { cntr.clear(); return; };
-  inline void     copyCntr(CntrMap * cntrIn) {
-    for(map <TString,int>::iterator itr = cntrIn->cntr.begin(); itr!=cntrIn->cntr.end(); ++itr) cntr[itr->first] = itr->second;
-    return;
-  };
+  public:
+    inline void resetCntr() { for(map <TString,int>::iterator itr = cntr.begin(); itr!=cntr.end(); ++itr) itr->second = 0; return; };
+    inline void clearCntr() { cntr.clear(); return; };
+    inline void copyCntr(CntrMap * cntrIn) {
+      for(map <TString,int>::iterator itr = cntrIn->cntr.begin(); itr!=cntrIn->cntr.end(); ++itr) {
+        cntr[itr->first] = itr->second;
+      }
+      return;
+    };
 
-  inline void     NewCntr(TString aName, int input = 0) { cntr[aName] = input;                     return;                     }
-  inline void     IncCntr(TString aName, int val   = 1) { if(!HasCntr(aName)) NewCntr   (aName,0); cntr[aName] += val; return; }
-  inline void     DecCntr(TString aName, int val   = 1) { if(!HasCntr(aName)) NewCntr   (aName,0); cntr[aName] -= val; return; }
-  inline int      GetCntr(TString aName)                { if(!HasCntr(aName)) NewCntr   (aName,0); return cntr[aName];         }
-  inline bool     HasCntr(TString aName)                { return (cntr.find(aName) != cntr.end());                             }
-  inline void     DelCntr(TString aName)                { if( HasCntr(aName)) cntr.erase(aName);   return;                     }
+    inline void NewCntr(TString aName, int input = 0) { cntr[aName] = input;                     return;                     }
+    inline void IncCntr(TString aName, int val   = 1) { if(!HasCntr(aName)) NewCntr   (aName,0); cntr[aName] += val; return; }
+    inline void DecCntr(TString aName, int val   = 1) { if(!HasCntr(aName)) NewCntr   (aName,0); cntr[aName] -= val; return; }
+    inline int  GetCntr(TString aName)                { if(!HasCntr(aName)) NewCntr   (aName,0); return cntr[aName];         }
+    inline bool HasCntr(TString aName)                { return (cntr.find(aName) != cntr.end());                             }
+    inline void DelCntr(TString aName)                { if( HasCntr(aName)) cntr.erase(aName);   return;                     }
 
-  void printCntr(TString nameTag = "", Log::LOGtypes logLevel = Log::INFO) {
-    if(!inLOG(logLevel)) return;
+    void printCntr(TString nameTag = "", Log::LOGtypes logLevel = Log::INFO) {
+      if(!inLOG(logLevel)) return;
 
-    // time_t rawtime; time(&rawtime); struct tm * timeinfo = localtime ( &rawtime ); TString dateTimeNow = (TString) asctime(timeinfo);
-    // size_t pos = std::string(dateTimeNow).find("CEST"); std::string choped = std::string(dateTimeNow).substr(0,pos);
-    // dateTimeNow = (TString)choped; dateTimeNow.ReplaceAll("  "," "); dateTimeNow.ReplaceAll("\n","");
-    // aLOG(logLevel)<<glob->coutPurple<<"Counters ("<<dateTimeNow<<"):"<<glob->coutDef<<endl;
-    aLOG(logLevel)<<glob->coutPurple<<" -- COUNTERS ----------------------------------------"
-                  <<"--------------------------------------"<<glob->coutDef<<endl; //-----------------
+      // time_t rawtime; time(&rawtime); struct tm * timeinfo = localtime ( &rawtime ); TString dateTimeNow = (TString) asctime(timeinfo);
+      // size_t pos = std::string(dateTimeNow).find("CEST"); std::string choped = std::string(dateTimeNow).substr(0,pos);
+      // dateTimeNow = (TString)choped; dateTimeNow.ReplaceAll("  "," "); dateTimeNow.ReplaceAll("\n","");
+      // aLOG(logLevel)<<coutPurple<<"Counters ("<<dateTimeNow<<"):"<<coutDef<<endl;
+      aLOG(logLevel)<<coutPurple<<" -- COUNTERS ----------------------------------------"
+                    <<"--------------------------------------"<<coutDef<<endl; //-----------------
 
-    int     maxLength = 0;
-    TString baseName  = (TString)((nameTag == "") ? glob->OptOrNullC("baseName") : nameTag);
+      int     maxLength = 0;
+      TString baseName  = (TString)((nameTag == "") ? glob->OptOrNullC("baseName") : nameTag);
 
-    for(map <TString,int>::iterator cutCounterItr = cntr.begin(); cutCounterItr!=cntr.end(); ++cutCounterItr) {
-      TString str = TString::Format("%d",cutCounterItr->second);
-      int     strLenght = str.Length();   if(maxLength < strLenght) maxLength = strLenght;
-    }
-    maxLength += 10;  if(maxLength < 20) maxLength = 20;
-    for(map <TString,int>::iterator cutCounterItr = cntr.begin(); cutCounterItr!=cntr.end(); ++cutCounterItr) {
-      TString cutNameNow  = cutCounterItr->first;
-      int     cutCountNow = cutCounterItr->second;
+      for(map <TString,int>::iterator cutCounterItr = cntr.begin(); cutCounterItr!=cntr.end(); ++cutCounterItr) {
+        TString str = TString::Format("%d",cutCounterItr->second);
+        int     strLenght = str.Length();   if(maxLength < strLenght) maxLength = strLenght;
+      }
+      maxLength += 10;  if(maxLength < 20) maxLength = 20;
+      for(map <TString,int>::iterator cutCounterItr = cntr.begin(); cutCounterItr!=cntr.end(); ++cutCounterItr) {
+        TString cutNameNow  = cutCounterItr->first;
+        int     cutCountNow = cutCounterItr->second;
 
-      aLOG(logLevel)  <<glob->coutPurple<<" -- "<<std::setw(35)<<std::left<<std::setfill('.')
-                      <<TString(glob->coutBlue+baseName+" "+glob->coutPurple)<<""
-                      <<std::setw(maxLength)<<std::setfill('.')<<std::right
-                      <<TString(glob->coutYellow)+TString::Format(" %d ",cutCountNow)<<std::setfill(' ')
-                      <<" "<<glob->coutGreen<<cutNameNow<<glob->coutDef<<endl;
-    }
-    aLOG(logLevel)<<glob->coutPurple<<" ----------------------------------------------------"
-                  <<"-------------------------------------------------------"<<glob->coutDef<<endl;
-    
-    return;
-  };
+        aLOG(logLevel)  <<coutPurple<<" -- "<<std::setw(35)<<std::left<<std::setfill('.')
+                        <<TString(coutBlue+baseName+" "+coutPurple)<<""
+                        <<std::setw(maxLength)<<std::setfill('.')<<std::right
+                        <<TString(coutYellow)+TString::Format(" %d ",cutCountNow)<<std::setfill(' ')
+                        <<" "<<coutGreen<<cutNameNow<<coutDef<<endl;
+      }
+      aLOG(logLevel)<<coutPurple<<" ----------------------------------------------------"
+                    <<"-------------------------------------------------------"<<coutDef<<endl;
+      
+      return;
+    };
 };
 
 #endif

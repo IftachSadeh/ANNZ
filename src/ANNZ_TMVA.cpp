@@ -18,10 +18,11 @@
 
 // ===========================================================================================================
 /**
- * @brief          - Setup a TMVA::Factory (add variables and optionally a target for regression).
+ * @brief           - Setup a TMVA::Factory (add variables and optionally a target for regression).
  *       
- * @param nMLMnow  - The index of the current MLM.
- * @param factory  - pointer to the TMVA::Factory which is set-up.
+ * @param nMLMnow   - The index of the current MLM.
+ * @param configIn  - pointer to the TMVA::Configurable which is set-up.
+ * @param isBiasMLM - flag to indicate if this is a bias- or nominal--MLM
  */
 // ===========================================================================================================
 void ANNZ::prepFactory(int nMLMnow, TMVA::Configurable * configIn, bool isBiasMLM) {
@@ -143,7 +144,7 @@ void ANNZ::clearReaders(Log::LOGtypes logLevel) {
 // ===========================================================================================================
 void ANNZ::loadReaders(map <TString,bool> & mlmSkipNow, bool needMcPRB) {
 // ======================================================================
-  aLOG(Log::DEBUG_1) <<coutWhiteOnBlack<<coutYellow<<" - starting ANNZ::loadReaders() ... "<<coutDef<<endl;
+  aLOG(Log::INFO) <<coutWhiteOnBlack<<coutYellow<<" - starting ANNZ::loadReaders() ... "<<coutDef<<endl;
   
   int  nMLMs             = glob->GetOptI("nMLMs");
   bool isBinCls          = glob->GetOptB("doBinnedCls");
@@ -173,7 +174,7 @@ void ANNZ::loadReaders(map <TString,bool> & mlmSkipNow, bool needMcPRB) {
 
     for(int nVarNow=0; nVarNow<nInVar; nVarNow++) {
       TString inVarNameNow = inNamesVar[nMLMnow][nVarNow];
-      VERIFY(LOCATION,(TString)"Should not have empty input-variable. Something is horribly wrong... ?!?",(inVarNameNow != ""));        
+      VERIFY(LOCATION,(TString)"Should not have empty input-variable. Something is horribly wrong... ?!?",(inVarNameNow != ""));
 
       bool hasVar(false);
       for(int nVarNow=0; nVarNow<(int)readerInptV.size(); nVarNow++) {
@@ -339,8 +340,7 @@ double ANNZ::getReader(VarMaps * var, ANNZ_readType readType, bool forceUpdate, 
     else if(readType == ANNZ_readType::CLS) readVal = clsVal;
     else VERIFY(LOCATION,(TString)"un-supported readType (\""+utils->intToStr((int)readType)+"\") ...",false);
   }
-  else {  
-
+  else {
     if(readType == ANNZ_readType::REG) {
       readVal = (regReaders[nMLMnow]->EvaluateRegression(MLMname))[0];
 
@@ -356,7 +356,6 @@ double ANNZ::getReader(VarMaps * var, ANNZ_readType readType, bool forceUpdate, 
     else if(readType == ANNZ_readType::PRB) readVal = max(min(regReaders[nMLMnow]->GetProba(MLMname),1.),0.);
     else if(readType == ANNZ_readType::CLS) readVal = regReaders[nMLMnow]->EvaluateMVA(MLMname);
     else VERIFY(LOCATION,(TString)"un-supported readType (\""+utils->intToStr((int)readType)+"\") ...",false);
-
   }
 
   return (utils->isNanInf(readVal) ? DefOpts::DefF : readVal);

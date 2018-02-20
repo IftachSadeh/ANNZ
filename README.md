@@ -50,7 +50,7 @@ Randomized classification may be used for general classification problems. In th
 
 ### Download (and if needed install) ROOT
 
-ROOT is available [here](https://root.cern.ch/downloading-root). ROOT v5.34/25 was used for development, and v6.06 for testing. Later ROOT versions should also be compatible (please report any issues).
+ROOT is available [here](https://root.cern.ch/downloading-root). ROOT v5.34/25 was used for development, and v6.12 for testing. Later ROOT versions should also be compatible (please report any issues).
 
 For installation instructions, go [here](https://root.cern.ch/building-root). Notice the pre-compiled versions available for common operating systems.
 
@@ -370,18 +370,6 @@ The bias correction for PDFs may be chained after the MLM bias correction, or ju
 The correction is applied as a simplified unfolding of the regression solution with regards to the target. This is done by calculating the correlation for each bin of the PDF, between the target value and the position of the bin. The correlation is computed for each object in the training sample, so that the average per-bin correlation may be derived for the entire training sample. The correction is applied on the evaluated PDF. The is done by re-weighting each bin of the PDF according to the average estimated value of the regression target. The procedure is equivalent to multiplying the PDF (bin-by-bin) by the relation between the derived regression estimator (photo-z) and the target value (true redshift), as derived using the training sample.
 
 
-#### Running on a batch farm
-
-It is advisable to run ANNZ on a batch farm, especially during the training phase. An example of how this may be done is given in `scripts/annz_qsub.py`. Please note that this only serves as a guideline, and should probably be customized for a particular cluster.
-
-#### FITS format support
-
-The nominal input/output of ANNZ is in the format of ascii files. In order to avoid additional dependencies, FITS format support is not incorporated directly into ANNZ. Instead, two functions, `fitsToAscii()` and `asciiToFits()`, are available in `scripts/fitsFunc.py` (and require the python package, `astropy.io`). These may be used for creating ascii files in the format accepted by ANNZ from a FITS input file, and vise versa. Examples are given in `scripts/annz_fits_quick.py`. They can be run with:
-```bash
-python scripts/annz_fits_quick.py --fitsToAscii
-python scripts/annz_fits_quick.py --asciiToFits
-```
-
 #### Independent derivation of KNN error estimates
 
 There is the option to generate error estimation (using the KNN method) for a general input dataset.
@@ -425,6 +413,49 @@ See `scripts/annz_rndReg_knnErr.py` for a complete example script. For illustrat
   
   - The output catalogue will be stored in this example at `./output/test_knnErr/onlyKnnErr/eval/ANNZ_onlyKnnErr_0000.csv`. It will contain the variables, `F:myPhotoZ_err;F:myPhotoZ_errN;F:myPhotoZ_errP`, as well as any requested observer variables from the original dataset. Here `myPhotoZ_err` is the symmetric error estimated for `myPhotoZ`, and `myPhotoZ_errN`/`myPhotoZ_errP` the estimates for errors in the negative/positive directions, respectively.
 
+
+### FITS format support
+
+The nominal input/output of ANNZ is in the format of ascii files. In order to avoid additional dependencies, FITS format support is not incorporated directly into ANNZ. Instead, two functions, `fitsToAscii()` and `asciiToFits()`, are available in `scripts/fitsFunc.py` (and require the python package, `astropy.io`). These may be used for creating ascii files in the format accepted by ANNZ from a FITS input file, and vise versa. Examples are given in `scripts/annz_fits_quick.py`. They can be run with:
+```bash
+python scripts/annz_fits_quick.py --fitsToAscii
+python scripts/annz_fits_quick.py --asciiToFits
+```
+
+### Running on a batch farm
+
+It is advisable to run ANNZ on a batch farm, especially during the training phase. An example of how this may be done is given in `scripts/annz_qsub.py`. Please note that this only serves as a guideline, and should probably be customized for a particular cluster.
+
+
+### Python pipeline integration
+
+- Nominally, the input data to ANNZ is ingested from a source file (e.g., an ascii or ROOT file). For evaluation, there is also the option to call ANNZ on an object-by-object basis, directly from python. This can be done using a wrapper class defined in `py/ANNZ.py`.
+Schematically, the steps to use the wrapper are as follows:
+  1. Setup the wrapper class with some user options (the same as would be used during nominal evaluation), with a dedicated list of input parameters, defined in `inVars` (same syntax as for the `inAsciiVars` parameter):
+  ```python
+  opts = dict()
+  opts['doRegression'] = True
+  opts["inVars"] = "F:MAG_U;F:MAGERR_U;F:MAG_G;F:MAGERR_G;F:MAG_R;F:MAGERR_R;F:MAG_I;F:MAGERR_I;F:MAG_Z;F:MAGERR_Z"
+  ...
+  annz = ANNZ(opts)
+  ```
+  2. Call the evaluation function of the wrapper, providing values for the predefined set of inputs:
+  ```python
+  input = {
+    'MAG_U':23.242401, 'MAGERR_U':1.231664, 'MAG_G':22.895664, 'MAGERR_G':0.675091, 'MAG_R':21.431746, 'MAGERR_R':0.225735, 'MAG_I':20.430061, 'MAGERR_I':0.111847, 'MAG_Z':20.008024, 'MAGERR_Z':0.108993 
+  }
+  output = annz.eval(input)
+  ```
+  where `output` is a dict containing the evaluation results.
+  3. Call the cleanup function of the wrapper once done (for a graceful release of resources):
+  ```python
+  annz.cleanup()
+  ```
+
+  A full example is given in `scripts/annz_evalWrapper.py`.
+
+- Step 1. may take a bit of time, as MLM estimators and ROOT trees are being loaded on the `C++` side; it should be done once at startup. Step 2. is quick and may be called with little overhead. It can e.g., be integrated as part of a python loop. The wrapper object should remain valid throughout the life cycle of the pipeline, in order to keep the `C++` resources booked.
+- `py/ANNZ.py` is implemented with a thread lock, which allows multiple instances to be run concurrently (e.g., for different estimators with different inputs).
 
 ## The outputs of ANNZ
 
@@ -662,10 +693,11 @@ A few notes:
   The `nDivEvalLoops` variable splits the evaluation phase into two steps. First sub-samples of the ensemble of MLMs are evaluated for each object. Then, the entire evaluated dataset is reprocessed as for the nominal evaluation mode. (This is an internal mechanism, transparent to the user.)
   In this example, `nDivs = 2`, results in the ensemble of MLMs being split in two sub-samples. Higher values of `nDivs` are allowed, but this may incur a computing overhead. (Nominally, we have `glob.annz["nDivEvalLoops"] = 1`, for which evaluation is not split at all, and the overhead is avoided.)
 
-  - The output of ANNZ includes escape sequences for color. To avoid these, set 
-  ```python
-  glob.annz["useCoutCol"]  = False
+  - The output of ANNZ includes escape sequences for color. To avoid these, set the corresponding `UseCoutCol` variable in `include/commonInclude.hpp`:
+  ```c++
+  #define UseCoutCol true
   ```
+  to `false`, and recompile the code.
 
   - To generate the class documentation, run
   ```bash
