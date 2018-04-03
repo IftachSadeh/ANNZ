@@ -115,7 +115,7 @@ if glob.annz["doTrain"] or glob.annz["doVerif"] or glob.annz["doEval"]:
     # nPDFbins - number of PDF bins, with equal width bins between minValZ and maxValZ. (see advanced example
     #            for setting other bin configurations) this is not directly tied to binCls_nBins -> the results of 
     #            the classification bins are cast into whatever final PDF bin scheme is defined by nPDFbins.
-    glob.annz["nPDFbins"] = 30
+    glob.annz["nPDFbins"] = 120
 
     # --------------------------------------------------------------------------------------------------
     # optimization

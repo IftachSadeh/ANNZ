@@ -25,7 +25,7 @@
  */
 // ===========================================================================================================
 void ANNZ::createTreeErrKNN(int nMLMnow) {
-// =======================================
+// ===========================================================================================================
   aLOG(Log::DEBUG) <<coutWhiteOnBlack<<coutGreen<<" - starting ANNZ::createTreeErrKNN() - "
                    <<"will create errKNN trees for "<<coutPurple<<getTagName(nMLMnow)<<coutGreen<<" ... "<<coutDef<<endl;
 
@@ -166,10 +166,12 @@ void ANNZ::createTreeErrKNN(int nMLMnow) {
  * @param wgtAll         - Weights for the entire dataset.
  */
 // ===========================================================================================================
-void ANNZ::setupKdTreeKNN(TChain * aChainKnn, TFile *& knnErrOutFile, TMVA::Factory *& knnErrFactory,
-                          TMVA::Configurable *& knnErrDataLdr, TMVA::kNN::ModulekNN *& knnErrModule,
-                          vector <int> & trgIndexV, int nMLMnow, TCut cutsAll, TString wgtAll) {
-// =============================================================================================
+void ANNZ::setupKdTreeKNN(
+  TChain * aChainKnn, TFile *& knnErrOutFile, TMVA::Factory *& knnErrFactory,
+  TMVA::Configurable *& knnErrDataLdr, TMVA::kNN::ModulekNN *& knnErrModule,
+  vector <int> & trgIndexV, int nMLMnow, TCut cutsAll, TString wgtAll
+) {
+// ===========================================================================================================
   bool debug = inLOG(Log::DEBUG_2) || glob->OptOrNullB("debugErrANNZ");
   if(debug) aCustomLOG("") <<coutWhiteOnBlack<<coutBlue<<" - starting ANNZ::setupKdTreeKNN() ... "<<coutDef<<endl;
 
@@ -402,9 +404,11 @@ void ANNZ::setupKdTreeKNN(TChain * aChainKnn, TFile *& knnErrOutFile, TMVA::Fact
  * @param verb           - Flag for activating debugging output.
  */
 // ===========================================================================================================
-void ANNZ::cleanupKdTreeKNN(TFile *& knnErrOutFile, TMVA::Factory *& knnErrFactory,
-                            TMVA::Configurable *& knnErrDataLdr, bool verb) {
-// ==========================================================================
+void ANNZ::cleanupKdTreeKNN(
+  TFile *& knnErrOutFile, TMVA::Factory *& knnErrFactory,
+  TMVA::Configurable *& knnErrDataLdr, bool verb
+) {
+// ===========================================================================================================
   TString message("");
   
   message = "knnErrFactory"; if(knnErrFactory) message += (TString)": "+knnErrFactory->GetName();
@@ -456,9 +460,11 @@ void ANNZ::cleanupKdTreeKNN(TFile *& knnErrOutFile, TMVA::Factory *& knnErrFacto
  * @param zErrV         - vector to hold negative/average/positive error estimates for each MLM.
  */
 // ===========================================================================================================
-void ANNZ::getRegClsErrKNN(VarMaps * var, TMVA::kNN::ModulekNN * knnErrModule, vector <int> & trgIndexV,
-                           vector <int> & nMLMv, bool isREG, vector < vector <double> > & zErrV) {
-// ===============================================================================================
+void ANNZ::getRegClsErrKNN(
+  VarMaps * var, TMVA::kNN::ModulekNN * knnErrModule, vector <int> & trgIndexV,
+  vector <int> & nMLMv, bool isREG, vector < vector <double> > & zErrV
+) {
+// ===========================================================================================================
   aLOG(Log::DEBUG_3) <<coutWhiteOnBlack<<coutBlue<<" - starting ANNZ::getRegClsErrKNN() ... "<<coutDef<<endl;
   
   int  nMLMsIn        = (int)nMLMv.size();  if(nMLMsIn == 0) return;
@@ -588,8 +594,10 @@ void ANNZ::getRegClsErrKNN(VarMaps * var, TMVA::kNN::ModulekNN * knnErrModule, v
  * @return          - The value of the KNN error (returns -1 in case of failure).
  */
 // ===========================================================================================================
-double ANNZ::getRegClsErrINP(VarMaps * var, bool isREG, int nMLMnow, UInt_t * seedP, vector <double> * zErrV) {
-// ============================================================================================================
+double ANNZ::getRegClsErrINP(
+  VarMaps * var, bool isREG, int nMLMnow, UInt_t * seedP, vector <double> * zErrV
+) {
+// ===========================================================================================================
   VERIFY(LOCATION,(TString)"Memory leak ?! ",(dynamic_cast<VarMaps*>(var)));
 
   aLOG(Log::DEBUG_3) <<coutWhiteOnBlack<<coutBlue<<" - starting ANNZ::getRegClsErrINP() ... "<<coutDef<<endl;

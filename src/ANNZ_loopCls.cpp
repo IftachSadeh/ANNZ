@@ -23,7 +23,7 @@
  */
 // ===========================================================================================================
 void ANNZ::optimCls() {
-// ====================
+// ===========================================================================================================
   aLOG(Log::INFO) <<coutWhiteOnBlack<<coutYellow<<" - starting ANNZ::optimCls() ... "<<coutDef<<endl;
 
   TString MLMname(""), hisName(""), sysCmnd(""), clasProbHisDirName("");
@@ -261,7 +261,7 @@ void ANNZ::optimCls() {
 
     // sort the methods by the separation fraction
     // -----------------------------------------------------------------------------------------------------------
-    sort(sbSepFracIndexM[typeName].begin(),sbSepFracIndexM[typeName].end(),sortFunctors::pairIntDouble_ascendSecond); // the largest element is first
+    sort(sbSepFracIndexM[typeName].begin(),sbSepFracIndexM[typeName].end(),sortFunc::pairID::highToLowBy1);
 
     maxSbSepFracIndexM[typeName] = sbSepFracIndexM[typeName][0].first;
 
@@ -316,7 +316,7 @@ void ANNZ::optimCls() {
 
       // find the element in the sorted sbSepFracIndexM[typeName], which corresponds to this nMLMnow
       vector < pair<int,double> >::iterator Itr;
-      Itr = find_if(sbSepFracIndexM[typeName].begin(), sbSepFracIndexM[typeName].end(), sortFunctors::pairIntDouble_equalFirst(nMLMnow));
+      Itr = find_if(sbSepFracIndexM[typeName].begin(), sbSepFracIndexM[typeName].end(), sortFunc::pairID::equalToFirst(nMLMnow));
 
       int nSbSepIndexNow(-1); double nSbSepValNow(-1);
       if(Itr != sbSepFracIndexM[typeName].end()) { // just a sanity check, really

@@ -29,7 +29,7 @@ class RegEval;
  */
 // ===========================================================================================================
 class ANNZ : public BaseClass {
-// ============================
+// ===========================================================================================================
   public:  
     ANNZ(TString aName = "ANNZ", Utils * aUtils = NULL, OptMaps * aMaps = NULL, OutMngr * anOutMngr = NULL);
     ~ANNZ();
@@ -168,13 +168,18 @@ class ANNZ : public BaseClass {
     void     getBestANNZ(map < int,vector<int> >    & zRegQnt_nANNZ,   map < int,vector<double> > & zRegQnt_bias,
                          map < int,vector<double> > & zRegQnt_sigma68, map < int,vector<double> > & zRegQnt_fracSig68,
                          vector < int >             & bestMLMsV,       bool                       onlyInclusiveBin = true);
-    void     getRndMethodBestPDF(TTree * aChain, int bestANNZindex, vector<int>  & zRegQnt_nANNZ, vector<double> & zRegQnt_bias, 
-                                 vector<double> & zRegQnt_sigma68, vector<double> & zRegQnt_fracSig68,
-                                 vector < vector<double> > & bestWeightsV, vector <TH2*> & hisPdfBiasCorV);
     void     setBinClsPdfBinWeights(vector < vector < pair<int,double> > > & pdfBinWgt, vector <int> & nClsBinsIn);
     void     getBinClsBiasCorPDF(TChain * aChain, vector <TH2*>  & hisPdfBiasCorV);
     void     doEvalReg(TChain * inChain = NULL, TString outDirName = "", vector <TString> * selctVarV = NULL);
     void     doMetricPlots(TChain * inChain = NULL, vector <TString> * addPlotVarV = NULL, TString addOutputVarsIn = "");
+
+    void     getRndMethodBestPDF(TTree * aChain, int bestANNZindex, vector<int>  & zRegQnt_nANNZ, vector<double> & zRegQnt_bias, 
+                                 vector<double> & zRegQnt_sigma68, vector<double> & zRegQnt_fracSig68,
+                                 vector < vector<double> > & bestWeightsV, vector <TH2*> & hisPdfBiasCorV);
+    
+    void     getOldStyleRndMethodBestPDF(TTree * aChain, int bestANNZindex, vector<int>  & zRegQnt_nANNZ, vector<double> & zRegQnt_bias, 
+                                 vector<double> & zRegQnt_sigma68, vector<double> & zRegQnt_fracSig68,
+                                 vector < vector<double> > & bestWeightsV, vector <TH2*> & hisPdfBiasCorV);
 
     // -----------------------------------------------------------------------------------------------------------
     // ANNZ_loopRegCls.cpp :
@@ -185,27 +190,29 @@ class ANNZ : public BaseClass {
     // ===========================================================================================================
     // private variables
     // ===========================================================================================================
-    vector < Double_t >                   zClos_binE, zClos_binC, zPlot_binE, zPlot_binC, zPDF_binE, zPDF_binC, zBinCls_binE, zBinCls_binC;
-    vector < TString >                    mlmTagName, mlmTagWeight, mlmTagBias, mlmTagClsVal, mlmTagIndex, mlmTagErrKNN, inputVariableV;
-    vector < map <TString,TString> >      mlmTagErr;
-    vector < vector <TString> >           pdfBinNames, inErrTag;
-    vector < map < TString,TString> >     pdfAvgNames;
-    map    < TString,bool >               mlmSkip;
-    vector < vector <TString> >           inNamesVar, inNamesErr;
     vector < bool >                       hasBiasCorMLMinp;
-    vector < vector <TF1*> >              inVarsScaleFunc;
+    vector < time_t >                     trainTimeM;
+    vector < TH1* >                       hisClsPrbV;
+    vector < Float_t >                    readerBiasInptV;
+    vector < Double_t >                   zClos_binE, zClos_binC, zPlot_binE, zPlot_binC, zPDF_binE,
+                                          zPDF_binC, zBinCls_binE, zBinCls_binC, zTrgPlot_binE, zTrgPlot_binC;
+    vector < TString >                    mlmTagName, mlmTagWeight, mlmTagBias, mlmTagClsVal, mlmTagIndex,
+                                          mlmTagErrKNN, inputVariableV;
+
+    map    < TString,bool >               mlmSkip;
     map    < TString,TCut >               userCutsM;
     map    < TString,TString >            userWgtsM, bestMLMname, mlmBaseTag;
-    vector < time_t >                     trainTimeM;
-    // vector < pair<TString,Float_t> >      readerInptV;
-    vector < vector<int> >                readerInptIndexV;
-    vector < Float_t >                    readerBiasInptV;
+
+    vector < vector <int> >               readerInptIndexV;
+    vector < vector <TF1*> >              inVarsScaleFunc;
+    vector < vector <TString> >           pdfBinNames, inErrTag, inNamesVar, inNamesErr;
+    vector < map <TString,TString> >      mlmTagErr, pdfAvgNames;
+
     vector < TMVA::Reader* >              regReaders, biasReaders;
     vector < TMVA::Types::EAnalysisType > anlysTypes;
     vector < TMVA::Types::EMVA >          typeMLM, allANNZtypes;
     map    < TMVA::Types::EMVA,TString >  typeToNameMLM;
     map    < TString,TMVA::Types::EMVA >  nameToTypeMLM;
-    vector < TH1* >                       hisClsPrbV;
 };
 #endif  // #define ANNZ_h
 
@@ -216,7 +223,7 @@ class ANNZ : public BaseClass {
  */
 // ===========================================================================================================
 class RegEval : public BaseClass {
-// ===============================
+// ===========================================================================================================
   public:  
     RegEval(TString aName = "RegEval", Utils * aUtils = NULL, OptMaps * aMaps = NULL, OutMngr * anOutMngr = NULL);
     ~RegEval();

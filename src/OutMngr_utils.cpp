@@ -99,6 +99,7 @@ void OutMngr::WriteOutObjects(bool writePdfScripts, bool dontWriteHis) {
     // outputRootFileName = (TString)outPlotDirName+outFileName+"_plots.root";
     // OutputRootFile     = new TFile(outputRootFileName,"RECREATE");
 
+    bool    saveScript(glob->GetOptB("savePlotScripts"));
     TString printPlotExtension(glob->GetOptC("printPlotExtension"));
     vector <TString> eraseKeys;
 
@@ -110,17 +111,21 @@ void OutMngr::WriteOutObjects(bool writePdfScripts, bool dontWriteHis) {
       if(dynamic_cast<TCanvas*>(CanvasMap[hisName])) {
         // CanvasMap[hisName]->Write();
 
-        TString printName = outPlotDirName+hisName;
-        TString printFile = (TString)printName+".C";
-        CanvasMap[hisName]->Print(printFile);
+        if(saveScript) {
+          TString printName = outPlotDirName+hisName;
+          TString printFile = (TString)printName+".C";
+          CanvasMap[hisName]->Print(printFile);
 
-        // fix a bug in root, where the given function name in the macro includes the full path
-        TString tmpFile   = (TString)printFile+"_tmp";
-        TString fixCmnd   = printName; fixCmnd.ReplaceAll("/","\\/");
-        fixCmnd = (TString)"sed -e 's/"+fixCmnd+"/"+hisName+"/g' < "+printFile+" > "+tmpFile+" ; mv "+tmpFile+" "+printFile;
-        utils->exeShellCmndOutput(fixCmnd);
+          // fix a bug in root, where the given function name in the macro includes the full path
+          TString tmpFile   = (TString)printFile+"_tmp";
+          TString fixCmnd   = printName; fixCmnd.ReplaceAll("/","\\/");
+          fixCmnd = (TString)"sed -e 's/"+fixCmnd+"/"+hisName+"/g' < "+printFile+" > "+tmpFile+" ; mv "+tmpFile+" "+printFile;
+          utils->exeShellCmndOutput(fixCmnd);
+        }
         
-        if(printPlotExtension != "") CanvasMap[hisName]->SaveAs((TString)outPlotDirName+hisName+"."+printPlotExtension);
+        if(printPlotExtension != "") {
+          CanvasMap[hisName]->SaveAs((TString)outPlotDirName+hisName+"."+printPlotExtension);
+        }
     
         eraseKeys.push_back(hisName);
       }

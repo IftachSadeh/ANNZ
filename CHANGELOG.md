@@ -1,11 +1,20 @@
 # Changelog
 
-## Master version (20/02/2018)
+## ANNZ v2.3.0 (03/04/2018)
 
 ### For users:
+- Changed the optimization method for generating regression PDFs. The new default method (denoted in the output as `PDF_0`) is now generated based on a simple random walk alg. The previous versions of the PDF are now denoted as `PDF_1` and `PDF_2`. While currently available, the deprecated PDFs are not guaranteed to be supported in the future. In order to derive the deprecated PDFs, set:
+  ```python
+  glob.annz["nPDFs"] = 3
+  glob.annz["addOldStylePDFs"] = True
+  ```
+
+- **(1)** Two new job options corresponding to `PDF_0` have been added: `max_optimObj_PDF` and `nOptimLoops` (see `README.md` and `scripts/annz_rndReg_advanced.py` for details). **(2)** The default value of `excludeRangePdfModelFit` has been changed from `0.1` to `0`. **(3)** Added several job options for plotting, to control the extent of underflow and overflow regions in the regression target: `underflowZ`, `overflowZ`, `underflowZwidth`, `overflowZwidth`, `nUnderflowBins`, `nOverflowBins`. (See `src/myANNZ.cpp` for details.) **(4)** Added a variable, `nZclosBins`, to control the number of bins used for optimization-metric calculations in regression. (See `src/myANNZ.cpp` for details.) **(5)** ROOT scripts are no longer stored by default for each plot. Set `savePlotScripts` to choose otherwise.
+
+
 - Added a wrapper class, which allows calling the evaluation phase for regression/classification directly from python. This can be used to integrate ANNZ directly within pipelines. The python interface is defined in `py/ANNZ.py`, with a full example given in `scripts/annz_evalWrapper.py`. (See README.md for details.)
 
-- Bug fix in a few `python` scripts, where the example for the `weightInp_wgtKNN` option had previously been set to numerically insignificant values.
+- Bug fix in a few python scripts, where the example for the `weightInp_wgtKNN` option had previously been set to numerically insignificant values.
 
 - Changed the interface to turn off colour output (see `README.md`).
 
@@ -15,6 +24,8 @@
 - Reorganization of shared namespaces.
 
 - Created a new `Manager` class as part of `include/myANNZ.hpp`, `src/myANNZ.cpp`.
+
+- The new random walk alg for generating regression PDFs is implemented in `ANNZ::getRndMethodBestPDF()`, which has been completely revamped. The old version of this function has been renamed to `ANNZ::getOldStyleRndMethodBestPDF()`. It is now used in order to derive `PDF_1` and `PDF_2`.
 
 - Added a wrapper class for e.g., python integration, implemented in `include/Wrapper.hpp`, `src/Wrapper.cpp` and `py/ANNZ.py`.
 

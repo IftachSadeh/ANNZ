@@ -38,7 +38,7 @@
  */
 // ===========================================================================================================
 int main(int argc, char ** argv){
-// ===============================
+// ===========================================================================================================
 
   // create the main object. It comes with built-in glob->() options which may be modified by user inputs in the following
   // -----------------------------------------------------------------------------------------------------------
@@ -75,7 +75,7 @@ int main(int argc, char ** argv){
  */
 // ===========================================================================================================
 Manager::Manager() {
-// =================
+// ===========================================================================================================
 
   // -----------------------------------------------------------------------------------------------------------
   // initial setup - all of these glob->() options may may be overwritten by user inputs
@@ -202,7 +202,7 @@ Manager::Manager() {
   glob->NewOptF("sampleFracInp_inTrain"   ,1);     // fraction of the input sample to use for the kd-tree (positive number, smaller or equal to 1)
   glob->NewOptF("sampleFracRef_inTrain"   ,1);     // fraction of the input sample to use for the kd-tree (positive number, smaller or equal to 1)
   glob->NewOptB("doWidthRescale_inTrain"  ,true);  // transform the input parameters used for the kd-tree to the range [-1,1]
-
+  glob->NewOptB("testAndEvalTrainMethods" ,false); // perform a TMVA test of the results of the training
 
   // -----------------------------------------------------------------------------------------------------------
   // general options (regression, binned-classification and classification)
@@ -212,9 +212,15 @@ Manager::Manager() {
   // -----------------------------------------------------------------------------------------------------------
   // general options (regression, binned-classification)
   // -----------------------------------------------------------------------------------------------------------
-  glob->NewOptF("minValZ",1);  // minimal value of regression target (the "truth" value)
-  glob->NewOptF("maxValZ",-1); // maximal value of regression target (the "truth" value)
-  glob->NewOptC("zTrg"   ,""); // the name of regression target - it must correspond to one of the input variables
+  glob->NewOptC("zTrg"           ,""); // the name of regression target - it must correspond to one of the input variables
+  glob->NewOptF("minValZ"        , 1); // minimal value of regression target (the "truth" value)
+  glob->NewOptF("maxValZ"        ,-1); // maximal value of regression target
+  glob->NewOptF("underflowZ"     ,-1); // underflow value of regression target
+  glob->NewOptF("overflowZ"      ,-1); // overflow value of regression target
+  glob->NewOptI("nUnderflowBins" , 3); // number of underflow bins
+  glob->NewOptI("nOverflowBins"  , 3); // number of overflow bins
+  glob->NewOptF("underflowZwidth",-1); // total width of all underflow bins
+  glob->NewOptF("overflowZwidth" ,-1); // total width of all overflow bins
 
   // -----------------------------------------------------------------------------------------------------------
   // general options (binned-classification)
@@ -339,7 +345,8 @@ Manager::Manager() {
   // -----------------------------------------------------------------------------------------------------------
   // optimization (randomized regression)
   // -----------------------------------------------------------------------------------------------------------
-  glob->NewOptF("excludeRangePdfModelFit",0.1); // exclude margin for fitting cumulative dist as part of PDF optimization
+  // exclude margin for fitting cumulative dist as part of PDF optimization (eg within [0,0.1])
+  glob->NewOptF("excludeRangePdfModelFit",0);
 
   // optimCondReg -
   //   ["sig68" or "bias"] - used for deciding how to rank MLM performance. the named criteria represents
@@ -408,9 +415,14 @@ Manager::Manager() {
 
   // if max_sigma68_PDF,max_bias_PDF are positive, they put thresholds on the maximal value of the
   // scatter/bias/outlier-fraction of an MLM which may be included in the PDF created in randomized regression
-  glob->NewOptF("max_sigma68_PDF"   ,-1); // maximal value of the scatter          of an MLM included in the PDF
-  glob->NewOptF("max_bias_PDF"      ,-1); // maximal value of the bias             of an MLM included in the PDF
-  glob->NewOptF("max_frac68_PDF"    ,-1); // maximal value of the outlier-fraction of an MLM included in the PDF
+  glob->NewOptF("max_sigma68_PDF"   ,-1);    // maximal value of the scatter          of an MLM included in the PDF
+  glob->NewOptF("max_bias_PDF"      ,-1);    // maximal value of the bias             of an MLM included in the PDF
+  glob->NewOptF("max_frac68_PDF"    ,-1);    // maximal value of the outlier-fraction of an MLM included in the PDF
+  
+  glob->NewOptI("max_optimObj_PDF"        ,1e4);   // maximal number of objects to use in order to optimize PDFs
+  glob->NewOptI("nOptimLoops"             ,1e4);   // maximal number of tries to improve the PDF weights
+  glob->NewOptB("addOldStylePDFs"         ,false); // whether to use the old-style PDFs (defined since v2.2.3)
+  glob->NewOptI("max_staticOptimTries_PDF",250);   // maximal number of steps for the optimization random walk
   
   // bias-correction procedure on MLMs and/or PDFs
   //   doBiasCorPDF      - whether or not to perform the correction for PDFs (during optimization)
@@ -453,14 +465,18 @@ Manager::Manager() {
   glob->NewOptC("zRegTitle"       ,"Z_{reg}"); // title of regression variable (for plots)
   glob->NewOptF("zPlotBinWidth"   ,-1);        // width of bins to perform the plotting
   glob->NewOptI("nDrawBins_zTrg"  ,-1);        // number of bins in zTrg for plotting
-  // typical width in the regression variable for plotting, e.g., for 10 plotting bins, set zClosBinWidth = (maxValZ-minValZ)/10.
-  glob->NewOptF("zClosBinWidth"   ,-1);
   // possible list of variables which will always be plotted (that is, no safety checks on variable type will be performed)
   glob->NewOptC("alwaysPlotVars"  ,"");
   // possible list of variables for which we do not use quantile bins for plotting - e.g., set as "inTrainFlag;MAG_U"
   glob->NewOptC("noQuantileBinsPlots"  ,"inTrainFlag");
   // add plots with the distribution of the knn error estimator
   glob->NewOptB("doKnnErrPlots"   ,false); 
+
+  // zClosBinWidth - typical width in the regression variable for plotting, e.g., for 10 plotting
+  // bins, set zClosBinWidth = (maxValZ-minValZ)/10. - if not set, a quantile division will be used of the zTrg range
+  // nZclosBins - alternatively, dynamically derive nZclosBins bins from the quantile distribution of zTrg
+  glob->NewOptF("zClosBinWidth"   ,-1);
+  glob->NewOptI("nZclosBins"      ,-1);
 
   // format for plotting (in addition to generated root scripts, which may be run with [root -l script.C]
   // availabe formats (leave empty [glob->NewOptC("printPlotExtension","")] to prevent plotting):
@@ -469,8 +485,11 @@ Manager::Manager() {
   // -----------------------------------------------------------------------------------------------------------
   glob->NewOptC("printPlotExtension","pdf");
 
+  // flag to store root scripts corresponding to generated plots
+  glob->NewOptB("savePlotScripts",false); 
+
   // use scaled bias (delta/(1+zTrg)) instead of delta for plotting in ANNZ::doMetricPlots()
-  glob->NewOptB("plotWithScaledBias"  ,false); 
+  glob->NewOptB("plotWithScaledBias",false); 
 
   // -----------------------------------------------------------------------------------------------------------
   // uncertainty estimators - either KNN (K-near-neighbours) entimation (used by default), or input-error propagation.
@@ -555,11 +574,11 @@ Manager::Manager() {
  */
 // ===========================================================================================================
 void Manager::Init(int argc, char ** argv) {
-// =========================================
+// ===========================================================================================================
   // -----------------------------------------------------------------------------------------------------------
   // current version-tag for the code
   // -----------------------------------------------------------------------------------------------------------
-  TString basePrefix("ANNZ_"), versionTag("2.2.2");
+  TString basePrefix("ANNZ_"), versionTag("2.3.0");
   // sanity check on allowed root versions with corresponding supported TMVA versions
   VERIFY(LOCATION,(TString)" - Using unsupported ROOT version ... ?!?!?",(ROOT_TMVA_V0 || ROOT_TMVA_V1));
   // -----------------------------------------------------------------------------------------------------------
@@ -910,7 +929,7 @@ void Manager::Init(int argc, char ** argv) {
  */
 // ===========================================================================================================
 void Manager::GenerateInputTrees() {
-// =================================
+// ===========================================================================================================
   // initialize the outputs with the rootIn directory and reset it
   outputs->InitializeDir(glob->GetOptC("outDirNameFull"),glob->GetOptC("baseName"));
 
@@ -944,7 +963,7 @@ void Manager::GenerateInputTrees() {
  */
 // ===========================================================================================================
 void Manager::doOnlyKnnErr() {
-// ===========================
+// ===========================================================================================================
 
   VERIFY(LOCATION,(TString)"Can not define both \"doGenInputTrees\" and \"doEval\" at the same time ... run \"doGenInputTrees\" "
                           +"separately first, then \"doEval\"", !(glob->GetOptB("doGenInputTrees") && glob->GetOptB("doEval")));
@@ -984,7 +1003,7 @@ void Manager::doOnlyKnnErr() {
  */
 // ===========================================================================================================
 void Manager::doInTrainFlag() {
-// ============================
+// ===========================================================================================================
   // initialize the inTrainFlag directory
   outputs->InitializeDir(glob->GetOptC("outDirNameFull"),glob->GetOptC("baseName"));
 
@@ -1004,8 +1023,7 @@ void Manager::doInTrainFlag() {
  */
 // ===========================================================================================================
 void Manager::DoANNZ() {
-// =====================
-
+// ===========================================================================================================
   ANNZ * aANNZ = new ANNZ("aANNZ",utils,glob,outputs);
 
   if     (glob->GetOptB("doTrain")) aANNZ->Train(); // training
@@ -1044,7 +1062,7 @@ void Manager::DoANNZ() {
  */
 // ===========================================================================================================
 Manager::~Manager() {
-// ==================
+// ===========================================================================================================
   aLOG(Log::DEBUG)<<coutWhiteOnBlack<<coutBlue<<" - starting Manager::~Manager() ... "<<coutDef<<endl;
 
   DELNULL(outputs);

@@ -129,27 +129,25 @@ namespace DefOpts {
 // ===========================================================================================================
 // namespace for sorting logic functions
 // ===========================================================================================================
-namespace sortFunctors {
+namespace sortFunc {
+  bool highToLowI(int a, int b) { return (a > b); }
+  bool lowToHighI(int a, int b) { return (a < b); }
 
-  bool double_descend(double a, double b) { return (a < b); }
-  bool double_ascend (double a, double b) { return (a > b); }
- 
-  bool pairIntInt_descendSecond(pair<int,int> a, pair<int,int> b) { return (a.second < b.second); }
-  bool pairIntInt_ascendSecond (pair<int,int> a, pair<int,int> b) { return (a.second > b.second); }
-  bool pairIntInt_descendFirst (pair<int,int> a, pair<int,int> b) { return (a.first  < b.first ); }
-  bool pairIntInt_ascendFirst  (pair<int,int> a, pair<int,int> b) { return (a.first  > b.first ); }
+  bool highToLowD(double a, double b) { return (a > b); }
+  bool lowToHighD(double a, double b) { return (a < b); }
 
-  bool pairIntDouble_descendSecond(pair<int,double> a, pair<int,double> b) { return (a.second < b.second); }
-  bool pairIntDouble_ascendSecond (pair<int,double> a, pair<int,double> b) { return (a.second > b.second); }
-  bool pairIntDouble_descendFirst (pair<int,double> a, pair<int,double> b) { return (a.first  < b.first ); }
-  bool pairIntDouble_ascendFirst  (pair<int,double> a, pair<int,double> b) { return (a.first  > b.first ); }
+  namespace pairID {
+    // bool highToLowBy0 (pair<int,double> a, pair<int,double> b) { return (a.first  > b.first ); }
+    // bool lowToHighBy0 (pair<int,double> a, pair<int,double> b) { return (a.first  < b.first ); }
+    bool highToLowBy1(pair<int,double> a, pair<int,double> b) { return (a.second > b.second); }
+    bool lowToHighBy1(pair<int,double> a, pair<int,double> b) { return (a.second < b.second); }
 
-  struct pairIntDouble_equalFirst {
-    int b;
-    pairIntDouble_equalFirst(int input) : b(input) { }
-    bool operator () (pair<int,double> const& a) { return (a.first == b); }
-  };
-  
+    struct equalToFirst {
+      int b;
+      equalToFirst(int input) : b(input) { }
+      bool operator () (pair<int,double> const& a) { return (a.first == b); }
+    };
+  }
 }
 
 
@@ -212,27 +210,26 @@ namespace Log {
   };
 
   class MyLog {
-  public:
-    MyLog();
-    virtual ~MyLog();
-    std::ostringstream & Get(LOGtypes level = INFO);
-    std::ostringstream & Clean(std::string str = "");
-  public:
-    static LOGtypes    & ReportingLevel();
-    static std::string ToString(LOGtypes level);
-    static LOGtypes    FromString(const std::string& level);
-  protected:
-    std::ostringstream os;
-  private:
-    MyLog(const MyLog&);
-    MyLog & operator = (const MyLog &);
+    public:
+      MyLog();
+      virtual ~MyLog();
+      std::ostringstream & Get(LOGtypes level = INFO);
+      std::ostringstream & Clean(std::string str = "");
+
+      static LOGtypes    & ReportingLevel();
+      static std::string ToString(LOGtypes level);
+      static LOGtypes    FromString(const std::string& level);
+    protected:
+      std::ostringstream os;
+    private:
+      MyLog(const MyLog&);
+      MyLog & operator = (const MyLog &);
   };
 
   inline MyLog::MyLog(){};
 
   inline std::ostringstream& MyLog::Get(LOGtypes level) {
     os << "[" << NowTime() << " " << ToString(level) << "] ";
-    //os << std::string(level > DEBUG ? level - DEBUG : 0, '\t');
     return os;
   }
 
@@ -242,7 +239,6 @@ namespace Log {
   }
 
   inline MyLog::~MyLog() {
-    //os << std::endl;
     fprintf(stderr, "%s", os.str().c_str());
     fflush(stderr);
   }
@@ -252,11 +248,10 @@ namespace Log {
     return reportingLevel;
   }
 
-  inline std::string MyLog::ToString(LOGtypes level) {
-    static const char* const buffer[] = {"  ERROR", "WARNING", "   INFO", "  DEBUG", "DEBUG_1", "DEBUG_2", "DEBUG_3", "DEBUG_4"};
-    //static const char* const buffer[] = {" ERR", "WARN", "INFO", " DBG", "DBG1", "DBG2", "DBG3", "DBG4"};
-    return buffer[level];
-  }
+  static const char* const levelV[] = {
+    "  ERROR", "WARNING", "   INFO", "  DEBUG", "DEBUG_1", "DEBUG_2", "DEBUG_3", "DEBUG_4"
+  };
+  inline std::string MyLog::ToString(LOGtypes level) { return levelV[level]; }
 
   inline LOGtypes MyLog::FromString(const std::string & level) {
     if     (level == "DEBUG_4") return DEBUG_4;

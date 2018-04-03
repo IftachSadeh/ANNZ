@@ -425,7 +425,7 @@ if glob.annz["doTrain"] or glob.annz["doVerif"] or glob.annz["doEval"]:
     #                  nPDFbins is ignored if [userPdfBins != ""].
     #   - userPdfBins: define a specific set of bins instead of having nPDFbins bins of euqal width.
     # --------------------------------------------------------------------------------------------------
-    glob.annz["nPDFbins"] = 40
+    glob.annz["nPDFbins"] = 100
     # glob.annz["userPdfBins"] = "0.05;0.3;0.5;0.6;0.8"
 
     # --------------------------------------------------------------------------------------------------

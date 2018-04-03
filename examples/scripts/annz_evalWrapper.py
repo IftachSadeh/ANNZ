@@ -1,23 +1,22 @@
-# ==================================================================================================
+# --------------------------------------------------------------------------------------------------
 # simple example, illustrating how the evaluation python ANNZ should be setup.
 # instead of providing an input ascii catalogue, it can be used for
 # pipeline integration of ANNZ.
 # the generation/training/optimization(verification) stages must be
 # run first, as for the nominal evaluation examples (eg scripts/annz_singleReg_quick.py).
-# ==================================================================================================
+# --------------------------------------------------------------------------------------------------
 # - the run this script, execute the following:
 #   python annz_evalWrapper.py
-# ==================================================================================================
-# - an example is given for several modes of operation (uncomment one...):
 # --------------------------------------------------------------------------------------------------
+# - an example is given for several modes of operation (uncomment one...):
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 testType = 'doSingleReg'
 # testType = 'doRandomReg'
 # testType = 'doBinnedCls'
 # testType = 'doRandomCls' # similarly for singleCls
-# ==================================================================================================
+# --------------------------------------------------------------------------------------------------
 
 from py.ANNZ import ANNZ
-import threading
 
 # logging module
 useLog = True
@@ -130,7 +129,7 @@ def init(testType, opts):
     #   - nPDFs must be lower/equal to the number used for optimization (can be zero to speed things up...)
     #   - nPDFbins can be anything (not necessarily the same as for optimization)
     opts["nPDFs"]    = 1
-    opts["nPDFbins"] = 50
+    opts["nPDFbins"] = 120
 
   # --------------------------------------------------------------------------------------------------
   # can work with sbinned-classification, eg:
@@ -145,7 +144,7 @@ def init(testType, opts):
     #     for setting other bin configurations) this is not directly tied to binCls_nBins -> the results of 
     #     the classification bins are cast into whatever final PDF bin scheme is defined by nPDFbins.
     #     (doesnt have to be the same as for training/validation)
-    opts["nPDFbins"] = 30
+    opts["nPDFbins"] = 160
 
   if testType == 'doRandomCls':
     opts['doClassification'] = True
@@ -285,5 +284,5 @@ def loadObjV(opts):
 # run the main function on execution of this script
 # --------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
-    main()
+  main()
 # --------------------------------------------------------------------------------------------------

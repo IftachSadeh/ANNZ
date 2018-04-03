@@ -22,7 +22,7 @@
  */
 // ===========================================================================================================
 void ANNZ::Train() {
-// =================
+// ===========================================================================================================
   if(!glob->GetOptB("trainingNeeded")) return;
 
   // choose the training type
@@ -43,7 +43,7 @@ void ANNZ::Train() {
  */
 // ===========================================================================================================
 void ANNZ::Train_singleCls() {
-// =========================== 
+// =========================================================================================================== 
   aLOG(Log::INFO) <<coutWhiteOnBlack<<coutBlue<<" - starting ANNZ::Train_singleCls() ... "<<coutDef<<endl;
 
   int     minObjTrainTest = glob->GetOptI("minObjTrainTest");
@@ -248,7 +248,7 @@ void ANNZ::Train_singleCls() {
  */
 // ===========================================================================================================
 void ANNZ::Train_singleReg() {
-// ===========================
+// ===========================================================================================================
   aLOG(Log::INFO) <<coutWhiteOnBlack<<coutBlue<<" - starting ANNZ::Train_singleReg() ... "<<coutDef<<endl;
 
   bool    doBiasCorMLM    = glob->GetOptB("doBiasCorMLM");
@@ -550,7 +550,7 @@ void ANNZ::Train_singleReg() {
  */
 // ===========================================================================================================
 void ANNZ::Train_singleRegBiasCor() {
-// ==================================
+// ===========================================================================================================
   aLOG(Log::INFO) <<coutWhiteOnBlack<<coutBlue<<" - starting ANNZ::Train_singleRegBiasCor() ... "<<coutDef<<endl;
 
   int     nMLMnow           = glob->GetOptI("nMLMnow");
@@ -912,7 +912,7 @@ void ANNZ::Train_singleRegBiasCor() {
  */
 // ===========================================================================================================
 void ANNZ::Train_binnedCls() {
-// ===========================  
+// ===========================================================================================================  
   aLOG(Log::INFO) <<coutWhiteOnBlack<<coutBlue<<" - starting ANNZ::Train_binnedCls() ... "<<coutDef<<endl;
 
   int      nTries                = glob->GetOptI("binCls_nTries");
@@ -1472,7 +1472,7 @@ void ANNZ::Train_binnedCls() {
  */
 // ===========================================================================================================
 void ANNZ::generateOptsMLM(OptMaps * optMap, TString userMLMopts) {
-// ================================================================
+// ===========================================================================================================
   
   TString type(""), opt("");
   int     seed        = glob->GetOptI("initSeedRnd");
@@ -1642,7 +1642,7 @@ void ANNZ::generateOptsMLM(OptMaps * optMap, TString userMLMopts) {
  */
 // ===========================================================================================================
 void ANNZ::verifTarget(TTree * aTree) {
-// ====================================
+// ===========================================================================================================
   VERIFY(LOCATION,(TString)"Memory leak ?! ",(dynamic_cast<TTree*>(aTree)));
 
   TString zTrgName = glob->GetOptC("zTrg");

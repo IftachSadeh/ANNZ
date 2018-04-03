@@ -87,10 +87,10 @@ if glob.annz["doTrain"]:
 # --------------------------------------------------------------------------------------------------
 if glob.annz["doOptim"] or glob.annz["doEval"]:
 
-  # nPDFs - number of PDFs (up to two PDF types are implemented) (see advanced example for a general description of the two PDFs)
-  glob.annz["nPDFs"]      = 2
+  # nPDFs - number of PDFs (see advanced example for a general description of PDFs)
+  glob.annz["nPDFs"]      = 1
   # nPDFbins - number of PDF bins, with equal width bins between minValZ and maxValZ. (see advanced example for setting other bin configurations)
-  glob.annz["nPDFbins"]   = 90
+  glob.annz["nPDFbins"]   = 80
 
   # --------------------------------------------------------------------------------------------------
   # optimization

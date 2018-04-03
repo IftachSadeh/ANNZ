@@ -27,7 +27,7 @@
  */
 // ===========================================================================================================
 void ANNZ::Init() {
-// ================
+// ===========================================================================================================
   aLOG(Log::INFO)<<coutWhiteOnBlack<<coutBlue<<" - starting ANNZ::Init() " <<coutBlue<<" ... "<<coutDef<<endl;
 
   // unlock the global variables
@@ -231,20 +231,31 @@ void ANNZ::Init() {
   VERIFY(LOCATION,(TString)"Must set (nMLMs>0)"      ,(glob->GetOptI("nMLMs") > 0));
   VERIFY(LOCATION,(TString)"Must set (nMLMnow<nMLMs)",(glob->GetOptI("nMLMs") > glob->GetOptI("nMLMnow")));
 
+  double minValZ(glob->GetOptF("minValZ")), maxValZ(glob->GetOptF("maxValZ")), diffValZ(maxValZ - minValZ);
+
   if(glob->GetOptB("doRegression") && !glob->GetOptB("doOnlyKnnErr")) {
-    VERIFY(LOCATION,(TString)"Must set (minValZ < maxValZ)",(glob->GetOptF("minValZ") < glob->GetOptF("maxValZ")));
+    VERIFY(LOCATION,(TString)"Must set (minValZ < maxValZ)",(minValZ < maxValZ));
   }
+
+  // underflow/overflow options for plotting
+  if(glob->GetOptI("nUnderflowBins")  < 0)   glob->SetOptI("nUnderflowBins",  0);
+  if(glob->GetOptI("nOverflowBins")   < 0)   glob->SetOptI("nOverflowBins",   0);
+  if(glob->GetOptF("underflowZwidth") < EPS) glob->SetOptF("underflowZwidth", (glob->GetOptI("nUnderflowBins") > 0) ? diffValZ * 0.1 : 0);
+  if(glob->GetOptF("overflowZwidth")  < EPS) glob->SetOptF("overflowZwidth",  (glob->GetOptI("nOverflowBins")  > 0) ? diffValZ * 0.1 : 0);
+  if(glob->GetOptF("underflowZ")      < EPS) glob->SetOptF("underflowZ",      glob->GetOptF("minValZ") - glob->GetOptF("underflowZwidth"));
+  if(glob->GetOptF("overflowZ")       < EPS) glob->SetOptF("overflowZ",       glob->GetOptF("maxValZ") + glob->GetOptF("overflowZwidth"));
 
   // -----------------------------------------------------------------------------------------------------------
   // check the definition of PDF bins, and compute nPDFbins from pdfBinWidth if needed
   // -----------------------------------------------------------------------------------------------------------
   if(!glob->GetOptB("doTrain")) {
     // for single-regression there is no pdf, so just set a sensible default value just in case
-    if     (glob->GetOptB("doSingleReg")) {
+    if(glob->GetOptB("doSingleReg")) {
       glob->SetOptI("nPDFbins",1);
     }
     // for randomized regression there is the option for the user to define a bin-width instead of the number of bins
     else if(glob->GetOptB("doRandomReg")) {
+      if(glob->GetOptI("nPDFs") <= 0) glob->SetOptI("nPDFbins",1);
 
       // check if a specialized binning definition has been given by the user
       if(glob->GetOptC("userPdfBins") != "") {
@@ -265,9 +276,8 @@ void ANNZ::Init() {
         else {
           VERIFY(LOCATION,(TString)"Configuration problem... must set either \"nPDFbins\" or \"binWidth\" ...",(binWidth > 0));
 
-          double zDiff     = glob->GetOptF("maxValZ") - glob->GetOptF("minValZ");
-          int    nPDFbins  = static_cast<int>(floor(0.00001+zDiff/binWidth));
-          double finalBinW = zDiff/double(nPDFbins);
+          int    nPDFbins  = static_cast<int>(floor(0.00001+diffValZ/binWidth));
+          double finalBinW = diffValZ/double(nPDFbins);
 
           VERIFY(LOCATION,(TString)"Configuration problem... \"binWidth\" inconsistent with max/minValZ range ...",(nPDFbins >= 1));
 
@@ -316,12 +326,38 @@ void ANNZ::Init() {
   // number of PDF types - either generate no PDF, or choose up to two types
   // -----------------------------------------------------------------------------------------------------------
   // currently implemented in getRndMethodBestPDF()
-  if     (glob->GetOptB("doSingleReg")) { glob->SetOptI("nPDFs", 0                                    ); }
-  else if(glob->GetOptB("doRandomReg")) { glob->SetOptI("nPDFs", min(max(glob->GetOptI("nPDFs"),0),2) ); }
+  if     (glob->GetOptB("doSingleReg")) {
+    if(glob->GetOptI("nPDFs") > 0) {
+      aLOG(Log::WARNING) <<coutRed<<" - found nPDFs = "<<coutGreen<<glob->GetOptI("nPDFs")<<coutRed<<" ... setting to 0"<<coutDef<<endl;
+    }
+    glob->SetOptI("nPDFs", 0);
+  }
+  else if(glob->GetOptB("doRandomReg")) {
+    if(glob->GetOptI("nPDFs") == 1 && glob->GetOptB("addOldStylePDFs")) {
+      aLOG(Log::WARNING) <<coutRed<<" - found addOldStylePDFs = true and nPDFs = 1 ... addOldStylePDFs will be ignored"
+                         <<" - in order to derive the old-style PDFs in addition, set nPDFs > 1"<<coutDef<<endl;
+    }
+    else if(glob->GetOptI("nPDFs") > 1 && !glob->GetOptB("addOldStylePDFs")) {
+      aLOG(Log::WARNING) <<coutRed<<" - found nPDFs = "<<coutGreen<<glob->GetOptI("nPDFs")<<coutRed<<" ... setting to 1"
+                         <<" - in order to derive the old-style PDFs in addition, set addOldStylePDFs to true"<<coutDef<<endl;
+      glob->SetOptI("nPDFs", 1);
+    }
+    else if(glob->GetOptI("nPDFs") > 3) {
+      aLOG(Log::WARNING) <<coutRed<<" - found nPDFs = "<<coutGreen<<glob->GetOptI("nPDFs")<<coutRed<<" ... setting to 3"<<coutDef<<endl;
+    }
+    glob->SetOptI("nPDFs", min(max(glob->GetOptI("nPDFs"),0),3));
+  }
   // either the baseline PDF, or that as well as another, which includes uncertainty-smearing, see doEvalReg()
-  else if(glob->GetOptB("doBinnedCls")) { glob->SetOptI("nPDFs", min(max(glob->GetOptI("nPDFs"),1),2) ); }
+  else if(glob->GetOptB("doBinnedCls")) {
+    if(glob->GetOptI("nPDFs") > 2) {
+      aLOG(Log::WARNING) <<coutRed<<" - found nPDFs = "<<coutGreen<<glob->GetOptI("nPDFs")<<coutRed<<" ... setting to 2"<<coutDef<<endl;
+    }
+    glob->SetOptI("nPDFs", min(max(glob->GetOptI("nPDFs"),1),2));
+  }
   // no PDFs currently defined for classification
-  else                                  { glob->SetOptI("nPDFs", 0                                    ); }
+  else {
+    glob->SetOptI("nPDFs", 0);
+  }
 
   if(glob->GetOptB("doRegression") && !glob->GetOptB("doTrain") && !glob->GetOptB("doOnlyKnnErr")) {
     aLOG(Log::INFO) <<coutBlue<<" - Will generate "<<coutYellow<<glob->GetOptI("nPDFs")<<coutBlue<<" PDFs ... "<<coutDef<<endl;
@@ -337,23 +373,33 @@ void ANNZ::Init() {
     if(glob->GetOptC("zTrgTitle") == "") glob->SetOptC("zTrgTitle",glob->GetOptC("zTrg"));
     if(glob->GetOptC("zRegTitle") == "") glob->SetOptC("zRegTitle","regression value");
 
-    if(glob->GetOptF("zClosBinWidth") < EPS) {
-      glob->SetOptF("zClosBinWidth", (glob->GetOptF("maxValZ")-glob->GetOptF("minValZ"))/10.);
-    }
+    // if(glob->GetOptF("zClosBinWidth") < EPS) {
+    //   double norm = 50;
+    //   if(glob->GetOptI("nPDFs") > 0 && glob->GetOptI("nPDFbins") > norm) norm = glob->GetOptI("nPDFbins");
+      
+    //   glob->SetOptF("zClosBinWidth", (maxValZ - minValZ)/norm);
+    // }
     if(glob->GetOptF("zPlotBinWidth") < EPS) {
-      glob->SetOptF("zPlotBinWidth", glob->GetOptF("zClosBinWidth"));
+      glob->SetOptF("zPlotBinWidth", (maxValZ - minValZ)/10.);
     }
     if(glob->GetOptI("nDrawBins_zTrg") < 2) {
-      glob->SetOptI("nDrawBins_zTrg", static_cast<int>(floor(0.00001+(glob->GetOptF("maxValZ")-glob->GetOptF("minValZ"))/0.05)));
+      glob->SetOptI("nDrawBins_zTrg", static_cast<int>(floor(0.00001+(maxValZ - minValZ)/0.05)));
     }
 
-    double zDiff            = glob->GetOptF("maxValZ")-glob->GetOptF("minValZ");
-    bool   hasGoodBinWidthZ = (    (glob->GetOptF("zClosBinWidth") > 0 && glob->GetOptF("zClosBinWidth") <= zDiff/5.)
-                                || (glob->GetOptF("zClosBinWidth") < 0                                              ) );
+    bool   hasGoodBinWidthZ = (    (glob->GetOptF("zClosBinWidth") > 0 && glob->GetOptF("zClosBinWidth") <= diffValZ/5.)
+                                || (glob->GetOptF("zClosBinWidth") < 0                                                 ) );
 
     VERIFY(LOCATION,(TString)"Must set ((zClosBinWidth > 0) and (zClosBinWidth <= (maxValZ-minValZ)/5)) or (zClosBinWidth < 0) ...",hasGoodBinWidthZ);
 
     setInfoBinsZ();
+
+    double excludeRange = glob->GetOptF("excludeRangePdfModelFit");
+    if(excludeRange < 0 || excludeRange > 0.4) {
+      aLOG(Log::WARNING) <<coutRed <<" - Found [\"excludeRangePdfModelFit\" = "<<coutYellow<<excludeRange
+                         <<coutRed<<"], which must be within [0,0.4]. Setting to 0 ..."<<coutDef<<endl;
+
+      glob->SetOptF("excludeRangePdfModelFit", 0);
+    }
 
     // validate correct setting for the primary condition for optimization, and set the corresponding title
     if(glob->GetOptC("optimCondReg") == "fracSig68") {
@@ -405,9 +451,8 @@ void ANNZ::Init() {
 
   // defualt values (if not given by the user) for the lower and upper bounds for closure histograms
   if(fabs(glob->GetOptF("closHisL") - glob->GetOptF("closHisH")) < 1e-10) {
-    double minValZ(glob->GetOptF("minValZ")), maxValZ(glob->GetOptF("maxValZ"));
-    glob->SetOptF("closHisL",( (maxValZ-minValZ)/2. - 4.5 * (maxValZ-minValZ) ));
-    glob->SetOptF("closHisH",( (maxValZ-minValZ)/2. + 4.5 * (maxValZ-minValZ) ));
+    glob->SetOptF("closHisL",( (maxValZ - minValZ)/2. - 4.5 * (maxValZ - minValZ) ));
+    glob->SetOptF("closHisH",( (maxValZ - minValZ)/2. + 4.5 * (maxValZ - minValZ) ));
   } 
 
   // round up closHisN, so may be divided by some factor to finally equal nDrawBins_zTrg
@@ -580,7 +625,7 @@ void ANNZ::Init() {
  */
 // ===========================================================================================================
 void ANNZ::setTags() {
-// ===================
+// ===========================================================================================================
   int nMLMs    = glob->GetOptI("nMLMs");
   int nPDFs    = glob->GetOptI("nPDFs");
   int nPDFbins = glob->GetOptI("nPDFbins");
@@ -650,50 +695,50 @@ void ANNZ::setTags() {
 
 // ===========================================================================================================
 TString ANNZ::getBaseTagName(TString MLMname) {
-// ============================================
+// ===========================================================================================================
   VERIFY(LOCATION,(TString)"(MLMname = \""+MLMname+"\") has unsupported format",(mlmBaseTag.find(MLMname) != mlmBaseTag.end()));
   return mlmBaseTag[MLMname];
 }
 // ===========================================================================================================
 TString ANNZ::getTagName(int nMLMnow) {
-// ====================================
+// ===========================================================================================================
   VERIFY(LOCATION,(TString)"(nMLMnow = "+utils->intToStr(nMLMnow)+") out of range ?!?",(nMLMnow >= 0 && nMLMnow < glob->GetOptI("nMLMs")));
   return mlmTagName[nMLMnow];
 }
 // ===========================================================================================================
 TString ANNZ::getTagError(int nMLMnow, TString errType) {
-// ======================================================
+// ===========================================================================================================
   VERIFY(LOCATION,(TString)"(nMLMnow = "+utils->intToStr(nMLMnow)+") out of range ?!?",(nMLMnow >= 0 && nMLMnow < glob->GetOptI("nMLMs")));
   VERIFY(LOCATION,(TString)"(Unknown error-type requested (\"errType\" = "+errType+")",(mlmTagErr[nMLMnow].find(errType) != mlmTagErr[nMLMnow].end()));
   return mlmTagErr[nMLMnow][errType];
 }
 // ===========================================================================================================
 TString ANNZ::getTagWeight(int nMLMnow) {
-// ======================================
+// ===========================================================================================================
   VERIFY(LOCATION,(TString)"(nMLMnow = "+utils->intToStr(nMLMnow)+") out of range ?!?",(nMLMnow >= 0 && nMLMnow < glob->GetOptI("nMLMs")));
   return mlmTagWeight[nMLMnow];
 }
 // ===========================================================================================================
 TString ANNZ::getTagBias(int nMLMnow) {
-// ====================================
+// ===========================================================================================================
   VERIFY(LOCATION,(TString)"(nMLMnow = "+utils->intToStr(nMLMnow)+") out of range ?!?",(nMLMnow >= 0 && nMLMnow < glob->GetOptI("nMLMs")));
   return mlmTagBias[nMLMnow];
 }
 // ===========================================================================================================
 TString ANNZ::getTagClsVal(int nMLMnow) {
-// ======================================
+// ===========================================================================================================
   VERIFY(LOCATION,(TString)"(nMLMnow = "+utils->intToStr(nMLMnow)+") out of range ?!?",(nMLMnow >= 0 && nMLMnow < glob->GetOptI("nMLMs")));
   return mlmTagClsVal[nMLMnow];
 }
 // ===========================================================================================================
 TString ANNZ::getTagIndex(int nMLMnow) {
-// =====================================
+// ===========================================================================================================
   VERIFY(LOCATION,(TString)"(nMLMnow = "+utils->intToStr(nMLMnow)+") out of range ?!?",(nMLMnow >= 0 && nMLMnow < glob->GetOptI("nMLMs")));
   return mlmTagIndex[nMLMnow];
 }
 // ===========================================================================================================
 TString ANNZ::getTagInVarErr(int nMLMnow, int nInErrNow) {
-// =======================================================
+// ===========================================================================================================
   VERIFY(LOCATION,(TString)"(nMLMnow = "  +utils->intToStr(nMLMnow)  +") out of range ?!?",(nMLMnow >= 0   && nMLMnow < glob->GetOptI("nMLMs")));
   VERIFY(LOCATION,(TString)"(nInErrNow = "+utils->intToStr(nInErrNow)+") out of range ?!?",(nInErrNow >= 0 && nInErrNow < (int)inErrTag[nMLMnow].size()));
 
@@ -701,7 +746,7 @@ TString ANNZ::getTagInVarErr(int nMLMnow, int nInErrNow) {
 }
 // ===========================================================================================================
 TString ANNZ::getTagPdfBinName(int nPdfNow, int nBinNow) {
-// =======================================================
+// ===========================================================================================================
   VERIFY(LOCATION,(TString)"(nPdfNow = "+utils->intToStr(nPdfNow)+") out of range ?!?",(nPdfNow >= 0 && nPdfNow < glob->GetOptI("nPDFs")));
   VERIFY(LOCATION,(TString)"(nBinNow = "+utils->intToStr(nBinNow)+") out of range ?!?",(nBinNow >= 0 && nBinNow < glob->GetOptI("nPDFbins")));
 
@@ -709,7 +754,7 @@ TString ANNZ::getTagPdfBinName(int nPdfNow, int nBinNow) {
 }
 // ===========================================================================================================
 TString ANNZ::getTagPdfAvgName(int nPdfNow, TString type) {
-// ========================================================
+// ===========================================================================================================
   VERIFY(LOCATION,(TString)"(nPdfNow = "+utils->intToStr(nPdfNow)+") out of range ?!?",(nPdfNow >= 0 && nPdfNow < glob->GetOptI("nPDFs")));
   VERIFY(LOCATION,(TString)"(type = \""+type+"\") has unsupported format",(pdfAvgNames[nPdfNow].find(type) != pdfAvgNames[nPdfNow].end()));
 
@@ -717,14 +762,14 @@ TString ANNZ::getTagPdfAvgName(int nPdfNow, TString type) {
 }
 // ===========================================================================================================
 TString ANNZ::getTagBestMLMname(TString type) {
-// ============================================
+// ===========================================================================================================
   VERIFY(LOCATION,(TString)"(type = \""+type+"\") has unsupported format",(bestMLMname.find(type) != bestMLMname.end()));
 
   return bestMLMname[type];
 }
 // ===========================================================================================================
 int ANNZ::getTagNow(TString MLMname) {
-// ===================================
+// ===========================================================================================================
   TString MLMnamePost(MLMname); MLMnamePost.ReplaceAll(glob->GetOptC("basePrefix"),"");
   VERIFY(LOCATION,(TString)"(MLMname = \""+MLMname+"\") has unsupported format",(MLMnamePost.IsDigit()));
 
@@ -735,13 +780,13 @@ int ANNZ::getTagNow(TString MLMname) {
 }
 // ===========================================================================================================
 TString ANNZ::getErrKNNname(int nMLMnow) {
-// =======================================
+// ===========================================================================================================
   VERIFY(LOCATION,(TString)"(nMLMnow = "+utils->intToStr(nMLMnow)+") out of range ?!?",(nMLMnow >= 0 && nMLMnow < glob->GetOptI("nMLMs")));
   return mlmTagErrKNN[nMLMnow];
 }
 // ===========================================================================================================
 int ANNZ::getErrKNNtagNow(TString errKNNname) {
-// ============================================
+// ===========================================================================================================
   TString errKNNnamePost(errKNNname); errKNNnamePost.ReplaceAll(glob->GetOptC("baseTag_errKNN"),"");
 
   return getTagNow(errKNNnamePost);
@@ -759,7 +804,7 @@ int ANNZ::getErrKNNtagNow(TString errKNNname) {
  */
 // ===========================================================================================================
 TString ANNZ::getKeyWord(TString MLMname, TString sequence, TString key) {
-// =======================================================================
+// ===========================================================================================================
 
   // -----------------------------------------------------------------------------------------------------------
   if(sequence == "trainXML") {
@@ -862,6 +907,7 @@ TString ANNZ::getKeyWord(TString MLMname, TString sequence, TString key) {
  */
 // ===========================================================================================================
 TString ANNZ::getRegularStrForm(TString strIn, VarMaps * var, TChain * aChain) {
+// ===========================================================================================================
   if(strIn == "") return strIn;
 
   bool hasVar   = (dynamic_cast<VarMaps*>(var)   != NULL);
@@ -894,7 +940,7 @@ TString ANNZ::getRegularStrForm(TString strIn, VarMaps * var, TChain * aChain) {
  */
 // ===========================================================================================================
 void ANNZ::loadOptsMLM() {
-// =======================
+// ===========================================================================================================
   aLOG(Log::DEBUG_1) <<coutWhiteOnBlack<<coutYellow<<" - starting ANNZ::loadOptsMLM() ... "<<coutDef<<endl;
 
   int     nMLMs     = glob->GetOptI("nMLMs");
@@ -1234,7 +1280,7 @@ void ANNZ::loadOptsMLM() {
  */
 // ===========================================================================================================
 void ANNZ::setNominalParams(int nMLMnow, TString inputVariables, TString inputVarErrors) {
-// =======================================================================================
+// ===========================================================================================================
   TString MLMname           = getTagName(nMLMnow);
   TString basePrefix        = glob->GetOptC("basePrefix");
   TString baseName_inVarErr = glob->GetOptC("baseName_inVarErr");
@@ -1284,7 +1330,7 @@ void ANNZ::setNominalParams(int nMLMnow, TString inputVariables, TString inputVa
  */
 // ===========================================================================================================
 void ANNZ::setMethodCuts(VarMaps * var, int nMLMnow, bool verbose) {
-// =================================================================
+// ===========================================================================================================
   TString MLMname = getTagName(nMLMnow);
   VERIFY(LOCATION,(TString)"Memory leak ?! ",(dynamic_cast<VarMaps*>(var)));
 
@@ -1319,8 +1365,10 @@ void ANNZ::setMethodCuts(VarMaps * var, int nMLMnow, bool verbose) {
  * @param aChain   - The associated chain
  */
 // ===========================================================================================================
-TCut ANNZ::getTrainTestCuts(TString cutType, int nMLMnow, int split0, int split1, VarMaps * var, TChain * aChain) {
-// ================================================================================================================
+TCut ANNZ::getTrainTestCuts(
+  TString cutType, int nMLMnow, int split0, int split1, VarMaps * var, TChain * aChain
+) {
+// ===========================================================================================================
   vector <TString> cutTypeV = utils->splitStringByChar(cutType,';');
   int              nCuts    = (int)cutTypeV.size();
   TString          MLMname  = getTagName(nMLMnow);
@@ -1385,7 +1433,7 @@ TCut ANNZ::getTrainTestCuts(TString cutType, int nMLMnow, int split0, int split1
  */
 // ===========================================================================================================
 void  ANNZ::selectUserMLMlist(vector <TString> & optimMLMv, map <TString,bool> & mlmSkipNow) {
-// ===========================================================================================
+// ===========================================================================================================
   aLOG(Log::INFO) <<coutWhiteOnBlack<<coutPurple<<" - starting ANNZ::selectUserMLMlist() ... "<<coutDef<<endl;
 
   mlmSkipNow.clear();
@@ -1474,60 +1522,103 @@ void  ANNZ::selectUserMLMlist(vector <TString> & optimMLMv, map <TString,bool> &
  */
 // ===========================================================================================================
 void ANNZ::setInfoBinsZ() {
-// ========================
-  TString userPdfBins   = glob->GetOptC("userPdfBins");
-  double  minValZ       = glob->GetOptF("minValZ");
-  double  maxValZ       = glob->GetOptF("maxValZ");
-  double  zClosBinWidth = glob->GetOptF("zClosBinWidth");
-  double  zPlotBinWidth = glob->GetOptF("zPlotBinWidth");
-  bool    doTrain       = glob->GetOptB("doTrain");
-  bool    doBinnedCls   = glob->GetOptB("doBinnedCls");
-  int     nPDFs         = glob->GetOptI("nPDFs");
-  int     nPDFbins      = glob->GetOptI("nPDFbins");
-
+// ===========================================================================================================
+  TString userPdfBins    = glob->GetOptC("userPdfBins");
+  double  minValZ        = glob->GetOptF("minValZ");
+  double  maxValZ        = glob->GetOptF("maxValZ");
+  double  underflowZ     = glob->GetOptF("underflowZ");
+  double  overflowZ      = glob->GetOptF("overflowZ");
+  int     nUnderflowBins = glob->GetOptI("nUnderflowBins");
+  int     nOverflowBins  = glob->GetOptI("nOverflowBins");
+  int     nDrawBins_zTrg = glob->GetOptI("nDrawBins_zTrg");
+  double  zClosBinWidth  = glob->GetOptF("zClosBinWidth");
+  double  zPlotBinWidth  = glob->GetOptF("zPlotBinWidth");
+  bool    doTrain        = glob->GetOptB("doTrain");
+  bool    doBinnedCls    = glob->GetOptB("doBinnedCls");
+  int     nPDFs          = glob->GetOptI("nPDFs");
+  int     nPDFbins       = glob->GetOptI("nPDFbins");
+  TString zTrgName       = glob->GetOptC("zTrg");
+  double  underflowW     = (nUnderflowBins > 0 ) ? glob->GetOptF("underflowZwidth") / double(nUnderflowBins) : 0;
+  double  overflowW      = (nOverflowBins  > 0 ) ? glob->GetOptF("overflowZwidth")  / double(nOverflowBins)  : 0;
+  
   TString name("");
   int     nBinsZ(0);
-  double  binW(0);
+  double  minZ(0), maxZ(0), binW(0);
   bool    hasUserPdfBins(userPdfBins != "");
 
   for(int nBinTypwNow=0; nBinTypwNow<100; nBinTypwNow++) {
     if(nBinTypwNow == 0) {
+      if(zClosBinWidth < EPS) continue;
+      
+      minZ   = minValZ;
+      maxZ   = maxValZ;
       binW   = zClosBinWidth;
       nBinsZ = static_cast<int>(floor(0.1+(maxValZ - minValZ)/binW));
       name   = "closure";
     }
     else if(nBinTypwNow == 1) {
+      minZ   = underflowZ;
+      maxZ   = overflowZ;
       binW   = zPlotBinWidth;
-      nBinsZ = static_cast<int>(floor(0.1+(maxValZ - minValZ)/binW));
+      nBinsZ = static_cast<int>(floor(0.1+(maxValZ - minValZ)/binW)) + nUnderflowBins+nOverflowBins;
       name   = "plotting";
     }
     else if(nBinTypwNow == 2) {
       if(hasUserPdfBins) continue;
 
+      minZ   = minValZ;
+      maxZ   = maxValZ;
       nBinsZ = max(nPDFbins,1);
       binW   = (maxValZ - minValZ) / double(nBinsZ);
       name   = "PDF";
     }
+    else if(nBinTypwNow == 3) {
+      minZ   = underflowZ;
+      maxZ   = overflowZ;
+      binW   = (maxValZ - minValZ)/double(nDrawBins_zTrg);
+      nBinsZ = nDrawBins_zTrg + nUnderflowBins+nOverflowBins;
+      name   = (TString)"plotting "+zTrgName;
+    }
     else break;
 
     aLOG(Log::DEBUG) <<coutWhiteOnBlack<<coutGreen<<" - setInfoBinsZ() - setting "<<coutPurple<<nBinsZ<<coutGreen<<" "<<name
-                     <<" bins with width ("<<binW<<") within ["<<minValZ<<","<<maxValZ<<"]"<<coutDef<<endl;
+                     <<" bins with width ("<<binW<<") within ["<<minZ<<","<<maxZ<<"]"<<coutDef<<endl;
 
     vector <double> bins_E(nBinsZ+1,0), bins_C(nBinsZ,0);
     
     for(int nBinZnow=0; nBinZnow<nBinsZ; nBinZnow++) {
-      double  binEdgeL  = minValZ  + binW * nBinZnow;
-      double  binCenter = binEdgeL + binW * 0.5;
+      double  binEdgeL(0), binCenter(0);
+      if(minZ < minValZ) {
+        if(nBinZnow < nUnderflowBins) {
+          binEdgeL  = underflowZ + underflowW * nBinZnow;
+          binCenter = binEdgeL   + underflowW * 0.5;
+        }
+        else if(nBinZnow >= nBinsZ - nOverflowBins) {
+          binEdgeL  = maxValZ  + overflowW * (nBinZnow - nBinsZ + nOverflowBins);
+          binCenter = binEdgeL + overflowW * 0.5;
+        }
+        else {
+          binEdgeL  = minValZ  + binW * (nBinZnow - nUnderflowBins);
+          binCenter = binEdgeL + binW * 0.5;
+        }
+      }
+      else {
+        binEdgeL  = minValZ  + binW * nBinZnow;
+        binCenter = binEdgeL + binW * 0.5;
+      }
       
       bins_E[nBinZnow] = binEdgeL;
       bins_C[nBinZnow] = binCenter;
     }
-    bins_E[nBinsZ] = maxValZ; 
+    bins_E[nBinsZ] = maxZ;
   
-    if     (nBinTypwNow == 0) { zClos_binE = bins_E; zClos_binC = bins_C; }
-    else if(nBinTypwNow == 1) { zPlot_binE = bins_E; zPlot_binC = bins_C; }
-    else                      { zPDF_binE  = bins_E; zPDF_binC  = bins_C; }
+    if     (nBinTypwNow == 0) { zClos_binE    = bins_E; zClos_binC    = bins_C; }
+    else if(nBinTypwNow == 1) { zPlot_binE    = bins_E; zPlot_binC    = bins_C; }
+    else if(nBinTypwNow == 2) { zPDF_binE     = bins_E; zPDF_binC     = bins_C; }
+    else if(nBinTypwNow == 3) { zTrgPlot_binE = bins_E; zTrgPlot_binC = bins_C; }
   }
+  
+  // for(int nBinZnow=0; nBinZnow<nBinsZ+1; nBinZnow++) cout <<" - zTrgPlot_binE - "<<nBinZnow<<CT<<zTrgPlot_binE[nBinZnow]<<endl;
 
   if(hasUserPdfBins) {
     vector <TString> pdfBinV = utils->splitStringByChar(userPdfBins,';');
@@ -1538,12 +1629,14 @@ void ANNZ::setInfoBinsZ() {
     glob->SetOptI("nPDFbins",nBinsZ);
 
     aLOG(Log::DEBUG) <<coutWhiteOnBlack<<coutGreen<<" - setInfoBinsZ() - setting "<<coutPurple<<nBinsZ<<coutGreen
-                     <<" PDF bins: "<<coutPurple<<userPdfBins<<coutDef<<endl;
+                     <<" closure/PDF bins: "<<coutPurple<<userPdfBins<<coutDef<<endl;
 
-    zPDF_binE.resize(nBinsZ+1,0); zPDF_binC.resize(nBinsZ+1,0);
+    zPDF_binE .resize(nBinsZ+1,0); zPDF_binC .resize(nBinsZ,0);
+    // zClos_binE.resize(nBinsZ+1,0); zClos_binC.resize(nBinsZ,0);
 
     for(int nPdfBinNow=0; nPdfBinNow<nBinsZ+1; nPdfBinNow++) {
-      zPDF_binE[nPdfBinNow] = utils->strToDouble(pdfBinV[nPdfBinNow]);
+      zPDF_binE [nPdfBinNow] = utils->strToDouble(pdfBinV[nPdfBinNow]);
+      // zClos_binE[nPdfBinNow] = zPDF_binE[nPdfBinNow];
 
       if(nPdfBinNow > 0) {
         VERIFY(LOCATION,(TString)"PDF bins must be given in ascending order (\"userPdfBins\" = "+userPdfBins+")"
@@ -1551,8 +1644,11 @@ void ANNZ::setInfoBinsZ() {
       }
     }
     for(int nPdfBinNow=0; nPdfBinNow<nBinsZ; nPdfBinNow++) {
-      zPDF_binC[nPdfBinNow] = zPDF_binE[nPdfBinNow] + (zPDF_binE[nPdfBinNow+1] - zPDF_binE[nPdfBinNow])/2.;
+      zPDF_binC [nPdfBinNow] = zPDF_binE[nPdfBinNow] + (zPDF_binE[nPdfBinNow+1] - zPDF_binE[nPdfBinNow])/2.;
+      // zClos_binC[nPdfBinNow] = zPDF_binC[nPdfBinNow];
     }
+
+    // for(int nBinZnow=0; nBinZnow<nBinsZ+1; nBinZnow++) cout <<" - zClos_binE - "<<nBinZnow<<CT<<zClos_binE[nBinZnow]<<endl;
 
     VERIFY(LOCATION,(TString)"Found bin edge in [\"userPdfBins\" = "+userPdfBins+"] which is smaller than [\"minValZ\" = "
                             +utils->floatToStr(minValZ)+"]... ",(zPDF_binE[0]      >= minValZ));
@@ -1579,7 +1675,7 @@ void ANNZ::setInfoBinsZ() {
  */
 // ===========================================================================================================
 int ANNZ::getBinZ(double valZ, vector <double> & binEdgesV, bool forceCheck) {
-// ===========================================================================
+// ===========================================================================================================
   int nBinsZ = (int)binEdgesV.size() - 1;
   
   VERIFY(LOCATION,(TString)"Trying to getBinZ() a vector of size "+utils->intToStr(nBinsZ),(nBinsZ > 0));
@@ -1610,7 +1706,7 @@ int ANNZ::getBinZ(double valZ, vector <double> & binEdgesV, bool forceCheck) {
  */
 // ===========================================================================================================
 void ANNZ::binClsStrToV(TString clsBins) {
-// =======================================
+// ===========================================================================================================
   if(clsBins == "") return;
 
   double minValZ = glob->GetOptF("minValZ");
@@ -1676,7 +1772,7 @@ void ANNZ::binClsStrToV(TString clsBins) {
  */
 // ===========================================================================================================
 TString ANNZ::deriveBinClsBins(map < TString,TChain* > & chainM, map < TString,TCut > & cutM) {
-// ============================================================================================
+// ===========================================================================================================
   aLOG(Log::DEBUG) <<coutWhiteOnBlack<<coutYellow<<" - starting ANNZ::deriveBinClsBins() ... "<<coutDef<<endl;
 
   int     closHisN        = glob->GetOptI("closHisN");
@@ -1948,8 +2044,10 @@ TString ANNZ::deriveBinClsBins(map < TString,TChain* > & chainM, map < TString,T
  * @param optMap  - Used to store the final number of objects in the split trees.
  */
 // ===========================================================================================================
-void ANNZ::createCutTrainTrees(map < TString,TChain* > & chainM, map < TString,TCut > & cutM, OptMaps * optMap) {
-// ==============================================================================================================
+void ANNZ::createCutTrainTrees(
+  map < TString,TChain* > & chainM, map < TString,TCut > & cutM, OptMaps * optMap
+) {
+// ===========================================================================================================
   aLOG(Log::DEBUG) <<coutWhiteOnBlack<<coutYellow<<" - starting ANNZ::createCutTrainTrees() ... "<<coutDef<<endl;
 
   int     maxNobj         = glob->GetOptI("maxNobj");
@@ -2039,8 +2137,10 @@ void ANNZ::createCutTrainTrees(map < TString,TChain* > & chainM, map < TString,T
  * @param optMap  - Used to store the final number of objects in the split trees.
  */
 // ===========================================================================================================
-void ANNZ::splitToSigBckTrees(map < TString,TChain* > & chainM, map < TString,TCut > & cutM, OptMaps * optMap) {
-// =============================================================================================================
+void ANNZ::splitToSigBckTrees(
+  map < TString,TChain* > & chainM, map < TString,TCut > & cutM, OptMaps * optMap
+) {
+// ===========================================================================================================
   aLOG(Log::DEBUG) <<coutWhiteOnBlack<<coutYellow<<" - starting ANNZ::splitToSigBckTrees() ... "<<coutDef<<endl;
 
   int     maxNobj         = glob->GetOptI("maxNobj");

@@ -179,7 +179,8 @@ void ANNZ::optimReg() {
                                  , ((int)bestWeightsV.size() == nPDFs));
 
         for(int nPDFnow=0; nPDFnow<nPDFs; nPDFnow++) {
-          VERIFY(LOCATION,(TString)"After getRndMethodBestPDF(), found [bestWeightsV[0,1].size() = "+utils->intToStr((int)bestWeightsV.size())
+          VERIFY(LOCATION,(TString)"After getRndMethodBestPDF(), found [bestWeightsV[0,1].size() = "
+                                   +utils->intToStr((int)bestWeightsV.size())
                                    +"] - but expected this to be [= nMLMs = "+utils->intToStr(nMLMs)
                                    +"] ... Something is horribly wrong !!!",((int)bestWeightsV[nPDFnow].size() == nMLMs));
         }
@@ -307,21 +308,29 @@ void ANNZ::optimReg() {
  * @param aChain             - Input chain, for which the metrics are calculated.
  */
 // ===========================================================================================================
-void  ANNZ::fillColosureV( map < int,vector<int> >    & zRegQnt_nANNZ,   map < int,vector<double> > & zRegQnt_bias,
-                           map < int,vector<double> > & zRegQnt_sigma68, map < int,vector<double> > & zRegQnt_fracSig68, TChain * aChain) {
-// ==========================================================================================================================================
+void  ANNZ::fillColosureV(
+  map < int,vector<int> >    & zRegQnt_nANNZ,   map < int,vector<double> > & zRegQnt_bias,
+  map < int,vector<double> > & zRegQnt_sigma68, map < int,vector<double> > & zRegQnt_fracSig68,
+  TChain * aChain
+) {
+// ===========================================================================================================
   VERIFY(LOCATION,(TString)"Memory leak ?! ",(dynamic_cast<TChain*>(aChain)));
 
   aLOG(Log::INFO) <<coutWhiteOnBlack<<coutPurple<<" - starting ANNZ::fillColosureV() ... "<<coutDef<<endl;
 
-  TString hisName(""), zAxisTitle(""), drawExprs("");
+  TString hisName(""), drawExprs(""), wgtCut(""), zAxisTitle("");
   bool    breakLoop(false);
 
   int     nMLMs             = glob->GetOptI("nMLMs");
   int     maxNobj           = glob->GetOptI("maxNobj");
+  double  minValZ           = glob->GetOptF("minValZ");
+  double  maxValZ           = glob->GetOptF("maxValZ");
   int     nObjectsToWrite   = glob->GetOptI("nObjectsToWrite");
   TString zTrgName          = glob->GetOptC("zTrg");
   TString aChainName        = (TString)aChain->GetName();
+
+  int     nZclosBins        = glob->GetOptI("nZclosBins");
+  if(nZclosBins <= 0) nZclosBins = 10;
 
   bool    optimWithMAD      = glob->GetOptB("optimWithMAD");
   TString quantScatterName  = optimWithMAD ? (TString)"quant_MAD" : (TString)"quant_sigma_68";
@@ -330,9 +339,59 @@ void  ANNZ::fillColosureV( map < int,vector<int> >    & zRegQnt_nANNZ,   map < i
   bool    optimWithSclBias  = glob->GetOptB("optimWithScaledBias");
   TString biasTitle         = optimWithSclBias ? (TString)"bias/(1+"+glob->GetOptC("zTrgTitle")+")" : (TString)"bias";
 
-  int     nBinsZ            = (int)zClos_binC.size();
-  VERIFY(LOCATION,(TString)"zClos_binC not properly initialized ?!? ",(nBinsZ > 0)); //sanity check
+  // -----------------------------------------------------------------------------------------------------------
+  // if not defined, derive the closure bins from the quantile distribution of zTrg
+  // -----------------------------------------------------------------------------------------------------------
+  int nBinsZ = (int)zClos_binC.size();
+  if(nBinsZ == 0) {
+    nBinsZ =  nZclosBins;
+    
+    vector <double> fracV(nBinsZ-1), quantV(nBinsZ-1,-1);
+    for(int nBinNow=0; nBinNow<nBinsZ-1; nBinNow++) {
+      fracV[nBinNow] = (nBinNow + 1)/double(nBinsZ);
+    }
 
+    hisName   = (TString)aChain->GetName()+"_hisQuantTMP";
+    drawExprs = (TString)zTrgName+">>"+hisName;
+    wgtCut    = (TString)zTrgName+">="+utils->floatToStr(minValZ)+"&&"+zTrgName+"<="+utils->floatToStr(maxValZ);
+
+    utils->drawTree(aChain,drawExprs,wgtCut);
+    
+    TH1 * hisQuantTMP = (TH1F*)gDirectory->Get(hisName);
+    hisQuantTMP->SetDirectory(0); hisQuantTMP->BufferEmpty();
+
+    utils->param->clearAll();
+    bool gotQuants = utils->getQuantileV(fracV,quantV,hisQuantTMP);
+    VERIFY(LOCATION,(TString)"Could not derive quantiles from "+aChain->GetName(),gotQuants);
+
+    zClos_binC.resize(nBinsZ,0); zClos_binE.resize(nBinsZ+1,0);
+    for(int nBinNow=1; nBinNow<nBinsZ+1; nBinNow++) {
+      zClos_binE[nBinNow] = quantV[nBinNow-1];
+    }
+    zClos_binE[0]      = minValZ;
+    zClos_binE[nBinsZ] = maxValZ;
+    
+    for(int nBinNow=0; nBinNow<nBinsZ; nBinNow++) {
+      zClos_binC[nBinNow] = zClos_binE[nBinNow] + 0.5 * (zClos_binE[nBinNow+1] - zClos_binE[nBinNow]);
+    }
+
+    if(inLOG(Log::DEBUG)) {
+      TString quantBins("");
+      for(int nBinNow=0; nBinNow<nBinsZ+1; nBinNow++) {
+        quantBins += utils->floatToStr(zClos_binE[nBinNow]) + TString((nBinNow < nBinsZ) ? "," : "");
+      }
+      aLOG(Log::DEBUG) <<coutWhiteOnBlack<<coutGreen<<" - setting "<<coutPurple<<nBinsZ<<coutGreen
+                       <<" closure bins by quantiles: "<<coutYellow<<"["<<quantBins<<"]"<<coutDef<<endl;
+    }
+
+    DELNULL(hisQuantTMP);
+    fracV.clear(); quantV.clear();
+  }
+
+
+  // -----------------------------------------------------------------------------------------------------------
+  // 
+  // -----------------------------------------------------------------------------------------------------------
   vector < double >        sumWeightsBin(nBinsZ,0);
   vector < vector <TH1*> > closH(nMLMs);
 
@@ -486,10 +545,12 @@ void  ANNZ::fillColosureV( map < int,vector<int> >    & zRegQnt_nANNZ,   map < i
  *                           or alternatively, to use the average metrics (over all zTrg bins).
 */
 // ===========================================================================================================
-void  ANNZ::getBestANNZ( map < int,vector<int> >    & zRegQnt_nANNZ,   map < int,vector<double> > & zRegQnt_bias,
-                         map < int,vector<double> > & zRegQnt_sigma68, map < int,vector<double> > & zRegQnt_fracSig68,
-                         vector < int >             & bestMLMsV,       bool                        onlyInclusiveBin) {
-// ===================================================================================================================
+void  ANNZ::getBestANNZ(
+  map < int,vector<int> >    & zRegQnt_nANNZ,   map < int,vector<double> > & zRegQnt_bias,
+  map < int,vector<double> > & zRegQnt_sigma68, map < int,vector<double> > & zRegQnt_fracSig68,
+  vector < int >             & bestMLMsV,       bool                        onlyInclusiveBin
+) {
+// ===========================================================================================================
   aLOG(Log::INFO) <<coutWhiteOnBlack<<coutCyan<<" - starting ANNZ::getBestANNZ(optimCondReg=\""
                   <<coutYellow<<glob->GetOptC("optimCondReg")<<coutCyan<<"\") ... "<<coutDef<<endl;
 
@@ -529,7 +590,7 @@ void  ANNZ::getBestANNZ( map < int,vector<int> >    & zRegQnt_nANNZ,   map < int
   }
   if((int)nMLMmetricPairV.size() < minAcptANNZs) {
     // sort so that the smallest element is first
-    sort(nMLMmetricPairV.begin(),nMLMmetricPairV.end(),sortFunctors::pairIntDouble_descendSecond);
+    sort(nMLMmetricPairV.begin(),nMLMmetricPairV.end(),sortFunc::pairID::lowToHighBy1);
 
     for(int nAcptANNZnow=0; nAcptANNZnow<(int)nMLMmetricPairV.size(); nAcptANNZnow++) {
       bestMLMsV.push_back(nMLMmetricPairV[nAcptANNZnow].first);
@@ -696,7 +757,7 @@ void  ANNZ::getBestANNZ( map < int,vector<int> >    & zRegQnt_nANNZ,   map < int
           if(nAcptANNZs == 0) continue;
 
           // sort so that the smallest element is first
-          sort(bestMLMsPairs[nBinNow][metricName].begin(),bestMLMsPairs[nBinNow][metricName].end(),sortFunctors::pairIntDouble_descendSecond); 
+          sort(bestMLMsPairs[nBinNow][metricName].begin(),bestMLMsPairs[nBinNow][metricName].end(),sortFunc::pairID::lowToHighBy1); 
 
           for(int nAcptANNZnow=0; nAcptANNZnow<nAcptANNZs; nAcptANNZnow++) {
             bestMLMs[nBinNow][metricName].push_back(bestMLMsPairs[nBinNow][metricName][nAcptANNZnow].first);
@@ -731,6 +792,775 @@ void  ANNZ::getBestANNZ( map < int,vector<int> >    & zRegQnt_nANNZ,   map < int
 
 // ===========================================================================================================
 /**
+ * @brief                    - Generate a PDF weighting scheme for randomized regression using a simple random walk alg.
+ * 
+ * @details                  - Candidate PDFs are created by randomely generating weighting schemes, which represent different
+ *                           supression powers af MLM, based on metric ranking: MLMs with better (smaller values of) metrics, have
+ *                           larger relative weights.
+ *                           - PDFs are selected by choosing the weighting scheme which is "most compatible" with the true value.
+ *                           This is determined in two ways (generating two alternative PDFs), using cumulative distributions; for one
+ *                           PDF, the cumulative distribution is based on the "truth" (the target variable, zTrg). For the other
+ *                           PDF, the cumulative distribution is based on the "best" MLM.
+ *                           For the former, a set of templates, derived from zTrg is used to fit the dataset. For the later,
+ *                           a flat distribution of the cumulator serves as the baseline.
+ *                           
+ * @param aChain             - Input chain, for which to do the PDF derivation.
+ * @param bestANNZindex      - Index of the "best" MLM.
+ * @param zRegQnt_nANNZ      - Map of vector, which is filled with the index of MLMs, corresponding to the order of the
+ *                           entries of the metrics in the other vectors (zRegQnt_sigma68 and zRegQnt_bias).
+ * @param zRegQnt_bias       - Map of vector, which is filled with the claculated bias metric.
+ * @param zRegQnt_sigma68    - Map of vector, which is filled with the claculated sigma68 metric.
+ * @param zRegQnt_fracSig68  - Map of vector, which is filled with the claculated combined outlier-fraction metric.
+ * @param bestWeightsV       - Vector into which the results of the PDF derivation are stored (as weights for
+ *                           each MLM).
+ * @param hisPdfBiasCorV     - Vector for bias correction histograms for pdfs.
+ */
+// ===========================================================================================================
+void  ANNZ::getRndMethodBestPDF(
+  TTree                     * aChain,          int            bestANNZindex,
+  vector<int>               & zRegQnt_nANNZ,   vector<double> & zRegQnt_bias,
+  vector<double>            & zRegQnt_sigma68, vector<double> & zRegQnt_fracSig68, 
+  vector < vector<double> > & bestWeightsV,    vector <TH2*>  & hisPdfBiasCorV
+) {
+// ===========================================================================================================
+  aLOG(Log::INFO) <<coutWhiteOnBlack<<coutYellow<<" - starting ANNZ::getRndMethodBestPDF() ... "<<coutDef<<endl;
+  VERIFY(LOCATION,(TString)"Memory leak ?! ",(dynamic_cast<TChain*>(aChain)));
+
+  TString zTrgName           = glob->GetOptC("zTrg");
+  int     maxNobj            = glob->GetOptI("maxNobj");
+  int     nSmearsRnd         = glob->GetOptI("nSmearsRnd");
+  int     nMLMs              = glob->GetOptI("nMLMs");
+  int     nPDFbins           = glob->GetOptI("nPDFbins");
+  TString _typeANNZ          = glob->GetOptC("_typeANNZ");
+  UInt_t  seed               = glob->GetOptI("initSeedRnd"); if(seed > 0) seed += 98187;
+  int     minAcptMLMsForPDFs = glob->GetOptI("minAcptMLMsForPDFs");
+  int     nPDFs              = glob->GetOptI("nPDFs");
+  double  max_sigma68_PDF    = glob->GetOptF("max_sigma68_PDF");
+  double  max_bias_PDF       = glob->GetOptF("max_bias_PDF");
+  double  max_frac68_PDF     = glob->GetOptF("max_frac68_PDF");
+  TString zTrgTitle          = glob->GetOptC("zTrgTitle");
+  bool    doBiasCorPDF       = glob->GetOptB("doBiasCorPDF");
+  TString intgrZtreeName     = (TString)glob->GetOptC("treeName")+"_intgrZmlm";
+  
+  // parameters for the random walk alg
+  double  max_optimObj_PDF   = (double)glob->GetOptI("max_optimObj_PDF");
+  int     nOptimLoops        = max(100, glob->GetOptI("nOptimLoops"));
+  int     nIntgrZsmears      = 15; // sould be odd number >= 3
+  int     maxOptimTries      = glob->GetOptI("max_staticOptimTries_PDF");
+  int     nSameWeightsMax    = int(floor(0.5 * maxOptimTries));
+  int     nNoUpdateMax       = 50;
+  double  fracWeightUpdate   = 0.15;
+  bool    saveProfileHis     = inLOG(Log::DEBUG_1);
+
+  vector < double > excRange(2);
+  excRange[0] = glob->GetOptF("excludeRangePdfModelFit");
+  excRange[1] = 1 - excRange[0];
+
+  int     nBinsZ        = (int)zClos_binC.size();
+  TString MLMnameBest   = getTagName(bestANNZindex);
+  TString MLMnameBest_e = getTagError(bestANNZindex);
+
+  if(nPDFs == 0) {
+    aLOG(Log::INFO) <<coutGreen<<" - no PDFs requested - nothing to do here... "<<coutDef<<endl;
+    return;
+  }
+  VERIFY(LOCATION,(TString)"zClos_binC not properly initialized ?!? ",(nBinsZ > 0)); //sanity check
+
+  // -----------------------------------------------------------------------------------------------------------
+  // define bias-correction histograms for the pdf
+  // -----------------------------------------------------------------------------------------------------------
+  TH2F * hisPdfTryBiasCorV(NULL);
+  if(doBiasCorPDF) {
+    TString hisName   = (TString)"pdfBias"+_typeANNZ+"_nominal";
+    hisPdfTryBiasCorV = new TH2F(hisName,hisName,nPDFbins,&(zPDF_binE[0]),nPDFbins,&(zPDF_binE[0]));
+  }
+  
+  TRandom                     * rnd(NULL);
+  vector < int >              sigmToBiasV(nMLMs,0);
+  vector < double >           weightV(nMLMs,0);
+  vector < pair<int,double> > sigm68V, biasV;
+
+  // -----------------------------------------------------------------------------------------------------------
+  // sort all accepted MLMs by their sigm68 and bias metrics.
+  // -----------------------------------------------------------------------------------------------------------
+  int nAcptMLMs = (int)zRegQnt_nANNZ.size();
+  for(int nAcptMLMnow=0; nAcptMLMnow<nAcptMLMs; nAcptMLMnow++) {
+    if(zRegQnt_sigma68[nAcptMLMnow] < 0) continue; // has been initialized, such that no entries in this bin
+
+    // check if the metrics are not above threshold (if defined by the user)
+    if(max_sigma68_PDF > 0 && zRegQnt_sigma68[nAcptMLMnow] > max_sigma68_PDF) {
+     aLOG(Log::INFO) <<coutRed<<" - "<<coutYellow<<getTagName(zRegQnt_nANNZ[nAcptMLMnow])<<coutRed<<" has sigma68 = "
+                     <<coutYellow<<zRegQnt_sigma68[nAcptMLMnow]<<coutRed<<" which is above threshold ("<<coutBlue<<max_sigma68_PDF
+                     <<coutRed<<") -> it will be rejected from the PDF ..." <<coutDef<<endl;
+     continue;
+    }
+    if(max_bias_PDF > 0 && zRegQnt_bias[nAcptMLMnow] > max_bias_PDF) {
+      aLOG(Log::INFO) <<coutRed<<" - "<<coutYellow<<getTagName(zRegQnt_nANNZ[nAcptMLMnow])<<coutRed<<" has bias = "
+                      <<coutYellow<<zRegQnt_bias[nAcptMLMnow]<<coutRed<<" which is above threshold ("<<coutBlue<<max_bias_PDF
+                      <<coutRed<<") -> it will be rejected from the PDF ..." <<coutDef<<endl;
+      continue;
+    }
+    if(max_frac68_PDF > 0 && zRegQnt_fracSig68[nAcptMLMnow] > max_frac68_PDF) {
+      aLOG(Log::INFO) <<coutRed<<" - "<<coutYellow<<getTagName(zRegQnt_nANNZ[nAcptMLMnow])<<coutRed<<" has combined outlier-fraction = "
+                      <<coutYellow<<zRegQnt_fracSig68[nAcptMLMnow]<<coutRed<<" which is above threshold ("<<coutBlue<<max_frac68_PDF
+                      <<coutRed<<") -> it will be rejected from the PDF ..." <<coutDef<<endl;
+      continue;
+    }
+
+    biasV  .push_back(pair<int,double>(zRegQnt_nANNZ[nAcptMLMnow],zRegQnt_bias   [nAcptMLMnow]));
+    sigm68V.push_back(pair<int,double>(zRegQnt_nANNZ[nAcptMLMnow],zRegQnt_sigma68[nAcptMLMnow]));
+  }
+  nAcptMLMs = (int)sigm68V.size();
+  
+  VERIFY(LOCATION,(TString)" - found only "+utils->intToStr(nAcptMLMs)+" accepted MLMs, but requested minAcptMLMsForPDFs = "
+                          +utils->intToStr(minAcptMLMsForPDFs)+" ...",(nAcptMLMs >= minAcptMLMsForPDFs));
+
+  // sort so that the smallest element is first
+  sort(biasV  .begin(),biasV  .end(),sortFunc::pairID::lowToHighBy1);
+  sort(sigm68V.begin(),sigm68V.end(),sortFunc::pairID::lowToHighBy1);
+
+  // get the index conversion between the two vectors after their independent sorts
+  for(int nAcptMLMnow=0; nAcptMLMnow<nAcptMLMs; nAcptMLMnow++) {
+    int nMLMnow = biasV[nAcptMLMnow].first;
+    sigmToBiasV[nMLMnow] = nAcptMLMnow;
+  }
+  // sanity check (should never be triggered)
+  for(int nAcptMLMnow=0; nAcptMLMnow<nAcptMLMs; nAcptMLMnow++) {
+    bool isSameMLM = (biasV[sigmToBiasV[sigm68V[nAcptMLMnow].first]].first == sigm68V[nAcptMLMnow].first);
+    VERIFY(LOCATION,(TString)" - mismatch between MLM indices ... ", isSameMLM);
+  }
+
+
+  // -----------------------------------------------------------------------------------------------------------
+  // make sure we have enough MLMs for a pdf:
+  // - reject worst ??% out of hand, demanding that enough MLMs have both good sigm68 and good bias metrics
+  // - make sure what remains is at least minAcptMLMsForPDFs methods
+  // -----------------------------------------------------------------------------------------------------------
+  if(seed > 0) { seed++; } rnd = new TRandom3(seed);
+  
+  int             nNonZeroWeights(0);
+  bool            foundGoodSetup(false);
+  map <int,bool>  acceptV_sigm, acceptV_both;
+
+  for(int nRelaxReject=0; nRelaxReject<100; nRelaxReject++) {
+    int     minRejConst_sigm(1), maxRejConst_sigm(6), minRejConst_bias(0), maxRejConst_bias(3);
+    int     maxAcptMLMs(0);
+    double  rndNow(0), rejectionFrac(0);
+
+    if(nRelaxReject > 0) {
+      maxRejConst_sigm -= 0.5 * nRelaxReject;
+      maxRejConst_bias -= 0.5 * nRelaxReject;
+      if(maxRejConst_sigm <= minRejConst_sigm) break;
+      if     (maxRejConst_bias <= minRejConst_bias && maxRejConst_sigm <= minRejConst_sigm) break;
+      else if(maxRejConst_bias <= minRejConst_bias                                        ) maxRejConst_bias = minRejConst_bias + 1;
+
+      aLOG(Log::DEBUG_2) <<coutLightBlue<<"("<<nRelaxReject
+                         <<") Reduced rejectionFrac for sigma,bias to: "<<maxRejConst_sigm<<" , "<<maxRejConst_bias<<coutDef<<endl;
+    }
+    
+    // initialize the selection lists
+    for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) {
+      acceptV_sigm[nMLMnow] = false; acceptV_both[nMLMnow] = false;
+    }
+
+
+    // first check accepted methods by minimal sigma_68
+    // -----------------------------------------------------------------------------------------------------------
+    for(int nRjctFarcNow=0; nRjctFarcNow<100; nRjctFarcNow++) {
+      rndNow        = rnd->Rndm();
+      rejectionFrac = 0.1 * (minRejConst_sigm + int(ceil(rndNow * (maxRejConst_sigm-minRejConst_sigm))));
+      maxAcptMLMs   = static_cast<int>(floor(nAcptMLMs * (1-rejectionFrac)));
+      
+      // set the flag for accepted/rejected methods
+      nNonZeroWeights = 0;
+      for(int nAcptMLMnow=0; nAcptMLMnow<nAcptMLMs; nAcptMLMnow++) {
+        int nMLMnow = sigm68V[nAcptMLMnow].first;
+        
+        if(nAcptMLMnow > maxAcptMLMs) {
+          acceptV_sigm[nMLMnow] = false;
+          aLOG(Log::DEBUG_3) <<coutRed<<"Reject SIGM for "<<nAcptMLMnow<<CT<<nMLMnow<<coutDef<<endl;
+        }
+        else {
+          acceptV_sigm[nMLMnow] = true;
+          nNonZeroWeights++;
+          aLOG(Log::DEBUG_3) <<coutBlue<<"Accept SIGM for "<<nAcptMLMnow<<CT<<nMLMnow<<coutDef<<endl;
+        }
+      }
+      // check the number of accepted methods after the rejection cuts
+      aLOG(Log::DEBUG_2) <<coutYellow<<"SIGM - nRjctFarcNow,rejectionFrac,maxAcptMLMs,nNonZeroWeights - "<<nRjctFarcNow<<CT
+                         <<rejectionFrac<<CT<<maxAcptMLMs<<CT<<nNonZeroWeights<<coutDef<<endl;
+      
+      if(nNonZeroWeights >= minAcptMLMsForPDFs) {
+        foundGoodSetup = true; break;
+      }
+    }
+
+    // check the accepted methods by minimal bias (requiring to already also be accepted by sigma_68)
+    // -----------------------------------------------------------------------------------------------------------
+    if(foundGoodSetup) {
+      foundGoodSetup = false;
+
+      for(int nRjctFarcNow=0; nRjctFarcNow<100; nRjctFarcNow++) {
+        rndNow        = rnd->Rndm();
+        rejectionFrac = 0.1 * (minRejConst_bias + int(ceil(rndNow * (maxRejConst_bias-minRejConst_bias))));
+        maxAcptMLMs   = static_cast<int>(floor(nAcptMLMs * (1-rejectionFrac)));
+        
+        // set the flag for accepted/rejected methods
+        nNonZeroWeights = 0;
+        for(int nAcptMLMnow=0; nAcptMLMnow<nAcptMLMs; nAcptMLMnow++) {
+          int nMLMnow = biasV[nAcptMLMnow].first;
+          
+          if(nAcptMLMnow > maxAcptMLMs) {
+            acceptV_both[nMLMnow] = false;
+            aLOG(Log::DEBUG_3) <<coutRed<<"Reject BIAS for "<<nAcptMLMnow<<CT<<nMLMnow<<coutDef<<endl;
+          }
+          else {
+            if(acceptV_sigm[nMLMnow]) {
+              acceptV_both[nMLMnow] = true;
+              nNonZeroWeights++;
+              aLOG(Log::DEBUG_3) <<coutBlue<<"Accept BIAS for "<<nAcptMLMnow<<CT<<nMLMnow<<coutDef<<endl;
+            }
+            else {
+              acceptV_both[nMLMnow] = false;
+              aLOG(Log::DEBUG_3) <<coutPurple<<"Reject SIGM for "<<nAcptMLMnow<<CT<<nMLMnow<<coutDef<<endl;
+            }
+          }
+        }
+        // check the number of accepted methods after the rejection cuts
+        aLOG(Log::DEBUG_2) <<coutYellow<<"BIAS - nRjctFarcNow,rejectionFrac,maxAcptMLMs,nNonZeroWeights - "<<nRjctFarcNow<<CT
+                           <<rejectionFrac<<CT<<maxAcptMLMs<<CT<<nNonZeroWeights<<coutDef<<endl;
+        
+        if(nNonZeroWeights >= minAcptMLMsForPDFs) {
+          foundGoodSetup = true;
+          break;
+        }
+      }
+    }
+
+    if(foundGoodSetup) break;
+    
+    // if didn't break, than could not find a combination of MLMs with good metrics under the current restrictions
+    aLOG(Log::DEBUG_1) <<coutRed<<"Cant find a rejectionFrac which leavs "<<minAcptMLMsForPDFs
+                       <<" accepted methods... Will try to relax fraction-cuts."<<coutDef<<endl;
+  }
+  // shouldn't happen...
+  VERIFY(LOCATION,(TString)" --- Cant find a rejectionFrac which leavs "+utils->intToStr(minAcptMLMsForPDFs)
+                           +" accepted methods ... Something is horribly wrong !!! Try setting a lower value"
+                           +" of minAcptMLMsForPDFs or increasing the number of trained MLMs ...",foundGoodSetup);
+
+
+  map < TString,bool > mlmSkipPdf;
+  for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) {
+    TString MLMname = getTagName(nMLMnow);
+    if(mlmSkip[MLMname]) {
+      mlmSkipPdf[MLMname] = true;
+      
+      VERIFY(LOCATION,(TString)" - got inconsistent MLM skip criteria ... Something is horribly wrong !!! ",(!acceptV_both[nMLMnow]));
+    }
+    else {
+      mlmSkipPdf[MLMname] = !acceptV_both[nMLMnow];
+    }
+  }
+
+  DELNULL(rnd);
+  acceptV_sigm.clear(); acceptV_both.clear();
+
+
+  // -----------------------------------------------------------------------------------------------------------
+  // finally, set the initial weights based on the accepted methods by both sigma and bias
+  // -----------------------------------------------------------------------------------------------------------
+  double norm_bias(0), norm_sigm68(0);
+  for(int nAcptMLMnow=0; nAcptMLMnow<nAcptMLMs; nAcptMLMnow++) {
+    int     nMLMnow = sigm68V[nAcptMLMnow].first;
+    TString MLMname = getTagName(nMLMnow);  if(mlmSkipPdf[MLMname]) continue;
+
+    double bias   = biasV[sigmToBiasV[nMLMnow]].second;
+    double sigm68 = sigm68V[nAcptMLMnow].second;
+
+    norm_bias   += pow(bias  , 2);
+    norm_sigm68 += pow(sigm68, 2);
+  }
+
+  // -----------------------------------------------------------------------------------------------------------
+  // derive weights based on a combination of the bias and scatter
+  // -----------------------------------------------------------------------------------------------------------
+  double sumWeights(0);
+  weightV.resize(nMLMs,0);
+  for(int nAcptMLMnow=0; nAcptMLMnow<nAcptMLMs; nAcptMLMnow++) {
+    int     nMLMnow = sigm68V[nAcptMLMnow].first;
+    TString MLMname = getTagName(nMLMnow);  if(mlmSkipPdf[MLMname]) continue;
+
+    double bias      = biasV[sigmToBiasV[nMLMnow]].second;
+    double sigm68    = sigm68V[nAcptMLMnow].second;
+    double weightNow = 0.5 * (pow(bias, 2)/norm_bias + pow(sigm68, 2)/norm_sigm68);
+
+    weightV[nMLMnow] = weightNow;
+    sumWeights += weightV[nMLMnow];
+  }
+
+  // -----------------------------------------------------------------------------------------------------------
+  // normalize the weights, where higher bias/scatter get smaller weights
+  // -----------------------------------------------------------------------------------------------------------
+  vector < pair<int,double> > tmpWeightV;
+  for(int nAcptMLMnow=0; nAcptMLMnow<nAcptMLMs; nAcptMLMnow++) {
+    int     nMLMnow = sigm68V[nAcptMLMnow].first;
+    TString MLMname = getTagName(nMLMnow);  if(mlmSkipPdf[MLMname]) continue;
+
+    double weightNow = 1 - weightV[nMLMnow]/sumWeights;
+    tmpWeightV.push_back(pair<int,double>(nMLMnow,weightNow));
+  }
+  int nAcptWgts = (int)tmpWeightV.size();
+
+  // sort so that the largest element is first
+  sort(tmpWeightV.begin(),tmpWeightV.end(),sortFunc::pairID::highToLowBy1);
+
+  // now that we have the right ranking of MLM weiights, set the values to by fixed scale
+  sumWeights = 0;
+  weightV.resize(nMLMs,0);
+  for(int nAcptMLMnow=0; nAcptMLMnow<nAcptWgts; nAcptMLMnow++) {
+    int nMLMnow = tmpWeightV[nAcptMLMnow].first;
+    
+    weightV[nMLMnow] = (nAcptWgts - nAcptMLMnow);
+    sumWeights += weightV[nMLMnow];
+  }
+
+  for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) { weightV[nMLMnow] /= sumWeights; }
+
+  // -----------------------------------------------------------------------------------------------------------
+  // some output for the user, detailing the accepted MLMs and their initial weights
+  // -----------------------------------------------------------------------------------------------------------
+  TString acceptedMLMs(""), rejectedMLMs("");
+  for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) {
+    if(weightV[nMLMnow] > EPS) {
+      acceptedMLMs += (TString)coutPurple+getTagName(nMLMnow)+coutGreen+", ";
+    }
+    else {
+      rejectedMLMs += (TString)coutYellow+getTagName(nMLMnow)+coutGreen+", ";
+    }
+  }
+  aLOG(Log::DEBUG) <<coutGreen<<" - accepted MLMs: "<<acceptedMLMs<<coutDef<<endl;
+  aLOG(Log::DEBUG) <<coutGreen<<" - rejected MLMs: "<<rejectedMLMs<<coutDef<<endl;
+
+  tmpWeightV.clear();
+  for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) {
+    if(weightV[nMLMnow] > EPS) tmpWeightV.push_back(pair<int,double>(nMLMnow,weightV[nMLMnow]));
+  }
+  
+  // sort so that the largest element is first
+  sort(tmpWeightV.begin(),tmpWeightV.end(),sortFunc::pairID::highToLowBy1);
+
+  TString weightMsg("");
+  for(int nAcptMLMnow=0; nAcptMLMnow<(int)tmpWeightV.size(); nAcptMLMnow++) {
+    TString MLMname = getTagName(tmpWeightV[nAcptMLMnow].first);
+    weightMsg += (TString)coutGreen+MLMname+":"+coutYellow+utils->floatToStr(tmpWeightV[nAcptMLMnow].second,"%1.3f")+" ";
+  }
+  aLOG(Log::INFO) <<coutPurple<<" - initial PDF weights: " <<coutPurple<<weightMsg<<coutDef<<endl;
+  aLOG(Log::DEBUG) <<coutGreen<<" ----------------------------------------------------------------------------- "<<coutDef<<endl;
+
+
+  // -----------------------------------------------------------------------------------------------------------
+  // loop on the input trees, claculate the integral-metric and store it in a new tree for quick access
+  // -----------------------------------------------------------------------------------------------------------
+  aLOG(Log::INFO) <<coutGreen<<" - will loop on the input trees ..."<<coutDef<<endl;
+
+  if(seed > 0) { seed++; } rnd = new TRandom3(seed);
+
+  // define a VarMaps to loop over the chain
+  TString aChainName = aChain->GetName();
+  VarMaps * var_0    = new VarMaps(glob,utils,(TString)"inputTreeVars_"+aChainName);
+  var_0->connectTreeBranches(aChain);
+
+  double pdfObjFrac(-1);
+  if(max_optimObj_PDF > 0) {
+    double nEntriesChain = aChain->GetEntries();
+    pdfObjFrac = min((max_optimObj_PDF/nEntriesChain), 1.);
+  }
+
+  for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) {
+    TString MLMname = getTagName(nMLMnow); 
+    if(!mlmSkip[MLMname]) aChain->SetBranchStatus(getTagIndex(nMLMnow),0);
+  }
+
+  VarMaps * var_1 = new VarMaps(glob,utils,(TString)"vars_"+intgrZtreeName);
+  for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) {
+    TString MLMname   = getTagName(nMLMnow);   if(mlmSkipPdf[MLMname]) continue;
+    TString MLMname_w = getTagWeight(nMLMnow);
+    var_1->NewVarF(MLMname);
+  }
+  var_1->NewVarF("eventWeight");
+  var_1->NewVarF(zTrgName);
+
+  TTree * outTree = new TTree(intgrZtreeName,intgrZtreeName);
+  outTree->SetDirectory(0); outputs->TreeMap[intgrZtreeName] = outTree;
+  
+  var_1->createTreeBranches(outTree);
+
+  // -----------------------------------------------------------------------------------------------------------
+  // loop on the tree
+  // -----------------------------------------------------------------------------------------------------------
+  bool  breakLoop(false);
+  int   nObjectsToWrite(glob->GetOptI("nObjectsToWrite"));
+  var_0->clearCntr();
+  for(Long64_t loopEntry=0; true; loopEntry++) {
+    if(!var_0->getTreeEntry(loopEntry)) breakLoop = true;
+
+    if((var_0->GetCntr("nObj")+1 % nObjectsToWrite == 0) || breakLoop) { var_0->printCntr(aChainName,Log::DEBUG_1); }
+    if(breakLoop) break;
+
+    if(pdfObjFrac > 0) {
+      if(rnd->Rndm() > pdfObjFrac) continue;
+    }
+    var_0->IncCntr("nObj"); if(var_0->GetCntr("nObj") == maxNobj) breakLoop = true;
+
+    double zTrg = var_0->GetVarF(zTrgName);
+
+    // -----------------------------------------------------------------------------------------------------------
+    // loop over all MLMs
+    // -----------------------------------------------------------------------------------------------------------
+    double eventWeight(0);
+    for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) {
+      TString MLMname    = getTagName(nMLMnow);      if(mlmSkipPdf[MLMname]) continue;
+      TString MLMname_w  = getTagWeight(nMLMnow);
+      TString MLMname_eN = getTagError(nMLMnow,"N"); TString MLMname_eP = getTagError(nMLMnow,"P");
+
+      double  regNow    = var_0->GetVarF(MLMname);
+      double  errN      = var_0->GetVarF(MLMname_eN); if(errN      < EPS) continue;
+      double  errP      = var_0->GetVarF(MLMname_eP); if(errP      < EPS) continue;
+      double  weightNow = var_0->GetVarF(MLMname_w);  if(weightNow < EPS) continue;
+      
+      eventWeight += weightNow;
+
+      double intgrZmlm(0);
+      for(int nSmearNow=0; nSmearNow<nIntgrZsmears; nSmearNow++) {
+        double sfNow(0);
+        if(nSmearNow > 0) {
+          int    signNow = (nSmearNow % 2 == 0) ? 1    : -1;
+          double errNow  = (nSmearNow % 2 == 0) ? errP : errN;
+          sfNow          = signNow * fabs(rnd->Gaus(0,errNow));
+        }
+        double zReg = regNow + sfNow;
+        if(zReg < zTrg) intgrZmlm += 1;
+      }
+      intgrZmlm /= double(nIntgrZsmears);
+      var_1->SetVarF(MLMname, intgrZmlm);
+    }
+    eventWeight /= double(nMLMs);
+    var_1->SetVarF("eventWeight",eventWeight);
+    var_1->SetVarF(zTrgName,zTrg);
+    
+    var_1->fillTree();
+  }
+  if(!breakLoop) { var_0->printCntr(aChainName,Log::DEBUG_1); }
+
+  DELNULL(rnd);
+
+  outputs->WriteOutObjects(false,true); outputs->ResetObjects();
+
+  DELNULL(var_1);
+  DELNULL(outTree); outputs->TreeMap.erase(intgrZtreeName);
+
+  
+  // -----------------------------------------------------------------------------------------------------------
+  // use the integral-metric with various MLM combinations to compare pdf candidates
+  // -----------------------------------------------------------------------------------------------------------
+  TString intgrZfileName = (TString)glob->GetOptC("outDirNameFull")+intgrZtreeName+"*.root";
+  TChain  * intgrZchain  = new TChain(intgrZtreeName,intgrZtreeName); intgrZchain->SetDirectory(0); intgrZchain->Add(intgrZfileName); 
+  aLOG(Log::DEBUG) <<coutRed<<" - added chain "<<coutGreen<<intgrZtreeName<<"("<<intgrZchain->GetEntries()<<")"
+                   <<" from "<<coutBlue<<intgrZfileName<<coutDef<<endl;
+
+  var_1 = new VarMaps(glob,utils,(TString)"vars_"+intgrZtreeName);
+  var_1->connectTreeBranches(intgrZchain);
+
+  TFile    * rootSaveFile(NULL);
+  TProfile * hisIntgrZmlm(NULL);
+  if(saveProfileHis) {
+    TString hisName("his_intgrZmlmOptim");
+    hisIntgrZmlm = new TProfile(hisName,hisName,nPDFbins,&(zPDF_binE[0]));
+    hisIntgrZmlm->GetXaxis()->SetTitle((TString)"C("+zTrgTitle+")");
+    hisIntgrZmlm->GetYaxis()->SetTitle((TString)"1/N dN/dC("+zTrgTitle+")");
+
+    // make sure the name does not fall under the patter for intgrZfileName (sice it could be deleted...)
+    TString rootFileName = (TString)glob->GetOptC("outDirNameFull")+"intgrZmlmOptimProfileHis.root";
+    rootSaveFile = new TFile(rootFileName,"RECREATE");
+  }
+
+  if(seed > 0) { seed++; } rnd = new TRandom3(seed);
+
+  // -----------------------------------------------------------------------------------------------------------
+  // perform the random walk alg
+  // -----------------------------------------------------------------------------------------------------------
+  double            avgIntgrZ(0.5);
+  int               nNoUpdate(0), nSameWeights(0);
+  double            varIntgrBest(std::numeric_limits<double>::max()), varIntgrPrev(varIntgrBest);
+  vector < double > weightsNow(weightV), weightsPrev(weightV), weightsBest, intgrZ_valV, intgrZmlm_nEvtV;
+
+  vector < int > updateIndexV;
+  for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) {
+    TString MLMname = getTagName(nMLMnow);
+    if(!mlmSkipPdf[MLMname]) updateIndexV.push_back(nMLMnow);
+  }
+  vector < int >::iterator indexItr = updateIndexV.begin();
+  int nWgtsIn = updateIndexV.size();
+  int nRnds0(0);
+  if     (nWgtsIn < 10) nRnds0 = 1;
+  else if(nWgtsIn < 20) nRnds0 = 5;
+  else if(nWgtsIn < 40) nRnds0 = 10;
+  else                  nRnds0 = floor(nWgtsIn * 0.2);
+
+  for(int nLoops=0; nLoops<nOptimLoops; nLoops++) {
+    bool canPrint(false);
+    if     (nLoops < 10)                      canPrint = true;
+    else if(nLoops < 100  && nLoops%10  == 0) canPrint = true;
+    else if(nLoops < 500  && nLoops%20  == 0) canPrint = true;
+    else if(nLoops < 1000 && nLoops%50  == 0) canPrint = true;
+    else if(                 nLoops%100 == 0) canPrint = true;
+
+    intgrZ_valV.resize(nPDFbins,0); intgrZmlm_nEvtV.resize(nPDFbins,0);
+
+    if(canPrint && saveProfileHis) hisIntgrZmlm->Reset();
+
+    // -----------------------------------------------------------------------------------------------------------
+    // calculate the optimization metric for this set of PDF weights from the entire dataset
+    // -----------------------------------------------------------------------------------------------------------
+    for(Long64_t loopEntry=0; true; loopEntry++) {
+      if(!var_1->getTreeEntry(loopEntry)) break;
+
+      double zTrg        = var_1->GetVarF(zTrgName);
+      double eventWeight = var_1->GetVarF("eventWeight");
+      int    nPdfBinNow  = getBinZ(zTrg, zPDF_binE);  if(nPdfBinNow < 0) continue;
+
+      double intgrZ(0);
+      for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) {
+        TString MLMname = getTagName(nMLMnow); if(mlmSkipPdf[MLMname]) continue;
+        
+        double intgrZmlm = var_1->GetVarF(MLMname);
+        intgrZ += intgrZmlm * weightsNow[nMLMnow];
+      }
+
+      if(intgrZ >= excRange[0] && intgrZ <= excRange[1]) {
+        if(canPrint && saveProfileHis) hisIntgrZmlm->Fill(zTrg,intgrZ,eventWeight);
+
+        intgrZ_valV    [nPdfBinNow] += intgrZ * eventWeight;
+        intgrZmlm_nEvtV[nPdfBinNow] += eventWeight;
+      }
+    }
+
+    // -----------------------------------------------------------------------------------------------------------
+    // derive the final metric as the RMS around avgIntgrZ
+    // -----------------------------------------------------------------------------------------------------------
+    double varIntgrNow(0), nBinsIn(0);
+    for(int nPdfBinNow=0; nPdfBinNow<nPDFbins; nPdfBinNow++) {
+      if(intgrZmlm_nEvtV[nPdfBinNow] < EPS) continue;
+
+      double intgrZ = intgrZ_valV[nPdfBinNow]/intgrZmlm_nEvtV[nPdfBinNow];
+      varIntgrNow += pow((intgrZ - avgIntgrZ), 2);
+
+      nBinsIn++;
+    }
+    varIntgrNow = (varIntgrNow > EPS) ? sqrt(varIntgrNow/nBinsIn) : 0;
+    
+    // check if the current solution is better then the previous one (or the best so far)
+    bool isBest   = varIntgrNow < varIntgrBest;
+    bool isBetter = varIntgrNow < varIntgrPrev;
+    
+    bool canPrintNew(false);
+    if(isBest) {
+      if(varIntgrBest < EPS) canPrintNew = true;
+      else                   canPrintNew = ((varIntgrBest - varIntgrNow)/varIntgrBest > 0.01);
+    }
+    
+    // -----------------------------------------------------------------------------------------------------------
+    // output for the user to validate that things are going well
+    // -----------------------------------------------------------------------------------------------------------
+    if(canPrint || canPrintNew) {
+      weightMsg = "";
+      for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) { 
+        TString MLMname = getTagName(nMLMnow); if(mlmSkipPdf[MLMname]) continue;
+        weightMsg += coutBlue+MLMname+":"+coutPurple+utils->floatToStr(weightsNow[nMLMnow],"%1.3f")+" ";
+      }
+
+      TString msgHead = (TString)(isBest ? " - NEW:  " : " - nTry: ");
+      TString msgCol  = (TString)(isBest ? coutGreen : coutYellow);
+      aLOG(Log::INFO) <<msgCol<<msgHead<<coutPurple<<nLoops
+                      <<msgCol<<" - min-param best/prev/now: "<<coutBlue<< utils->floatToStr(varIntgrBest,"%1.5e")
+                      <<msgCol<<" / "<<coutRed<< utils->floatToStr(varIntgrPrev,"%1.5e")
+                      <<msgCol<<" / "<<coutBlue<< utils->floatToStr(varIntgrNow,"%1.5e")
+                      <<msgCol<<(TString)(inLOG(Log::DEBUG_2)?" , PDF: ":"")
+                      <<(TString)(inLOG(Log::DEBUG_2)?weightMsg:"")<<coutDef<<endl;
+
+      if(canPrint && saveProfileHis) {      
+        hisIntgrZmlm->SetTitle((TString)(TString)"RMS[C("+zTrgTitle+")] = "+utils->floatToStr(varIntgrNow,"%1.5e"));
+        hisIntgrZmlm->Write((TString)hisIntgrZmlm->GetName()+"_"+utils->intToStr(nLoops));
+      }
+    }
+
+    // -----------------------------------------------------------------------------------------------------------
+    // update the best weights if needed
+    // -----------------------------------------------------------------------------------------------------------
+    if(isBest) {
+      varIntgrBest = varIntgrNow;
+      weightsBest  = weightsNow;
+      nSameWeights = 0;
+    }
+    else nSameWeights++;
+    
+    // -----------------------------------------------------------------------------------------------------------
+    // go back to the best solution if there has been no improvement for a while
+    // finish if there has been no improvement for a long time
+    // -----------------------------------------------------------------------------------------------------------
+    if(nSameWeights % nSameWeightsMax == 0) weightsPrev = weightsBest;
+    if(nSameWeights >= maxOptimTries) break;
+
+    // -----------------------------------------------------------------------------------------------------------
+    // continue with this set of weights if the result is better, or if forceUpdate
+    // -----------------------------------------------------------------------------------------------------------
+    bool forceUpdate = (nNoUpdate >= nNoUpdateMax) || (rnd->Rndm() < fracWeightUpdate);
+    if(isBetter || forceUpdate) {
+      nNoUpdate    = 0;
+      weightsPrev  = weightsNow;
+      varIntgrPrev = varIntgrNow;
+    }
+    else {
+      nNoUpdate++;
+      weightsNow = weightsPrev;
+    }
+
+    // -----------------------------------------------------------------------------------------------------------
+    // change one or more of the weights for the next iteration
+    // -----------------------------------------------------------------------------------------------------------
+    int nRnds(nRnds0);
+    if(rnd->Rndm() < 0.5) nRnds = max(nWgtsIn, nRnds + int(ceil(0.2 * rnd->Rndm() * nWgtsIn)));
+    for(int nRndNow=0; nRndNow<nRnds; nRndNow++) {
+      while(true) {
+        weightsNow[*indexItr] += 0.1 * rnd->Rndm();
+        if(weightsNow[*indexItr] >= 0 && weightsNow[*indexItr] <= 1) break;
+      }
+      
+      indexItr++;
+      if(indexItr == updateIndexV.end()) { indexItr = updateIndexV.begin(); }
+    }
+
+    // normalize the new weights
+    double sumWeights(0);
+    for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) { sumWeights += weightsNow[nMLMnow]; }
+    for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) { weightsNow[nMLMnow] /= sumWeights; }
+  }
+
+  // -----------------------------------------------------------------------------------------------------------
+  // final message with the results
+  // -----------------------------------------------------------------------------------------------------------
+  tmpWeightV.clear();
+  for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) {
+    if(weightsBest[nMLMnow] > EPS) tmpWeightV.push_back(pair<int,double>(nMLMnow,weightsBest[nMLMnow]));
+  }
+  
+  // sort so that the largest element is first
+  sort(tmpWeightV.begin(),tmpWeightV.end(),sortFunc::pairID::highToLowBy1);
+
+  weightMsg = "";
+  for(int nAcptMLMnow=0; nAcptMLMnow<(int)tmpWeightV.size(); nAcptMLMnow++) {
+    TString MLMname = getTagName(tmpWeightV[nAcptMLMnow].first);
+    weightMsg += (TString)coutGreen+MLMname+":"+coutYellow+utils->floatToStr(tmpWeightV[nAcptMLMnow].second,"%1.3f")+" ";
+  }
+  
+  aLOG(Log::INFO)  <<coutPurple<<" - finished PDF optimization! - final minimization parameter: " <<coutRed
+                   <<utils->floatToStr(varIntgrBest,"%1.5e")<<coutPurple<<" , PDF weights: "<<weightMsg<<coutDef<<endl;
+  aLOG(Log::DEBUG) <<coutGreen<<" ----------------------------------------------------------------------------- "<<coutDef<<endl;
+
+  // cleanup
+  DELNULL(var_1); DELNULL(intgrZchain);
+  DELNULL(rnd);
+
+  // -----------------------------------------------------------------------------------------------------------
+  // loop over the original input trees to calculate the bias correction for the final pdf
+  // -----------------------------------------------------------------------------------------------------------
+  if(doBiasCorPDF) {
+    aLOG(Log::INFO) <<coutBlue<<" - will derive the bias correction for the pdf ... "<<coutDef<<endl;
+
+    if(seed > 0) { seed++; } rnd = new TRandom3(seed);
+    
+    breakLoop = false; var_0->clearCntr();
+    for(Long64_t loopEntry=0; true; loopEntry++) {
+      if(!var_0->getTreeEntry(loopEntry)) breakLoop = true;
+
+      if((var_0->GetCntr("nObj")+1 % nObjectsToWrite == 0) || breakLoop) { var_0->printCntr(aChainName,Log::DEBUG_1); }
+      if(breakLoop) break;
+      
+      var_0->IncCntr("nObj"); if(var_0->GetCntr("nObj") == maxNobj) breakLoop = true;
+
+      // get the target value and smear the reg-value of the best MLM
+      double zTrg = var_0->GetVarF(zTrgName);
+
+      // loop over all MLMs
+      for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) {
+        TString MLMname    = getTagName(nMLMnow);      if(mlmSkipPdf[MLMname]) continue;
+        TString MLMname_w  = getTagWeight(nMLMnow);
+        TString MLMname_eN = getTagError(nMLMnow,"N"); TString MLMname_eP = getTagError(nMLMnow,"P");
+
+        double  regNow    = var_0->GetVarF(MLMname);
+        double  errN      = var_0->GetVarF(MLMname_eN); if(errN      < EPS) continue;
+        double  errP      = var_0->GetVarF(MLMname_eP); if(errP      < EPS) continue;
+        double  weightNow = var_0->GetVarF(MLMname_w);  if(weightNow < EPS) continue;
+
+        // generate random smearing factors for this MLM
+        for(int nSmearRndNow=0; nSmearRndNow<nSmearsRnd; nSmearRndNow++) {
+          int    signNow    = (nSmearRndNow % 2 == 0) ? 1    : -1;
+          double errNow     = (nSmearRndNow % 2 == 0) ? errP : errN;
+          double sfNow      = signNow * fabs(rnd->Gaus(0,errNow));
+          double zReg       = regNow + sfNow;
+          double weightFull = weightsBest[nMLMnow] * weightNow;
+
+          hisPdfTryBiasCorV->Fill(zReg,zTrg,weightFull);
+        }
+      }
+    }
+    if(!breakLoop) { var_0->printCntr(aChainName,Log::DEBUG_1); }
+
+    DELNULL(rnd);
+  }
+  DELNULL(var_0);
+
+  // -----------------------------------------------------------------------------------------------------------
+  // store the results in the vector accosible by the outside world
+  // -----------------------------------------------------------------------------------------------------------
+  bestWeightsV.clear();                hisPdfBiasCorV.clear();
+  bestWeightsV.push_back(weightsBest); hisPdfBiasCorV.push_back(hisPdfTryBiasCorV);
+  
+  // -----------------------------------------------------------------------------------------------------------
+  // cleanup
+  // -----------------------------------------------------------------------------------------------------------
+  if(saveProfileHis) {
+    aLOG(Log::INFO) <<coutYellow<<" - closing file with profile histograms: "<<coutGreen<<rootSaveFile->GetName()<<coutDef<<endl;
+    rootSaveFile->Close();  DELNULL(rootSaveFile);
+  }
+
+  // cleanup the transient trees we created during optimization
+  if(!glob->GetOptB("keepOptimTrees_randReg")) {
+    utils->safeRM(intgrZfileName,inLOG(Log::DEBUG));
+  }
+
+  sigm68V.clear();    biasV.clear();       sigmToBiasV.clear();
+  weightV.clear();    mlmSkipPdf.clear();  updateIndexV.clear();
+  weightsNow.clear(); weightsPrev.clear(); weightsBest.clear();
+  excRange.clear();   intgrZ_valV.clear(); intgrZmlm_nEvtV.clear();
+  tmpWeightV.clear();
+
+  // -----------------------------------------------------------------------------------------------------------
+  // call the old-style pdf function is needed
+  // -----------------------------------------------------------------------------------------------------------
+  if(nPDFs > 1) {
+    getOldStyleRndMethodBestPDF(
+      aChain, bestANNZindex, zRegQnt_nANNZ, zRegQnt_bias,
+      zRegQnt_sigma68, zRegQnt_fracSig68, bestWeightsV, hisPdfBiasCorV
+    );
+  }
+
+  return;
+}
+
+
+// ===========================================================================================================
+/**
  * @brief                    - Generate PDF weighting schemes for randomized regression.
  * 
  * @details                  - Candidate PDFs are created by randomely generating weighting schemes, which represent different
@@ -755,11 +1585,14 @@ void  ANNZ::getBestANNZ( map < int,vector<int> >    & zRegQnt_nANNZ,   map < int
  * @param hisPdfBiasCorV     - Vector for bias correction histograms for pdfs.
  */
 // ===========================================================================================================
-void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int            bestANNZindex,     vector<int>    & zRegQnt_nANNZ, 
-                                vector<double>            & zRegQnt_bias, vector<double> & zRegQnt_sigma68, vector<double> & zRegQnt_fracSig68, 
-                                vector < vector<double> > & bestWeightsV, vector <TH2*>  & hisPdfBiasCorV) {
-// =========================================================================================================
-  aLOG(Log::INFO) <<coutWhiteOnBlack<<coutYellow<<" - starting ANNZ::getRndMethodBestPDF() ... "<<coutDef<<endl;
+void  ANNZ::getOldStyleRndMethodBestPDF(
+  TTree                     * aChain,          int            bestANNZindex,
+  vector<int>               & zRegQnt_nANNZ,   vector<double> & zRegQnt_bias,
+  vector<double>            & zRegQnt_sigma68, vector<double> & zRegQnt_fracSig68, 
+  vector < vector<double> > & bestWeightsV,    vector <TH2*>  & hisPdfBiasCorV
+) {
+// ===========================================================================================================
+  aLOG(Log::INFO) <<coutWhiteOnBlack<<coutYellow<<" - starting ANNZ::getOldStyleRndMethodBestPDF() ... "<<coutDef<<endl;
   VERIFY(LOCATION,(TString)"Memory leak ?! ",(dynamic_cast<TChain*>(aChain)));
 
   double  minValZ            = glob->GetOptF("minValZ");
@@ -905,8 +1738,9 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
   VERIFY(LOCATION,(TString)" - found only "+utils->intToStr(nAcptMLMs)+" accepted MLMs, but requested minAcptMLMsForPDFs = "
                           +utils->intToStr(minAcptMLMsForPDFs)+" ...",(nAcptMLMs >= minAcptMLMsForPDFs));
 
-  sort(sigm68V.begin(),sigm68V.end(),sortFunctors::pairIntDouble_descendSecond); // sort so that the smallest element is first
-  sort(biasV.begin(),  biasV.end(),  sortFunctors::pairIntDouble_descendSecond); // sort so that the smallest element is first
+  // sort so that the smallest element is first
+  sort(sigm68V.begin(),sigm68V.end(),sortFunc::pairID::lowToHighBy1);
+  sort(biasV.begin(),  biasV.end(),  sortFunc::pairID::lowToHighBy1);
 
 
   // -----------------------------------------------------------------------------------------------------------
@@ -1086,7 +1920,6 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
     }
 
     if(weightSum > 0) {
-
       // -----------------------------------------------------------------------------------------------------------
       // remove weights which are smaller than minPdfWeight after normalization
       // -----------------------------------------------------------------------------------------------------------
@@ -1119,7 +1952,8 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
         }
         // now remove the smallest weight before trying again...
         if((int)tmpV.size() > 0) {
-          sort(tmpV.begin(),tmpV.end(),sortFunctors::pairIntDouble_descendSecond); // sort so that the smallest element is first
+          // sort so that the smallest element is first
+          sort(tmpV.begin(),tmpV.end(),sortFunc::pairID::lowToHighBy1);
 
           int    nANNZ_min  = tmpV[0].first;
           double weight_min = tmpV[0].second;
@@ -1151,7 +1985,7 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
 
       // sort the vector used for plotting, and create a graph with the current weights
       // -----------------------------------------------------------------------------------------------------------
-      sort(weightsV.begin(),weightsV.end(),sortFunctors::double_ascend); // sort so that the largest element is first
+      sort(weightsV.begin(),weightsV.end(),sortFunc::highToLowD);
 
       vector <double> graph_X, graph_Y, graph_Xerr, graph_Yerr;
 
@@ -1459,7 +2293,8 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
     fitParMap.clear();
   }
 
-  sort(fitMetric_nPDF.begin(),fitMetric_nPDF.end(),sortFunctors::pairIntDouble_descendSecond); // sort so that the smallest element is first
+  // sort so that the smallest element is first
+  sort(fitMetric_nPDF.begin(),fitMetric_nPDF.end(),sortFunc::pairID::lowToHighBy1);
 
   vector < TH1* > hisIntgrZregFirstFewV, hisVtmp;
   hisVtmp = hisIntgrZregV; hisIntgrZregV.clear();
@@ -1534,7 +2369,8 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
     DELNULL(fitOpts);
   }
 
-  sort(fitMetric_nPDF.begin(),fitMetric_nPDF.end(),sortFunctors::pairIntDouble_descendSecond); // sort so that the smallest element is first
+  // sort so that the smallest element is first
+  sort(fitMetric_nPDF.begin(),fitMetric_nPDF.end(),sortFunc::pairID::lowToHighBy1);
   
   hisVtmp.clear(); hisVtmp = hisIntgrZtrgV;
   hisIntgrZtrgV.clear();
@@ -1731,9 +2567,14 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
   // -----------------------------------------------------------------------------------------------------------
   // store the results in the vector accosible by the outside world
   // -----------------------------------------------------------------------------------------------------------
-  bestWeightsV.clear(); hisPdfBiasCorV.clear();
-  if(nPDFs > 0) { bestWeightsV.push_back(bestWeightsV_Ztrg); hisPdfBiasCorV.push_back(hisPdfBiasV_Ztrg); } // combination of models -> PDF_0
-  if(nPDFs > 1) { bestWeightsV.push_back(bestWeightsV_Zreg); hisPdfBiasCorV.push_back(hisPdfBiasV_Zreg); } // constant fit          -> PDF_1
+  VERIFY(LOCATION,(TString)" - mismatch in ordering of PDFs ... Something is horribly wrong ?!?! ",(bestWeightsV.size() == 1 && hisPdfBiasCorV.size() == 1));
+  
+  // combination of models -> PDF_0
+  bestWeightsV.push_back(bestWeightsV_Ztrg); hisPdfBiasCorV.push_back(hisPdfBiasV_Ztrg);
+  // constant fit -> PDF_1
+  if(nPDFs > 2) {
+    bestWeightsV.push_back(bestWeightsV_Zreg); hisPdfBiasCorV.push_back(hisPdfBiasV_Zreg);
+  }
 
   // -----------------------------------------------------------------------------------------------------------
   // cleanup
@@ -1760,7 +2601,6 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
   }
   hisPdfTryBiasCorV.clear();
 
-  // aLOG(Log::INFO) <<coutWhiteOnBlack<<coutCyan<<" - ending   getRndMethodBestPDF(). "<<coutDef<<endl;
   return;
 }
 
@@ -1784,8 +2624,10 @@ void  ANNZ::getRndMethodBestPDF(TTree                     * aChain,       int   
  * @param nClsBinsIn  - Will hold the number of derived weights
  */
 // ===========================================================================================================
-void ANNZ::setBinClsPdfBinWeights(vector < vector < pair<int,double> > > & pdfBinWgt, vector <int> & nClsBinsIn) {
-// ===============================================================================================================
+void ANNZ::setBinClsPdfBinWeights(
+  vector < vector < pair<int,double> > > & pdfBinWgt, vector <int> & nClsBinsIn
+) {
+// ===========================================================================================================
 
   int nPDFbins = glob->GetOptI("nPDFbins");
   int nClsBins = (int)zBinCls_binC.size();
@@ -1835,7 +2677,7 @@ void ANNZ::setBinClsPdfBinWeights(vector < vector < pair<int,double> > > & pdfBi
  */
 // ===========================================================================================================
 void  ANNZ::getBinClsBiasCorPDF(TChain * aChain, vector <TH2*>  & hisPdfBiasCorV) {
-// ================================================================================
+// ===========================================================================================================
   aLOG(Log::INFO) <<coutWhiteOnBlack<<coutPurple<<" - starting ANNZ::getBinClsBiasCorPDF() ... "<<coutDef<<endl;
 
   int     maxNobj         = glob->GetOptI("maxNobj");
@@ -1927,16 +2769,16 @@ void  ANNZ::getBinClsBiasCorPDF(TChain * aChain, vector <TH2*>  & hisPdfBiasCorV
 
 // ===========================================================================================================
 /**
- * @brief                 - Create performance plots for regression.
+ * @brief                  - Create performance plots for regression.
  *
- * @param aChain          - Input chain, the result of doEvalReg().
- * @param addPlotVarV     - Possible vector of MLM or variable names, which will be added to the list of solutions
- *                        for which plots are generated.
- * @param addOutputVarsIn - additional variables to be plotted.
+ * @param aChain           - Input chain, the result of doEvalReg().
+ * @param addPlotVarV      - Possible vector of MLM or variable names, which will be added to the list of solutions
+ *                         for which plots are generated.
+ * @param addOutputVarsIn  - additional variables that would get plots
  */
 // ===========================================================================================================
 void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV, TString addOutputVarsIn) {
-// ==================================================================================================
+// ===========================================================================================================
   if(!glob->GetOptB("doPlots")) {
     aLOG(Log::DEBUG) <<coutWhiteOnBlack<<coutPurple<<" - skipping ANNZ::doMetricPlots() ... "<<coutDef<<endl;
     return;
@@ -1975,9 +2817,12 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV, TStri
   bool    addMaxPDF           = glob->GetOptB("addMaxPDF");
   bool    doStorePdfBins      = glob->GetOptB("doStorePdfBins");
   bool    doKnnErrPlots       = glob->GetOptB("doKnnErrPlots");
+  int     closHisN            = glob->GetOptI("closHisN");
+  int     hisBufSize          = glob->GetOptI("hisBufSize");
 
   bool    plotWithSclBias     = glob->GetOptB("plotWithScaledBias");
   TString biasTitle           = plotWithSclBias ? (TString)"#delta/(1+"+glob->GetOptC("zTrgTitle")+")" : (TString)"#delta";
+  int     errTrgHisN          = 40;
 
   if(!doStorePdfBins) {
     aLOG(Log::INFO) <<coutRed<<" - Found \"doStorePdfBins\" = true ---> Will skip ANNZ::doMetricPlots()"<<coutDef
@@ -2012,9 +2857,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV, TStri
   TString userWgtFrm("userWgtFrm"); // some internal unique name
 
   TString hisName("");
-  int     nBinsZ((int)zPlot_binC.size()), maxSigmaRelErrToPlot(10);
-  int     closHisN(glob->GetOptI("closHisN")), nDrawBins_zTrg(glob->GetOptI("nDrawBins_zTrg"));
-  int     hisBufSize(glob->GetOptI("hisBufSize")), errTrgHisN(40);
+  int     nBinsZ((int)zPlot_binC.size()), nBinsZtrg((int)zTrgPlot_binC.size()), maxSigmaRelErrToPlot(10);
 
   // single-estimator
   // -----------------------------------------------------------------------------------------------------------
@@ -2100,6 +2943,10 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV, TStri
       }
     }
   }
+  // sort so that the smallest element is first
+  sort(nMLMsChain.begin(),nMLMsChain.end(),sortFunc::lowToHighI);
+  sort(nPDFsChain.begin(),nPDFsChain.end(),sortFunc::lowToHighI);
+
 
   // -----------------------------------------------------------------------------------------------------------
   // store the list of all MLMs, average PDF solutions and PDF bins, together with corresponding errors,
@@ -2298,7 +3145,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV, TStri
       TString drawExprs = (TString)plotVars[nTypeBinNow]+">>"+hisName;
 
       bool useQuantileBins = (find(noQuantileBinsV.begin(),noQuantileBinsV.end(), plotVars[nTypeBinNow]) == noQuantileBinsV.end());
-      int nEvtPass         = utils->drawTree(aChain,drawExprs,treeCuts);
+      int  nEvtPass        = utils->drawTree(aChain,drawExprs,treeCuts);
 
       double minVal(1), maxVal(-1);
       if(nEvtPass > 0) {
@@ -2483,13 +3330,13 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV, TStri
 
         if(nTypeBinNow < 2) {
           hisName = (TString)"regTrgZ_"+typeName+typeBinZ;
-          his_regTrgZ[typeName][nTypeBinNow] = new TH1F(hisName,hisName,nDrawBins_zTrg,minValZ,maxValZ);
+          his_regTrgZ[typeName][nTypeBinNow] = new TH1F(hisName,hisName,nBinsZtrg,&(zTrgPlot_binE[0]));
           his_regTrgZ[typeName][nTypeBinNow]->SetTitle(hisTitle);
         }
       }
 
       hisName = (TString)"corRegTrgZ_"+typeName;
-      his_corRegTrgZ[typeName] = new TH2F(hisName,hisName,nDrawBins_zTrg,minValZ,maxValZ,nDrawBins_zTrg,minValZ,maxValZ);
+      his_corRegTrgZ[typeName] = new TH2F(hisName,hisName,nBinsZtrg,&(zTrgPlot_binE[0]),nBinsZtrg,&(zTrgPlot_binE[0]));
       his_corRegTrgZ[typeName]->SetTitle(hisTitle);
       his_corRegTrgZ[typeName]->GetXaxis()->SetTitle(zTrgTitle);
       his_corRegTrgZ[typeName]->GetYaxis()->SetTitle(zRegTitle);
@@ -2523,8 +3370,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV, TStri
       double  zRegE    = var->GetVarF(nameV_MLM_e[nMLMinNow]);
       double  zRegW    = var->GetVarF(nameV_MLM_w[nMLMinNow]) * usrWgt;  if(zRegW < EPS) continue;
 
-      // if(zRegV < minValZ || zRegV > maxValZ) continue;
-      zRegV = min(max(zRegV,minValZ),maxValZ);
+      // zRegV = min(max(zRegV,minValZ),maxValZ);
 
       his_regTrgZ   [typeName][0]->Fill(zTrg,      zRegW);
       his_regTrgZ   [typeName][1]->Fill(zRegV,     zRegW);
@@ -3086,8 +3932,7 @@ void  ANNZ::doMetricPlots(TChain * aChain, vector <TString> * addPlotVarV, TStri
         }
 
         TH1 * his1(NULL);
-        double  binW       = (maxValZ-minValZ)/double(nDrawBins_zTrg);
-        TString yAxisTitle = TString::Format("Entries/%1.2g",binW);
+        TString yAxisTitle("Entries/bin");
 
         if((int)hisRegTrgV.size() == 0) {
           his1 = (TH1F*)his_regTrgZ[typeName][0]->Clone((TString)his_regTrgZ[typeName][0]->GetName()+"_cln_"+nDrawNowStr);

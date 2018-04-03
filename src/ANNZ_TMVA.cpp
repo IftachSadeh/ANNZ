@@ -26,7 +26,7 @@
  */
 // ===========================================================================================================
 void ANNZ::prepFactory(int nMLMnow, TMVA::Configurable * configIn, bool isBiasMLM) {
-// =================================================================================
+// ===========================================================================================================
   VERIFY(LOCATION,(TString)"Memory leak ?! ",(dynamic_cast<TMVA::Configurable*>(configIn)));
 
   #if ROOT_TMVA_V0
@@ -82,7 +82,7 @@ void ANNZ::prepFactory(int nMLMnow, TMVA::Configurable * configIn, bool isBiasML
  */
 // ===========================================================================================================
 void ANNZ::doFactoryTrain(TMVA::Factory * factory) {
-// =================================================
+// ===========================================================================================================
   aLOG(Log::INFO) <<coutWhiteOnBlack<<coutPurple<<" - starting ANNZ::doFactoryTrain() - "<<coutYellow<<"This may take a while ..."<<coutDef<<endl;
 
   VERIFY(LOCATION,(TString)"Memory leak ?! ",(dynamic_cast<TMVA::Factory*>(factory)));
@@ -90,12 +90,12 @@ void ANNZ::doFactoryTrain(TMVA::Factory * factory) {
   // Train MVAs using the set of training events
   factory->TrainAllMethods();
 
-  // if(glob->GetOptB("testAndEvalTrainMethods")) {
-  //   // Evaluate all MVAs using the set of test events
-  //   cout <<coutRed<<"Begin factory->TestAllMethods() ... "    <<coutDef<<endl;  factory->TestAllMethods();
-  //   // Evaluate and compare performance of all configured MVAs
-  //   cout <<coutRed<<"Begin factory->EvaluateAllMethods() ... "<<coutDef<<endl;  factory->EvaluateAllMethods();    
-  // }
+  if(glob->GetOptB("testAndEvalTrainMethods")) {
+    // Evaluate all MVAs using the set of test events
+    cout <<coutRed<<" - begin factory->TestAllMethods() ... "    <<coutDef<<endl;  factory->TestAllMethods();
+    // Evaluate and compare performance of all configured MVAs
+    cout <<coutRed<<" - begin factory->EvaluateAllMethods() ... "<<coutDef<<endl;  factory->EvaluateAllMethods();    
+  }
 
   return;
 }
@@ -107,7 +107,7 @@ void ANNZ::doFactoryTrain(TMVA::Factory * factory) {
  */
 // ===========================================================================================================
 void ANNZ::clearReaders(Log::LOGtypes logLevel) {
-// ==============================================
+// ===========================================================================================================
   aLOG(logLevel) <<coutWhiteOnBlack<<coutCyan<<" - starting ANNZ::clearReaders() ..."<<coutDef<<endl;
 
   for(int nMLMnow=0; nMLMnow<(int)regReaders.size(); nMLMnow++) {
@@ -143,7 +143,7 @@ void ANNZ::clearReaders(Log::LOGtypes logLevel) {
  */
 // ===========================================================================================================
 void ANNZ::loadReaders(map <TString,bool> & mlmSkipNow, bool needMcPRB) {
-// ======================================================================
+// ===========================================================================================================
   aLOG(Log::INFO) <<coutWhiteOnBlack<<coutYellow<<" - starting ANNZ::loadReaders() ... "<<coutDef<<endl;
   
   int  nMLMs             = glob->GetOptI("nMLMs");
@@ -318,7 +318,7 @@ void ANNZ::loadReaders(map <TString,bool> & mlmSkipNow, bool needMcPRB) {
  */
 // ===========================================================================================================
 double ANNZ::getReader(VarMaps * var, ANNZ_readType readType, bool forceUpdate, int nMLMnow) {
-// ===========================================================================================
+// ===========================================================================================================
   VERIFY(LOCATION,(TString)"Memory leak ?! ",(dynamic_cast<VarMaps*>(var)));
   VERIFY(LOCATION,(TString)"Memory leak for regReaders[nMLMnow = "+utils->intToStr(nMLMnow)+"] ?! ",(dynamic_cast<TMVA::Reader*>(regReaders[nMLMnow])));
   VERIFY(LOCATION,(TString)"unknown readType (\""+utils->intToStr((int)readType)+"\") ...",(nMLMnow < glob->GetOptI("nMLMs")));
@@ -367,7 +367,7 @@ double ANNZ::getReader(VarMaps * var, ANNZ_readType readType, bool forceUpdate, 
  */
 // ===========================================================================================================
 void  ANNZ::setupTypesTMVA() {
-// ===========================
+// ===========================================================================================================
   TString           nameNow("");
   TMVA::Types::EMVA typeNow(TMVA::Types::kVariable);
   
@@ -411,7 +411,7 @@ void  ANNZ::setupTypesTMVA() {
  */
 // ===========================================================================================================
 TMVA::Types::EMVA  ANNZ::getTypeMLMbyName(TString typeName) {
-// ==========================================================
+// ===========================================================================================================
   bool isRealType = (nameToTypeMLM.find(typeName) != nameToTypeMLM .end());
   if(isRealType) return nameToTypeMLM[typeName];
 
@@ -432,7 +432,7 @@ TMVA::Types::EMVA  ANNZ::getTypeMLMbyName(TString typeName) {
  */
 // ===========================================================================================================
 bool ANNZ::verifyXML(TString outXmlFileName) {
-// ===========================================
+// ===========================================================================================================
   bool          isGoodXML  = false;
   std::ifstream * testFile = new std::ifstream(outXmlFileName);
 

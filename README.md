@@ -1,9 +1,9 @@
-# ANNZ v2.2.2
+# ANNZ v2.3.0
 
 ## Introduction
 ANNZ uses both regression and classification techniques for estimation of single-value photo-z (or any regression problem) solutions and PDFs. In addition it is suitable for classification problems, such as star/galaxy classification.
 
-ANZZ uses the [TMVA package](http://tmva.sourceforge.net/) which is based on [ROOT](https://root.cern.ch/). The current version is a completely new implementation of the original ANNZ package.
+ANNZ uses the [TMVA package](http://tmva.sourceforge.net/) which is based on [ROOT](https://root.cern.ch/). The current version is a completely new implementation of the original ANNZ package.
 
 The different configurations for regression problems (such as photometric redshift estimation) are referred to as *single regression*, *randomized regression* and *binned classification*. In addition, it is possible to run ANNZ in *single classification* and *randomized classification* modes, used for general classification problems.
 
@@ -25,7 +25,7 @@ While any of the MLMs available through TMVA may be used, ANN/BDT generally achi
 #### Randomized regression
 An ensemble of regression methods is automatically generated. The randomized MLMs differ from each other in several ways. This includes setting unique random seed initializations, as well as changing the configuration parameters of a given algorithm (e.g., number of hidden layers in an ANN), or the set of input parameters used for the training.
 
-Once training is complete, optimization takes place. In this stage, a distribution of photo-z solutions for each galaxy is derived.  A selection procedure is then applied to the ensemble of answers, choosing the subset of methods which achieve optimal performance. The selected MLMs are then folded with their respective uncertainty estimates, which are derived using a KNN-uncertainty estimator (see [Oyaizu et al, 2007](http://arxiv.org/abs/0711.0962)). A set of PDF candidates is generated, where each candidate is constructed by a different set of relative weights associated with the various MLM components. Two  selection schemes which optimize the performance of the PDF candidates are currently implemented in ANNZ. In this way, the PDFs which best describe the target of the regression are chosen, resulting in two alternative PDF solutions.
+Once training is complete, optimization takes place. In this stage, a distribution of photo-z solutions for each galaxy is derived.  A selection procedure is then applied to the ensemble of answers, choosing the subset of methods which achieve optimal performance. The selected MLMs are then folded with their respective uncertainty estimates, which are derived using a KNN-uncertainty estimator (see [Oyaizu et al, 2007](http://arxiv.org/abs/0711.0962)). A set of PDF candidates is generated, where each candidate is constructed by a different set of relative weights associated with the various MLM components.
 
 The final products are the *best* solution out of all the randomized MLMs, the full binned PDF(s) and the weighted and un-weighted average of the PDF(s), each also having a corresponding uncertainty estimator. (More details below.)
 
@@ -144,7 +144,7 @@ python scripts/annz_singleReg_quick.py --singleRegression --evaluate
   python scripts/annz_rndReg_quick.py --randomRegression --train
   ```
 
-  3. **optimize**: Using all trained MLMs, rank the different solutions by their performance metrics (bias, scatter and outlier-fractions); generate up to two types of PDF solutions using the distribution of MLM solutions, convoluted with the corresponding error estimates. Performance plots are also created.
+  3. **optimize**: Using all trained MLMs, rank the different solutions by their performance metrics (bias, scatter and outlier-fractions); generate PDF solutions using the distribution of MLM solutions, convoluted with the corresponding error estimates. Performance plots are also created.
   ```bash
   python scripts/annz_rndReg_quick.py --randomRegression --optimize
   ```
@@ -429,16 +429,20 @@ It is advisable to run ANNZ on a batch farm, especially during the training phas
 
 ### Python pipeline integration
 
-- Nominally, the input data to ANNZ is ingested from a source file (e.g., an ascii or ROOT file). For evaluation, there is also the option to call ANNZ on an object-by-object basis, directly from python. This can be done using a wrapper class defined in `py/ANNZ.py`.
-Schematically, the steps to use the wrapper are as follows:
-  1. Setup the wrapper class with some user options (the same as would be used during nominal evaluation), with a dedicated list of input parameters, defined in `inVars` (same syntax as for the `inAsciiVars` parameter):
+- Nominally, the input data to ANNZ are ingested from a source file (an ascii or ROOT file). For evaluation, there is also the option to call ANNZ on an object-by-object basis, directly from python. This can be done using a wrapper class defined in `py/ANNZ.py`.
+
+- A full example is given in `scripts/annz_evalWrapper.py`. Schematically, the steps to use the wrapper are as follows:
+  
+  1. Setup the wrapper class with some user options (the same as would be used during nominal evaluation). Add a dedicated list of input parameters, defined in `inVars` (using the same syntax as for the `inAsciiVars` parameter):
   ```python
+  from py.ANNZ import ANNZ
   opts = dict()
   opts['doRegression'] = True
   opts["inVars"] = "F:MAG_U;F:MAGERR_U;F:MAG_G;F:MAGERR_G;F:MAG_R;F:MAGERR_R;F:MAG_I;F:MAGERR_I;F:MAG_Z;F:MAGERR_Z"
   ...
   annz = ANNZ(opts)
   ```
+  
   2. Call the evaluation function of the wrapper, providing values for the predefined set of inputs:
   ```python
   input = {
@@ -447,21 +451,20 @@ Schematically, the steps to use the wrapper are as follows:
   output = annz.eval(input)
   ```
   where `output` is a dict containing the evaluation results.
+
   3. Call the cleanup function of the wrapper once done (for a graceful release of resources):
   ```python
   annz.cleanup()
   ```
 
-  A full example is given in `scripts/annz_evalWrapper.py`.
-
-- Step 1. may take a bit of time, as MLM estimators and ROOT trees are being loaded on the `C++` side; it should be done once at startup. Step 2. is quick and may be called with little overhead. It can e.g., be integrated as part of a python loop. The wrapper object should remain valid throughout the life cycle of the pipeline, in order to keep the `C++` resources booked.
-- `py/ANNZ.py` is implemented with a thread lock, which allows multiple instances to be run concurrently (e.g., for different estimators with different inputs).
+- Step 1. (initialize) may take a bit of time, as MLM estimators and ROOT trees are being loaded on the `C++` side; it should be done once at startup. Step 2. (evaluate) is quick and may be called with little overhead. It can e.g., be integrated as part of a python loop. The wrapper object should remain valid throughout the life cycle of the pipeline, in order to keep the `C++` resources booked.
+- `py/ANNZ.py` is implemented with a thread lock, which allows multiple instances to be run concurrently (e.g., for different types of estimators or for different inputs).
 
 ## The outputs of ANNZ
 
 ### Randomized regression
 
-Two PDFs may be generated, derived by choosing a weighting for the trained MLMs, which is *most compatible* with the target value of the regression, `zTrg`. This is determined in two ways (generating two alternative PDFs), using cumulative PDF distributions; for the first PDF (`PDF_0` in the output), the cumulative distribution is based on the *truth* (`zTrg`). For the second PDF (`PDF_1` in the output), the cumulative distribution is based on the *best* MLM. For the former, a set of templates, derived from `zTrg` is used to fit the dataset. For the later, a flat distribution of the cumulator serves as the baseline. (The PDF derivation procedure is described in the paper in greater detail.)
+A PDF may be generated, derived by choosing a weighting for the trained MLMs, which is *most compatible* with the target value of the regression, `zTrg`. This is determined using cumulative PDF distributions. Nominally, the cumulative distribution is based on the *truth* (`zTrg`); it is derived using a simple random walk alg, and is denoted as `PDF_0` in the output. Prior to `ANNZ v2.2.2`, two other derivations of PDFs were used, the first also based on `zTrg`, and the second on the *best* MLM. The two deprecated PDFs are not guaranteed to be supported in the future; they may currently still be generated, by setting `glob.annz["addOldStylePDFs"] = True` and `glob.annz["nPDFs"] = 2` or `3`. They are respectively denoted as `PDF_1` and `PDF_2` in the output. (The metric for deriving the various PDFs is described in the paper in greater detail.)
 
 We define the following name-tags:
 
@@ -586,7 +589,7 @@ A few notes:
 
   - For instance, lets assume that `userWeights_train`, `userWeights_valid`, `userCuts_train` and `userCuts_valid` are not set, while `useWgtKNN = True`. In this case, the weight variables (i.e., `ANNZ_best_wgt`) would correspond exactly to the reference dataset correction factors, which are stored e.g., in `output/test_randReg_advanced/rootIn/ANNZ_KNN_wANNZ_tree_valid_0000.csv`. This naturally only holds for the training/validation dataset. For a general evaluation sample, weight variables such as `ANNZ_best_wgt` would be derived by `userWeights_train`, `userWeights_valid`, `userCuts_train` and `userCuts_valid` alone.
 
-  - The estimator weights have nothing to do with the PDF-weights discussed above. The object weights represent per-object numbers which are derived from the overall properties of an object - they can even depend on variables which are not part of the training. For instance, in the examples, one may limit the impact on training, of objects with high uncertainty on the I-band magnitude:
+  - The estimator weights have nothing to do with the PDF-weights discussed above. The object weights represent per-object numbers which are derived from the overall properties of an object - they can even depend on variables which are not part of the training. For instance, in the examples, one may limit the impact on training of objects with high uncertainty on the I-band magnitude:
   ```python
   glob.annz["userWeights_train"] = "(MAGERR_I > 1)/MAGERR_I + (MAGERR_I =< 1)*1"
   ```
@@ -674,7 +677,11 @@ A few notes:
       ```python
       glob.annz["minPdfWeight"] = 0.05
       ```
-    will insure that each MLM will have at least 5% relative significance in the PDF. That is, in this case, no more than 20 MLMs will be used for the PDF.
+    will insure that each MLM will have at least 5% relative significance in the PDF. That is, in this case, no more than 20 MLMs will be used for the PDF. (This option is only used for the two deprecated PDFs, and my be removed in the future.)
+
+    - **`max_optimObj_PDF` -** may be used to limit the number of objects from the training sample to use as part of the random walk alg for deriving `PDF_0`. This should only be set if the optimization stage takes too long to run.
+
+    - **`nOptimLoops` -** may be used to change the maximal number of steps taken by the random walk alg deriving `PDF_0`. Note that the random walk alg will likely end before `nOptimLoops` steps in any case; this will happen after a pre-set number of steps, during which the solution does not improve.
 
   - **`doMultiCls`:** Using the *MultiClass* option of binned classification, multiple background samples can be trained simultaneously against the signal. This means that each classification bin acts as an independent sample during the training. The MultiClass option is only compatible with four MLM algorithms: `BDT`, `ANN`, `FDA` and `PDEFoam`. For `BDT`, only the gradient boosted decision trees are available. That is, one may set `:BoostType=Grad`, but not `:BoostType=Bagging` or `:BoostType=AdaBoost`, as part of the `userMLMopts` option.
 

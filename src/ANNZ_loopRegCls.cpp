@@ -22,7 +22,7 @@
  */
 // ===========================================================================================================
 void ANNZ::Eval() {
-// ================
+// ===========================================================================================================
   aLOG(Log::INFO) <<coutWhiteOnBlack<<coutCyan<<" - starting ANNZ::Eval() ... "<<coutDef<<endl;
 
   // -----------------------------------------------------------------------------------------------------------
@@ -94,7 +94,7 @@ void ANNZ::Eval() {
  */
 // ===========================================================================================================
 void ANNZ::Optim() {
-// =================
+// ===========================================================================================================
   aLOG(Log::INFO) <<coutWhiteOnBlack<<coutBlue<<" - starting ANNZ::Optim() ... "<<coutDef<<endl;
   
   // make sure all MLMs have postTrain trees and combine all these to a single postTrain tree
@@ -126,7 +126,7 @@ void ANNZ::Optim() {
  */
 // ===========================================================================================================
 void  ANNZ::makeTreeRegClsAllMLM() {
-// =================================
+//===========================================================================================================
   aLOG(Log::INFO) <<coutWhiteOnBlack<<coutYellow<<" - starting ANNZ::makeTreeRegClsAllMLM() ... "<<coutDef<<endl;
 
   vector <TString>  optNames;
@@ -488,7 +488,7 @@ void  ANNZ::makeTreeRegClsAllMLM() {
  */
 // ===========================================================================================================
 void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
-// ============================================
+// ===========================================================================================================
   aLOG(Log::INFO) <<coutWhiteOnBlack<<coutPurple<<" - starting ANNZ::makeTreeRegClsOneMLM() - "
                   <<"will create postTrain trees for "<<coutGreen<<getTagName(nMLMnow)<<coutPurple<<" ... "<<coutDef<<endl;
   
@@ -859,7 +859,7 @@ void  ANNZ::makeTreeRegClsOneMLM(int nMLMnow) {
  */
 // ===========================================================================================================
 double ANNZ::getSeparation(TH1 * hisSig, TH1 * hisBck) {
-// =====================================================
+// ===========================================================================================================
   VERIFY(LOCATION,(TString)"Memory leak ?! ",(dynamic_cast<TH1*>(hisSig) && dynamic_cast<TH1*>(hisBck)));
 
   int     width(15);
@@ -933,7 +933,7 @@ double ANNZ::getSeparation(TH1 * hisSig, TH1 * hisBck) {
  */
 // ===========================================================================================================
 void ANNZ::deriveHisClsPrb(int nMLMnow) {
-// ======================================
+// ===========================================================================================================
   aLOG(Log::DEBUG) <<coutWhiteOnBlack<<coutGreen<<" - starting ANNZ::deriveHisClsPrb("<<coutPurple<<getTagName(nMLMnow)
                    <<coutGreen<<") - will create cls->prb histogram ... "<<coutDef<<endl;
 
@@ -1145,10 +1145,13 @@ void ANNZ::deriveHisClsPrb(int nMLMnow) {
  * @return                      - The newly-created merged chain.
  */
 // ===========================================================================================================
-TChain * ANNZ::mergeTreeFriends(TChain * aChain, TChain * aChainFriend, vector<TString> * chainFriendFileNameV,
-                                vector <TString> * acceptV, vector <TString> * rejectV, TCut aCut,
-                                vector< pair<TString,TString> > * addFormV) {
-// ==========================================================================
+TChain * ANNZ::mergeTreeFriends(
+  TChain                          * aChain,               TChain * aChainFriend,
+  vector <TString>                * chainFriendFileNameV, vector <TString> * acceptV,
+  vector <TString>                * rejectV,              TCut aCut, 
+  vector< pair<TString,TString> > * addFormV
+) {
+// ===========================================================================================================
   aLOG(Log::INFO) <<coutWhiteOnBlack<<coutCyan<<" - starting ANNZ::mergeTreeFriends() ... "<<coutDef<<endl;
 
   VERIFY(LOCATION,(TString)"Memory leak ?! ",(dynamic_cast<TChain*>(aChain)));
@@ -1270,7 +1273,7 @@ TChain * ANNZ::mergeTreeFriends(TChain * aChain, TChain * aChainFriend, vector<T
  */
 // ===========================================================================================================
 void  ANNZ::verifyIndicesMLM(TChain * aChain) {
-// ============================================
+// ===========================================================================================================
   VERIFY(LOCATION,(TString)"Memory leak ?! ",(dynamic_cast<TChain*>(aChain)));
   VERIFY(LOCATION,(TString)"Memory leak ?! ",(dynamic_cast<TFile*>(aChain->GetFile())));
   aLOG(Log::INFO) <<coutWhiteOnBlack<<coutYellow<<" - starting ANNZ::verifyIndicesMLM("<<coutGreen<<aChain->GetName()<<coutYellow<<" , "

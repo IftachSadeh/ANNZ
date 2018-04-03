@@ -22,7 +22,7 @@
  */
 // ===========================================================================================================
 void ANNZ::KnnErr() {
-// ==================
+// ===========================================================================================================
   aLOG(Log::INFO) <<coutWhiteOnBlack<<coutGreen<<" - starting ANNZ::KnnErr() ... "<<coutDef<<endl;
 
   // some sanity checks
@@ -41,7 +41,7 @@ void ANNZ::KnnErr() {
  */
 // ===========================================================================================================
 void ANNZ::onlyKnnErr_createTreeErrKNN() {
-// =======================================
+// ===========================================================================================================
     aLOG(Log::INFO) <<coutWhiteOnBlack<<coutGreen<<" - starting ANNZ::onlyKnnErr_createTreeErrKNN() ... "<<coutDef<<endl;
 
     int     nMLMnow    = glob->GetOptI("nMLMnow");
@@ -122,7 +122,7 @@ void ANNZ::onlyKnnErr_createTreeErrKNN() {
  */
 // ===========================================================================================================
 void ANNZ::onlyKnnErr_eval() {
-// ===========================
+// ===========================================================================================================
   aLOG(Log::INFO) <<coutWhiteOnBlack<<coutGreen<<" - starting ANNZ::onlyKnnErr_eval() ... "<<coutDef<<endl;
 
   int     nMLMs          = glob->GetOptI("nMLMs");

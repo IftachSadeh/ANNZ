@@ -31,12 +31,14 @@
 // ===========================================================================================================
 ANNZ::ANNZ(TString aName, Utils * aUtils, OptMaps * aMaps, OutMngr * anOutMngr)
      :BaseClass(   aName,         aUtils,           aMaps,       anOutMngr) {
-// ==========================================================================
+// ===========================================================================================================
   Init();
   return;
 }
+
+// ===========================================================================================================
 ANNZ::~ANNZ() {
-// ============
+// ===========================================================================================================
   aLOG(Log::DEBUG) <<coutBlue<<" - starting ANNZ::~ANNZ() ... "<<coutDef<<endl;
 
   mlmTagName.clear();   mlmTagErr.clear();        mlmTagWeight.clear();   mlmTagClsVal.clear();
@@ -47,7 +49,7 @@ ANNZ::~ANNZ() {
   zClos_binE.clear();   zClos_binC.clear();       zBinCls_binE.clear();   zBinCls_binC.clear();
   typeMLM.clear();      allANNZtypes.clear();     typeToNameMLM.clear();  nameToTypeMLM.clear();
   bestMLMname.clear();  anlysTypes.clear();       readerInptV.clear();    readerBiasInptV.clear();
-  mlmBaseTag.clear();   hasBiasCorMLMinp.clear();
+  mlmBaseTag.clear();   hasBiasCorMLMinp.clear(); zTrgPlot_binE.clear();  zTrgPlot_binC.clear();
 
   for(int nMLMnow=0; nMLMnow<(int)inVarsScaleFunc.size(); nMLMnow++) {
     for(int nVarNow=0; nVarNow<(int)inVarsScaleFunc[nMLMnow].size(); nVarNow++) DELNULL(inVarsScaleFunc[nMLMnow][nVarNow]);
@@ -70,7 +72,7 @@ ANNZ::~ANNZ() {
 // ===========================================================================================================
 RegEval::RegEval(TString aName, Utils * aUtils, OptMaps * aMaps, OutMngr * anOutMngr)
         :BaseClass(      aName,         aUtils,           aMaps,       anOutMngr) {
-// ================================================================================
+// ===========================================================================================================
   
   outDirName = "";   inTreeName = "";   inFileName = "";
   loopChain  = NULL; inChain    = NULL; selctVarV  = NULL; varKNN = NULL;
@@ -82,6 +84,8 @@ RegEval::RegEval(TString aName, Utils * aUtils, OptMaps * aMaps, OutMngr * anOut
   
   return;
 }
+
+// ===========================================================================================================
 RegEval::~RegEval() {
 // ==================
   aLOG(Log::DEBUG) <<coutBlue<<" - starting RegEval::~RegEval() ... "<<coutDef<<endl;

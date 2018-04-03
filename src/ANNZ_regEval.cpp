@@ -31,7 +31,7 @@
  */
 // ===========================================================================================================
 void ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * selctVarV) {
-// =======================================================================================
+// ===========================================================================================================
   aLOG(Log::INFO) <<coutPurple<<" - starting ANNZ::doEvalReg() ... "<<coutDef<<endl;
 
   aRegEval = new RegEval("aRegEval",utils,glob,outputs);
@@ -54,7 +54,7 @@ void ANNZ::doEvalReg(TChain * inChain, TString outDirName, vector <TString> * se
  */
 // ===========================================================================================================
 void ANNZ::evalRegSetup() {
-// ========================
+// ===========================================================================================================
   aLOG(Log::DEBUG_1) <<coutWhiteOnBlack<<coutPurple<<" - starting ANNZ::evalRegSetup() ... "<<coutDef<<endl;
 
   TString MLMsToStore    = glob->GetOptC("MLMsToStore");
@@ -359,7 +359,7 @@ void ANNZ::evalRegSetup() {
  */
 // ===========================================================================================================
 void ANNZ::evalRegLoop() {
-// =======================
+// ===========================================================================================================
   aLOG(Log::DEBUG_1) <<coutWhiteOnBlack<<coutPurple<<" - starting ANNZ::evalRegLoop() ... "<<coutDef<<endl;
 
   TString outDirNameFull   = glob->GetOptC("outDirNameFull");
@@ -374,8 +374,6 @@ void ANNZ::evalRegLoop() {
   int     nPDFs            = glob->GetOptI("nPDFs");
   int     nPDFbins         = glob->GetOptI("nPDFbins");
   bool    doStoreToAscii   = glob->GetOptB("doStoreToAscii");
-  double  minValZ          = glob->GetOptF("minValZ");
-  double  maxValZ          = glob->GetOptF("maxValZ");
   int     nSmearsRnd       = glob->GetOptI("nSmearsRnd");
   double  nSmearUnf        = glob->GetOptI("nSmearUnf"); // and cast to double, since we divide by this later
   TString _typeANNZ        = glob->GetOptC("_typeANNZ");
@@ -699,10 +697,10 @@ void ANNZ::evalRegLoop() {
 
         if(nLoopTypeNow == 1) {
           for(int nPDFnow=0; nPDFnow<nPDFs; nPDFnow++) {
+            aRegEval->hisPDF_w  [nPDFnow]->Reset();
             aRegEval->mlmAvg_val[nPDFnow].resize(nMLMs,0);
             aRegEval->mlmAvg_err[nPDFnow].resize(nMLMs,0);
             aRegEval->mlmAvg_wgt[nPDFnow].resize(nMLMs,0);
-            aRegEval->hisPDF_w[nPDFnow]->Reset();
 
             aRegEval->pdfWgtValV[nPDFnow][0] = aRegEval->pdfWgtValV[nPDFnow][1] = 0;
             aRegEval->pdfWgtNumV[nPDFnow][0] = aRegEval->pdfWgtNumV[nPDFnow][1] = 0;
@@ -864,9 +862,12 @@ void ANNZ::evalRegLoop() {
               aRegEval->pdfWgtValV[nPDFnow][1] += pdfWgt;
               aRegEval->pdfWgtNumV[nPDFnow][1] += aRegEval->pdfWeightV[nPDFnow][nMLMnow];
 
-              aRegEval->mlmAvg_val[nPDFnow][nMLMnow] = regVal; aRegEval->mlmAvg_err[nPDFnow][nMLMnow] = regErr; aRegEval->mlmAvg_wgt[nPDFnow][nMLMnow] = regWgt;
+              // input original value into the pdf before smearing
+              aRegEval->hisPDF_w[nPDFnow]->Fill(regVal,pdfWgt);
 
-              aRegEval->hisPDF_w[nPDFnow]->Fill(regVal,pdfWgt); // input original value into the pdf before smearing
+              aRegEval->mlmAvg_val[nPDFnow][nMLMnow] = regVal;
+              aRegEval->mlmAvg_err[nPDFnow][nMLMnow] = regErr;
+              aRegEval->mlmAvg_wgt[nPDFnow][nMLMnow] = regWgt;
 
               // generate random smearing factors for this MLM
               for(int nSmearRndNow=0; nSmearRndNow<nSmearsRnd; nSmearRndNow++) {
@@ -876,8 +877,6 @@ void ANNZ::evalRegLoop() {
 
                 double sfNow  = signNow * fabs(rnd->Gaus(0,errNow));
                 double regSmr = regVal + sfNow;
-                if(regSmr < minValZ || regSmr > maxValZ) continue;
-
                 aRegEval->hisPDF_w[nPDFnow]->Fill(regSmr,pdfWgt);
               }
             }
@@ -898,20 +897,19 @@ void ANNZ::evalRegLoop() {
               // apply the bias-correction to the pdf
               // -----------------------------------------------------------------------------------------------------------
               if(doBiasCorPDF) {
-                TH1 * hisPDF_w_TMP = (TH1*)aRegEval->hisPDF_w[nPDFnow]->Clone((TString)aRegEval->hisPDF_w[nPDFnow]->GetName()+"_TMP");
+                TString clnName        = (TString)aRegEval->hisPDF_w[nPDFnow]->GetName()+"_TMP";
+                TH1     * hisPDF_w_TMP = (TH1*)aRegEval->hisPDF_w[nPDFnow]->Clone(clnName);
 
                 for(int nBinXnow=1; nBinXnow<nPDFbins+1; nBinXnow++) {
                   double val = hisPDF_w_TMP->GetBinContent(nBinXnow);
 
-                  if(val < aRegEval->minWeight)                                    continue;
-                  if(!aRegEval->hisBiasCorV[nPDFnow][nBinXnow-1])                  continue;
-                  if(aRegEval->hisBiasCorV[nPDFnow][nBinXnow-1]->Integral() < EPS) continue;
+                  if(val < aRegEval->minWeight)                                     continue;
+                  if(!aRegEval->hisBiasCorV[nPDFnow][nBinXnow-1])                   continue;
+                  if( aRegEval->hisBiasCorV[nPDFnow][nBinXnow-1]->Integral() < EPS) continue;
 
                   val /= nSmearUnf;
                   for(int nSmearUnfNow=0; nSmearUnfNow<nSmearUnf; nSmearUnfNow++) {
                     double rndVal = aRegEval->hisBiasCorV[nPDFnow][nBinXnow-1]->GetRandom();
-                    // rndVal = min(max(rndVal,minValZ+EPS),maxValZ-EPS);
-                    
                     aRegEval->hisPDF_w[nPDFnow]->Fill(rndVal,val);
                   }
                 }
@@ -1129,7 +1127,7 @@ void ANNZ::evalRegLoop() {
  */
 // ===========================================================================================================
 void ANNZ::evalRegErrSetup() {
-// ===========================
+// ===========================================================================================================
   VERIFY(LOCATION,(TString)"Calling evalRegErrSetup() with no aRegEval defined ..."
                           +" something is horribly wrong ?!?",(dynamic_cast<RegEval*>(aRegEval)));
 
@@ -1247,7 +1245,7 @@ void ANNZ::evalRegErrSetup() {
  */
 // ===========================================================================================================
 void ANNZ::evalRegErrCleanup() {
-// =============================
+// ===========================================================================================================
   if(!aRegEval) return;
   
   aLOG(Log::DEBUG_1) <<coutRed<<" - starting ANNZ::evalRegErrCleanup() ... "<<coutDef<<endl;
@@ -1290,7 +1288,7 @@ void ANNZ::evalRegErrCleanup() {
  */
 // ===========================================================================================================
 void ANNZ::evalRegWrapperSetup() {
-// ===============================
+// ===========================================================================================================
   aLOG(Log::INFO) <<coutWhiteOnBlack<<coutPurple<<" - starting ANNZ::evalRegWrapperSetup() ... "<<coutDef<<endl;
   
   evalRegSetup();
@@ -1322,7 +1320,7 @@ void ANNZ::evalRegWrapperSetup() {
  */
 // ===========================================================================================================
 TString ANNZ::evalRegWrapperLoop() {
-// =================================
+// ===========================================================================================================
   aLOG(Log::DEBUG_2) <<coutWhiteOnBlack<<coutPurple<<" - starting ANNZ::evalRegWrapperLoop() ... "<<coutDef<<endl;
   // aRegEval->varWrapper->printVars();
 
@@ -1332,8 +1330,6 @@ TString ANNZ::evalRegWrapperLoop() {
   int     nMLMs            = glob->GetOptI("nMLMs");
   int     nPDFs            = glob->GetOptI("nPDFs");
   int     nPDFbins         = glob->GetOptI("nPDFbins");
-  double  minValZ          = glob->GetOptF("minValZ");
-  double  maxValZ          = glob->GetOptF("maxValZ");
   TString baseTag_v        = glob->GetOptC("baseTag_v");
   TString baseTag_e        = glob->GetOptC("baseTag_e");
   TString baseTag_w        = glob->GetOptC("baseTag_w");
@@ -1494,11 +1490,12 @@ TString ANNZ::evalRegWrapperLoop() {
         aRegEval->pdfWgtNumV[nPDFnow][0] += 1;
         aRegEval->pdfWgtNumV[nPDFnow][1] += aRegEval->pdfWeightV[nPDFnow][nMLMnow];
 
+        // input original value into the pdf before smearing
+        aRegEval->hisPDF_w[nPDFnow]->Fill(regVal,pdfWgt);
+
         aRegEval->mlmAvg_val[nPDFnow][nMLMnow] = regVal;
         aRegEval->mlmAvg_err[nPDFnow][nMLMnow] = regErr;
         aRegEval->mlmAvg_wgt[nPDFnow][nMLMnow] = regWgt;
-
-        aRegEval->hisPDF_w[nPDFnow]->Fill(regVal,pdfWgt); // input original value into the pdf before smearing
 
         // generate random smearing factors for this MLM
         for(int nSmearRndNow=0; nSmearRndNow<nSmearsRnd; nSmearRndNow++) {
@@ -1508,8 +1505,6 @@ TString ANNZ::evalRegWrapperLoop() {
 
           double sfNow  = signNow * fabs(rnd->Gaus(0,errNow));
           double regSmr = regVal + sfNow;
-          if(regSmr < minValZ || regSmr > maxValZ) continue;
-
           aRegEval->hisPDF_w[nPDFnow]->Fill(regSmr,pdfWgt);
         }
       }
@@ -1529,19 +1524,19 @@ TString ANNZ::evalRegWrapperLoop() {
       // apply the bias-correction to the pdf
       // -----------------------------------------------------------------------------------------------------------
       if(doBiasCorPDF) {
-        TH1 * hisPDF_w_TMP = (TH1*)aRegEval->hisPDF_w[nPDFnow]->Clone((TString)aRegEval->hisPDF_w[nPDFnow]->GetName()+"_TMP");
+        TString clnName        = (TString)aRegEval->hisPDF_w[nPDFnow]->GetName()+"_TMP";
+        TH1     * hisPDF_w_TMP = (TH1*)aRegEval->hisPDF_w[nPDFnow]->Clone(clnName);
 
         for(int nBinXnow=1; nBinXnow<nPDFbins+1; nBinXnow++) {
           double val = hisPDF_w_TMP->GetBinContent(nBinXnow);
 
-          if(val < aRegEval->minWeight)                                    continue;
-          if(!aRegEval->hisBiasCorV[nPDFnow][nBinXnow-1])                  continue;
-          if(aRegEval->hisBiasCorV[nPDFnow][nBinXnow-1]->Integral() < EPS) continue;
+          if(val < aRegEval->minWeight)                                     continue;
+          if(!aRegEval->hisBiasCorV[nPDFnow][nBinXnow-1])                   continue;
+          if( aRegEval->hisBiasCorV[nPDFnow][nBinXnow-1]->Integral() < EPS) continue;
 
           val /= nSmearUnf;
           for(int nSmearUnfNow=0; nSmearUnfNow<nSmearUnf; nSmearUnfNow++) {
             double rndVal = aRegEval->hisBiasCorV[nPDFnow][nBinXnow-1]->GetRandom();
-            // rndVal = min(max(rndVal,minValZ+EPS),maxValZ-EPS);
             aRegEval->hisPDF_w[nPDFnow]->Fill(rndVal,val);
           }
         }
@@ -1652,7 +1647,7 @@ TString ANNZ::evalRegWrapperLoop() {
  */
 // ===========================================================================================================
 void ANNZ::evalRegWrapperCleanup() {
-// =================================
+// ===========================================================================================================
   aLOG(Log::DEBUG_1) <<coutWhiteOnBlack<<coutPurple<<" - starting ANNZ::evalRegWrapperCleanup() ... "<<coutDef<<endl;
 
   evalRegErrCleanup();
