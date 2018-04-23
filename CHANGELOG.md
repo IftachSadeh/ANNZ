@@ -1,5 +1,9 @@
 # Changelog
 
+## Master version (23/04/2018)
+
+- Updated `py/ANNZ.py` and `scripts/annz_evalWrapper.py` for `python-3.6` compatibility.
+
 ## ANNZ v2.3.0 (03/04/2018)
 
 ### For users:

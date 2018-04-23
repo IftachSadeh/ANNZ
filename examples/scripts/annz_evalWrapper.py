@@ -67,7 +67,7 @@ def main():
   log.info(
     "\033[32m"+" - single evaluation("+name+")    - ANNZ.lib.wrapperEval: " \
     + str('ANNZ_0:'+str(evalOut['ANNZ_0'])+", " if 'ANNZ_0' in evalOut else "") \
-    +''.join([str(k)+':'+str(v)+', ' for n,(k,v) in enumerate(evalOut.iteritems(), 0) if n < 3]) +' ...'+"\033[0m"
+    +''.join([str(k)+':'+str(v)+', ' for n,(k,v) in enumerate(evalOut.items(), 0) if n < 3]) +' ...'+"\033[0m"
   )
 
   # --------------------------------------------------------------------------------------------------
@@ -84,7 +84,7 @@ def main():
     log.info(
       "\033[33m"+" - multiple evaluations("+name+") - ANNZ.lib.wrapperEval: " \
       + str('ANNZ_0:'+str(evalNow['ANNZ_0'])+", " if 'ANNZ_0' in evalNow else "") \
-      +''.join([str(k)+':'+str(v)+', ' for n,(k,v) in enumerate(evalNow.iteritems(), 0) if n < 3]) \
+      +''.join([str(k)+':'+str(v)+', ' for n,(k,v) in enumerate(evalNow.items(), 0) if n < 3]) \
       +' ...'+"\033[0m"
     )
   

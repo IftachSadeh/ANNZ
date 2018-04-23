@@ -39,7 +39,7 @@ class ANNZ():
     if name is None:
       name = 'Wrapper_'+str(int(time.time()*1e6))
     self.name  = str(name)
-    self.nameC = ctypes.c_char_p(name)
+    self.nameC = ctypes.c_char_p(name.encode('utf-8'))
 
     self.log = log
     if self.log:
@@ -157,7 +157,7 @@ class ANNZ():
     # --------------------------------------------------------------------------------------------------
     nObjs   = len(evalEvtV)
     varVals = (self.c_charP * ((self.nVars + 1) * nObjs))()
-    nVarsC  = ctypes.c_char_p(str(nObjs)+';'+str(self.nVars))
+    nVarsC  = ctypes.c_char_p((str(nObjs)+';'+str(self.nVars)).encode('utf-8'))
 
     # fill the arrays with the input values, converted to *char
     # --------------------------------------------------------------------------------------------------
@@ -181,7 +181,7 @@ class ANNZ():
       # note that ROOT is not thread safe, so only call C++ once at a time...
       # --------------------------------------------------------------------------------------------------
       with ANNZ.lock:
-        evalId   = ctypes.c_char_p('Wrapper_'+str(int(time.time()*1e6)))
+        evalId   = ctypes.c_char_p(('Wrapper_'+str(int(time.time()*1e6))).encode('utf-8'))
         evalStr  = ANNZ.lib.wrapperEval(self.nameC, evalId, nVarsC, self.varNames, varVals)
         evalDict = json.loads(evalStr)
         
@@ -226,7 +226,7 @@ class ANNZ():
   # parse into a string
   # --------------------------------------------------------------------------------------------------
   def buff(self, strIn):
-    return ctypes.create_string_buffer(str(strIn))
+    return ctypes.create_string_buffer(str(strIn).encode('utf-8'))
 
   # --------------------------------------------------------------------------------------------------
   # make sure we have the correct env to load the library
