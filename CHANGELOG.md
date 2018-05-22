@@ -1,8 +1,10 @@
 # Changelog
 
-## Master version (23/04/2018)
+## Master version (22/05/2018)
 
 - Updated `py/ANNZ.py` and `scripts/annz_evalWrapper.py` for `python-3.6` compatibility.
+
+- Fixed bug in the `Makefile`; now ROOT shared libraries are linked *after* the local objects.
 
 ## ANNZ v2.3.0 (03/04/2018)
 

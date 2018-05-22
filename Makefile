@@ -35,7 +35,7 @@ LDFLAGS += -Wl,-rpath,$(ROOTLIB),-rpath,$(CURRENT_DIR)
 CXXFLAGS += -g -I../ -I./ -I../src/ -I../include/
 VPATH    += ./:../:../src:../include
 MORELIBS  = -lMinuit -lTMVA -lXMLIO -lTreePlayer
-LD       += $(shell $(RC) --libs) $(MORELIBS)
+ROOT_LD   = $(shell $(RC) --libs) $(MORELIBS)
 LIBS     += $(MORELIBS)
 
 # ---------------------------------------------------------------------------------------------------
@@ -169,65 +169,65 @@ $(Wrapper_O): Wrapper.hpp ../src/Wrapper*.cpp OptMaps.hpp Utils.hpp VarMaps.hpp 
 # ---------------------------------------------------------------------------------------------------
 $(OptMaps_SO): $(OptMaps_O)
 ifeq ($(PLATFORM),macosx)
-	$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@
+	$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@ $(ROOT_LD)
 else
-	$(LD) $(SOFLAGS)   $(LDFLAGS) $^ $(OutPutOpt) $@
+	$(LD) $(SOFLAGS)   $(LDFLAGS) $^ $(OutPutOpt) $@ $(ROOT_LD)
 endif
 	@echo $(msg0) $@ $(msg2)
 
 $(Utils_SO): $(Utils_O) $(OptMaps_SO)
 ifeq ($(PLATFORM),macosx)
-	$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@
+	$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@ $(ROOT_LD)
 else
-	$(LD) $(SOFLAGS)   $(LDFLAGS) $^ $(OutPutOpt) $@
+	$(LD) $(SOFLAGS)   $(LDFLAGS) $^ $(OutPutOpt) $@ $(ROOT_LD)
 endif
 	@echo $(msg0) $@ $(msg2)
 
 $(VarMaps_SO): $(VarMaps_O) $(OptMaps_SO) $(Utils_SO)
 ifeq ($(PLATFORM),macosx)
-	$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@
+	$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@ $(ROOT_LD)
 else
-	$(LD) $(SOFLAGS)   $(LDFLAGS) $^ $(OutPutOpt) $@
+	$(LD) $(SOFLAGS)   $(LDFLAGS) $^ $(OutPutOpt) $@ $(ROOT_LD)
 endif
 	@echo $(msg0) $@ $(msg2)
 
 $(OutMngr_SO): $(OutMngr_O) $(OptMaps_SO) $(Utils_SO) $(VarMaps_SO)
 ifeq ($(PLATFORM),macosx)
-	$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@
+	$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@ $(ROOT_LD)
 else
-	$(LD) $(SOFLAGS)   $(LDFLAGS) $^ $(OutPutOpt) $@
+	$(LD) $(SOFLAGS)   $(LDFLAGS) $^ $(OutPutOpt) $@ $(ROOT_LD)
 endif
 	@echo $(msg0) $@ $(msg2)
 
 $(BaseClass_SO): $(BaseClass_O) $(OptMaps_SO) $(Utils_SO) $(VarMaps_SO) $(OutMngr_SO)
 ifeq ($(PLATFORM),macosx)
-	$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@
+	$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@ $(ROOT_LD)
 else
-	$(LD) $(SOFLAGS)   $(LDFLAGS) $^ $(OutPutOpt) $@
+	$(LD) $(SOFLAGS)   $(LDFLAGS) $^ $(OutPutOpt) $@ $(ROOT_LD)
 endif
 	@echo $(msg0) $@ $(msg2)
 
 $(CatFormat_SO): $(CatFormat_O) $(OptMaps_SO) $(Utils_SO) $(VarMaps_SO) $(OutMngr_SO) $(BaseClass_SO)
 ifeq ($(PLATFORM),macosx)
-	$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@
+	$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@ $(ROOT_LD)
 else
-	$(LD) $(SOFLAGS)   $(LDFLAGS) $^ $(OutPutOpt) $@
+	$(LD) $(SOFLAGS)   $(LDFLAGS) $^ $(OutPutOpt) $@ $(ROOT_LD)
 endif
 	@echo $(msg0) $@ $(msg2)
 
 $(ANNZ_SO): $(ANNZ_O) $(OptMaps_SO) $(Utils_SO) $(VarMaps_SO) $(OutMngr_SO) $(BaseClass_SO)
 ifeq ($(PLATFORM),macosx)
-	$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@
+	$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@ $(ROOT_LD)
 else
-	$(LD) $(SOFLAGS)   $(LDFLAGS) $^ $(OutPutOpt) $@
+	$(LD) $(SOFLAGS)   $(LDFLAGS) $^ $(OutPutOpt) $@ $(ROOT_LD)
 endif
 	@echo $(msg0) $@ $(msg2)
 
 $(myANNZ_SO): $(myANNZ_O) $(OptMaps_SO) $(Utils_SO) $(VarMaps_SO) $(OutMngr_SO) $(BaseClass_SO) $(CatFormat_SO) $(ANNZ_SO)
 ifeq ($(PLATFORM),macosx)
-	$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@ 
+	$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@ $(ROOT_LD)
 else
-	$(LD) $(SOFLAGS)   $(LDFLAGS) $^ $(OutPutOpt) $@
+	$(LD) $(SOFLAGS)   $(LDFLAGS) $^ $(OutPutOpt) $@ $(ROOT_LD)
 endif
 	@echo $(msg0) $@ $(msg2)
 
@@ -235,7 +235,7 @@ endif
 # myANNZ_E
 # ---------------------------------------------------------------------------------------------------
 $(myANNZ_E): $(myANNZ_SO) $(OptMaps_SO) $(Utils_SO) $(VarMaps_SO) $(OutMngr_SO) $(BaseClass_SO) $(CatFormat_SO) $(ANNZ_SO)
-	$(LD) $(LDFLAGS) $^ $(LIBS) $(OutPutOpt) $@ $(MT_EXE)
+	$(LD) $(LDFLAGS) $^ $(LIBS) $(OutPutOpt) $@ $(MT_EXE) $(ROOT_LD)
 	@echo $(msg0) $@ $(msg2)
 # ===================================================================================================
 
@@ -244,9 +244,9 @@ $(myANNZ_E): $(myANNZ_SO) $(OptMaps_SO) $(Utils_SO) $(VarMaps_SO) $(OutMngr_SO) 
 # ---------------------------------------------------------------------------------------------------
 $(Wrapper_SO): $(Wrapper_O) $(OptMaps_SO) $(Utils_SO) $(VarMaps_SO) $(OutMngr_SO) $(BaseClass_SO) $(CatFormat_SO) $(ANNZ_SO) $(myANNZ_SO)
 ifeq ($(PLATFORM),macosx)
-	$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@ 
+	$(LD) $(SOFLAGS)$@ $(LDFLAGS) $^ $(OutPutOpt) $@ $(ROOT_LD)
 else
-	$(LD) $(SOFLAGS)   $(LDFLAGS) $^ $(OutPutOpt) $@
+	$(LD) $(SOFLAGS)   $(LDFLAGS) $^ $(OutPutOpt) $@ $(ROOT_LD)
 endif
 	@echo $(msg0) $@ $(msg2)
 # ---------------------------------------------------------------------------------------------------

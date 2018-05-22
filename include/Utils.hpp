@@ -32,7 +32,7 @@ namespace fitFuncs {
 // ===========================================================================================================
 class Utils {
 // ==========
-  public:  
+  public:
     Utils(OptMaps * aMaps = NULL);
     ~Utils();
 
@@ -63,6 +63,8 @@ class Utils {
     inline TString  doubleToStr(double            input, TString format = "%.10g") { return TString::Format(format,input); };
 
     inline TString  getRndStr(TString format = "%.20f") { return doubleToStr(rnd->Rndm(),format); };
+    
+    inline TString  getTmpDirName() { return tmpDirName; };
 
     Int_t     strToInt   (TString input);
     Long64_t  strToLong  (TString input);
@@ -146,6 +148,9 @@ class Utils {
     vector <int> colours, markers, greens, blues, reds, fillStyles;   
 
     OptMaps      * glob, * param;
+  
+  private:
+    TString      tmpDirName;
 };
 #endif
 

@@ -47,6 +47,11 @@ Utils::Utils(OptMaps * aMaps) {
 // ============================
   glob  = aMaps;
   param = new OptMaps("param");
+
+  tmpDirName = (TString)std::getenv("TMPDIR");
+  tmpDirName.ReplaceAll(" ", "").ReplaceAll("\r\n", "").ReplaceAll("\n", "").ReplaceAll("\r", "");
+  if     (tmpDirName == "")          tmpDirName = "/tmp/";
+  else if(!tmpDirName.EndsWith("/")) tmpDirName += "/";
   
   setColors();
 
@@ -233,7 +238,7 @@ void Utils::safeRM(TString cmnd, bool verbose, bool checkExitStatus) {
   int sysReturn = exeShellCmndOutput((TString)"rm -rf "+cmnd,verbose,false);
   
   if(checkExitStatus && sysReturn != 0) {
-    TString junkDirName = (TString)"/tmp/"+regularizeName(glob->basePrefix(),"")+"_junk/"
+    TString junkDirName = (TString)tmpDirName+regularizeName(glob->basePrefix(),"")+"_junk/"
                           +((doubleToStr(rnd->Rndm(),"%.20f")).ReplaceAll("0.",""))+"/";
 
     aLOG(Log::WARNING) <<coutRed<<" - Could not execute command ["<<coutYellow<<(TString)"rm -rf "+cmnd<<coutRed
