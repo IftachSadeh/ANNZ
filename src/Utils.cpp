@@ -52,6 +52,13 @@ Utils::Utils(OptMaps * aMaps) {
   tmpDirName.ReplaceAll(" ", "").ReplaceAll("\r\n", "").ReplaceAll("\n", "").ReplaceAll("\r", "");
   if     (tmpDirName == "")          tmpDirName = "/tmp/";
   else if(!tmpDirName.EndsWith("/")) tmpDirName += "/";
+
+  bool isValidDir(false);
+  struct stat info;
+  if(stat(std::getenv("TMPDIR"), &info) != 0) isValidDir = false;
+  else if(info.st_mode & S_IFDIR)             isValidDir = true;
+  else                                        isValidDir = false;
+  if(!isValidDir) tmpDirName = "/tmp/";
   
   setColors();
 
