@@ -90,8 +90,8 @@ void ANNZ::evalRegSetup() {
   aRegEval->isErrKNNv    .resize(nMLMs,true);
   aRegEval->isErrINPv    .resize(nMLMs,false);
   aRegEval->pdfWeightV   .resize(nPDFs,vector<double>(nMLMs,0));
-  aRegEval->mlmAvg_val   .resize(nPDFs,vector<double>(nMLMs,0)),
-  aRegEval->mlmAvg_err   .resize(nPDFs,vector<double>(nMLMs,0)),
+  aRegEval->mlmAvg_val   .resize(nPDFs,vector<double>(nMLMs,0));
+  aRegEval->mlmAvg_err   .resize(nPDFs,vector<double>(nMLMs,0));
   aRegEval->mlmAvg_wgt   .resize(nPDFs,vector<double>(nMLMs,0));
 
   // -----------------------------------------------------------------------------------------------------------

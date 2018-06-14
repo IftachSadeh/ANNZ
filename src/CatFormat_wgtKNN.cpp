@@ -100,11 +100,18 @@ void CatFormat::inputToSplitTree_wgtKNN(TString inAsciiFiles, TString inAsciiVar
     aChainV[nChainNow] = aChain;
 
     if(nChains > 1 && trainTestTogether) {
-      if(!aChainMerge) aChainMerge = new TChain(treeNameNow,treeNameNow);
-      else             aChainMerge->SetName(treeNameNow);
+      if(!aChainMerge) {
+        TString treeNameMerged = (TString)treeNames[0]+"_"+treeNames[1]+"_merged";
+        aChainMerge = new TChain(treeNameMerged,treeNameMerged);
+      }
 
-      aChainMerge->SetDirectory(0); aChainMerge->Add(fileNameNow);
-      aChainMerge->SetName(mergeChainName);
+      aChainMerge->Add(aChainV[nChainNow]);
+
+      // if(!aChainMerge) aChainMerge = new TChain(treeNameNow,treeNameNow);
+      // else             aChainMerge->SetName(treeNameNow);
+
+      // aChainMerge->SetDirectory(0); aChainMerge->Add(fileNameNow);
+      // aChainMerge->SetName(mergeChainName);
 
       aLOG(Log::INFO) <<coutRed<<" - Adding to merged chain  "<<coutYellow<<mergeChainName<<"("
                       <<aChainMerge->GetEntries()<<")"<<" from "<<coutBlue<<fileNameNow<<coutDef<<endl;
