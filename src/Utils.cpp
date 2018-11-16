@@ -241,6 +241,12 @@ vector<TString> Utils::splitStringByChar(TString s, char delim) {
 void Utils::safeRM(TString cmnd, bool verbose, bool checkExitStatus) {
 // ===================================================================
 
+  if(glob->GetOptB("isReadOnlySys")) {
+    if(verbose) aLOG(Log::INFO) <<coutGreen<<" - isReadOnlySys is true, will not remove: "
+                                <<coutPurple<<cmnd<<coutDef<<endl;
+    return;
+  }
+
   checkCmndSafety(cmnd);
   int sysReturn = exeShellCmndOutput((TString)"rm -rf "+cmnd,verbose,false);
   
@@ -293,6 +299,8 @@ void Utils::checkPathPrefix(TString pathName) {
 // ===========================================================================================================
 void Utils::resetDirectory(TString OutDirName, bool verbose, bool copyCode) {
 // ==========================================================================
+  VERIFY(LOCATION,(TString)"Trying use Utils::resetDirectory() together with isReadOnlySys ... something is horribly wrong ?!?!" ,!glob->GetOptB("isReadOnlySys"));
+
   if(glob->OptOrNullB("debugSysCmnd"))     verbose  = true;
   if(glob->OptOrNullB("copyCodeToOutDir")) copyCode = true;
 

@@ -1,10 +1,12 @@
 # Changelog
 
-## Master version (22/05/2018)
+## Master version (16/11/2018)
 
 - Updated `py/ANNZ.py` and `scripts/annz_evalWrapper.py` for `python-3.6` compatibility.
 
 - Fixed bug in the `Makefile`; now ROOT shared libraries are linked *after* the local objects.
+
+- Added `isReadOnlySys` option, usable for evaluation only. One may set `isReadOnlySys = Ture` while using the python wrapper, in order to avoid writing anything to disk during evaluation.
 
 ## ANNZ v2.3.0 (03/04/2018)
 

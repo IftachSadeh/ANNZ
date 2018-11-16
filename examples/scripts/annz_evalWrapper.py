@@ -108,6 +108,9 @@ def init(testType, opts):
   opts['doRegression']     = False
   opts['doClassification'] = False
 
+  # can run evaluation within a read-only system, by setting isReadOnlySys
+  # opts['isReadOnlySys'] = True
+
   # --------------------------------------------------------------------------------------------------
   # can work with single-regression, eg:
   # --------------------------------------------------------------------------------------------------
@@ -149,7 +152,7 @@ def init(testType, opts):
   if testType == 'doRandomCls':
     opts['doClassification'] = True
     opts['doRandomCls']      = True
-    opts["outDirName"]       = "test_randCls_advanced"
+    opts["outDirName"]       = "test_randCls_quick"
 
   # --------------------------------------------------------------------------------------------------
   # list of parameter types and parameter names - THIS MUST INCLUDE any parameter

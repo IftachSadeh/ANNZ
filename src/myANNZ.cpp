@@ -549,6 +549,7 @@ Manager::Manager() {
   glob->NewOptI("initSeedRnd"         ,1979); // some random number so that the same set of randoms are chosen each time the code is run
   glob->NewOptB("doStoreToAscii"      ,true); // store evaluation into ascii files
   glob->NewOptI("minObjTrainTest"     ,50);   // minimal number of objects to use for training (very dangerous to set this too low !!!!)
+  glob->NewOptB("isReadOnlySys"      ,false); // allow evalWrapper to be run on a read-only system
 
   // number of times to divide the collection of MLMs needed for evaluation - in principle, no division is neccessary, however,
   // some MLMs (notabley BDTs) require a lot of memory. Therefore, it might be better to only evaluate a sub-sample of the MLMs
@@ -913,6 +914,15 @@ void Manager::Init(int argc, char ** argv) {
       glob->SetOptC("userCuts_bck",userCuts_bck);
     }
   }
+
+  // verify that isReadOnlySys can be enabled only together with doEval
+  if(glob->GetOptB("isReadOnlySys") && !glob->GetOptB("doEval")) {
+    glob->SetOptB("isReadOnlySys" ,false);
+
+    aLOG(Log::WARNING) <<coutRed<<" - Found [\"isReadOnlySys\" = "<<coutPurple<<"true"
+                       <<coutRed<<"] which can only be used together with \"doEval\""<<coutDef<<endl;
+  }
+
 
   // print out final init parameters
   if(inLOG(Log::DEBUG)) { glob->printOpts(2,30); cout<<endl; }

@@ -586,7 +586,7 @@ void ANNZ::Init() {
   if(glob->GetOptB("doOnlyKnnErr")) trainingNeeded = false;
   
   // initialize the outputs with the training directory and reset it
-  if(trainingNeeded) {
+  if(trainingNeeded && !glob->GetOptB("isReadOnlySys")) {
     outputs->InitializeDir(glob->GetOptC("outDirNameFull"),glob->GetOptC("baseName"));
   }
   glob->NewOptB("trainingNeeded",trainingNeeded);
@@ -602,7 +602,7 @@ void ANNZ::Init() {
 
   // save the final configuration options to file
   // -----------------------------------------------------------------------------------------------------------
-  bool saveConfig = ( (glob->GetOptB("doTrain") && trainingNeeded) || !glob->GetOptB("doTrain") );
+  bool saveConfig = ( ( (glob->GetOptB("doTrain") && trainingNeeded) || !glob->GetOptB("doTrain") ) && !glob->GetOptB("isReadOnlySys") );
   if(saveConfig) {
     TString saveFileName = getKeyWord("","baseConfig","current");
     aLOG(Log::INFO)<<coutYellow<<" - Saving run information in "<<coutGreen<<saveFileName<<coutYellow<<" ..."<<coutDef<<endl;

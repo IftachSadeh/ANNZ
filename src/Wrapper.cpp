@@ -148,7 +148,7 @@ void Wrapper::Init(int argc, char ** argv) {
   utils   = aManager->utils;
   glob    = aManager->glob;
   outputs = aManager->outputs;
-  
+
   aANNZ           = new ANNZ("aANNZ"+name,utils,glob,outputs);
   aANNZ->aRegEval = new RegEval("aRegEval"+name,utils,glob,outputs);
 

@@ -204,8 +204,10 @@ void ANNZ::setupKdTreeKNN(
   // setup the factory
   // -----------------------------------------------------------------------------------------------------------
   TString outFileNameTrain = getKeyWord(MLMname,"knnErrXML","outFileNameKnnErr");
-  knnErrOutFile            = new TFile(outFileNameTrain,"RECREATE");
-  knnErrFactory            = new TMVA::Factory(typeANNZ, knnErrOutFile, (TString)verbLvlF+drawProgBarStr+transStr+analysType);    
+  if(glob->GetOptB("isReadOnlySys")) knnErrOutFile = NULL;
+  else                               knnErrOutFile = new TFile(outFileNameTrain,"RECREATE");
+  
+  knnErrFactory = new TMVA::Factory(typeANNZ, knnErrOutFile, (TString)verbLvlF+drawProgBarStr+transStr+analysType);
 
   #if ROOT_TMVA_V0
   typedef TMVA::Factory def_dataLoader;
