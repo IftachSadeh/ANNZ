@@ -181,6 +181,8 @@ class ANNZ : public BaseClass {
                                  vector<double> & zRegQnt_sigma68, vector<double> & zRegQnt_fracSig68,
                                  vector < vector<double> > & bestWeightsV, vector <TH2*> & hisPdfBiasCorV);
 
+    vector < double > clipWeightsPDF(vector < double > & weightsIn, Log::LOGtypes logLevel = Log::INFO);
+
     // -----------------------------------------------------------------------------------------------------------
     // ANNZ_loopRegCls.cpp :
     // -----------------------------------------------------------------------------------------------------------

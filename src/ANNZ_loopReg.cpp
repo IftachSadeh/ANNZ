@@ -1143,7 +1143,8 @@ void  ANNZ::getRndMethodBestPDF(
 
   tmpWeightV.clear();
   for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) {
-    if(weightV[nMLMnow] > EPS) tmpWeightV.push_back(pair<int,double>(nMLMnow,weightV[nMLMnow]));
+    if(weightV[nMLMnow] < EPS) continue;
+    tmpWeightV.push_back(pair<int,double>(nMLMnow,weightV[nMLMnow]));
   }
   
   // sort so that the largest element is first
@@ -1292,7 +1293,8 @@ void  ANNZ::getRndMethodBestPDF(
   double            avgIntgrZ(0.5);
   int               nNoUpdate(0), nSameWeights(0);
   double            varIntgrBest(std::numeric_limits<double>::max()), varIntgrPrev(varIntgrBest);
-  vector < double > weightsNow(weightV), weightsPrev(weightV), weightsBest, intgrZ_valV, intgrZmlm_nEvtV;
+  vector < double > weightsNow(weightV), weightsPrev(weightV),
+                    weightsClipped, weightsBest, intgrZ_valV, intgrZmlm_nEvtV;
 
   vector < int > updateIndexV;
   for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) {
@@ -1307,17 +1309,22 @@ void  ANNZ::getRndMethodBestPDF(
   else if(nWgtsIn < 40) nRnds0 = 10;
   else                  nRnds0 = floor(nWgtsIn * 0.2);
 
-  for(int nLoops=0; nLoops<nOptimLoops; nLoops++) {
+  for(int nLoopNow=0; nLoopNow<nOptimLoops; nLoopNow++) {
     bool canPrint(false);
-    if     (nLoops < 10)                      canPrint = true;
-    else if(nLoops < 100  && nLoops%10  == 0) canPrint = true;
-    else if(nLoops < 500  && nLoops%20  == 0) canPrint = true;
-    else if(nLoops < 1000 && nLoops%50  == 0) canPrint = true;
-    else if(                 nLoops%100 == 0) canPrint = true;
+    if     (nLoopNow < 10)                        canPrint = true;
+    else if(nLoopNow < 100  && nLoopNow%10  == 0) canPrint = true;
+    else if(nLoopNow < 500  && nLoopNow%20  == 0) canPrint = true;
+    else if(nLoopNow < 1000 && nLoopNow%50  == 0) canPrint = true;
+    else if(                   nLoopNow%100 == 0) canPrint = true;
 
     intgrZ_valV.resize(nPDFbins,0); intgrZmlm_nEvtV.resize(nPDFbins,0);
 
     if(canPrint && saveProfileHis) hisIntgrZmlm->Reset();
+
+    // -----------------------------------------------------------------------------------------------------------
+    // clip any weights smaller than minPdfWeight, so long as at least minAcptMLMsForPDFs MLMs remain
+    // -----------------------------------------------------------------------------------------------------------
+    weightsClipped = clipWeightsPDF(weightsNow, Log::DEBUG_2);
 
     // -----------------------------------------------------------------------------------------------------------
     // calculate the optimization metric for this set of PDF weights from the entire dataset
@@ -1334,7 +1341,7 @@ void  ANNZ::getRndMethodBestPDF(
         TString MLMname = getTagName(nMLMnow); if(mlmSkipPdf[MLMname]) continue;
         
         double intgrZmlm = var_1->GetVarF(MLMname);
-        intgrZ += intgrZmlm * weightsNow[nMLMnow];
+        intgrZ += intgrZmlm * weightsClipped[nMLMnow];
       }
 
       if(intgrZ >= excRange[0] && intgrZ <= excRange[1]) {
@@ -1376,12 +1383,12 @@ void  ANNZ::getRndMethodBestPDF(
       weightMsg = "";
       for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) { 
         TString MLMname = getTagName(nMLMnow); if(mlmSkipPdf[MLMname]) continue;
-        weightMsg += coutBlue+MLMname+":"+coutPurple+utils->floatToStr(weightsNow[nMLMnow],"%1.3f")+" ";
+        weightMsg += coutBlue+MLMname+":"+coutPurple+utils->floatToStr(weightsClipped[nMLMnow],"%1.3f")+" ";
       }
 
       TString msgHead = (TString)(isBest ? " - NEW:  " : " - nTry: ");
       TString msgCol  = (TString)(isBest ? coutGreen : coutYellow);
-      aLOG(Log::INFO) <<msgCol<<msgHead<<coutPurple<<nLoops
+      aLOG(Log::INFO) <<msgCol<<msgHead<<coutPurple<<nLoopNow
                       <<msgCol<<" - min-param best/prev/now: "<<coutBlue<< utils->floatToStr(varIntgrBest,"%1.5e")
                       <<msgCol<<" / "<<coutRed<< utils->floatToStr(varIntgrPrev,"%1.5e")
                       <<msgCol<<" / "<<coutBlue<< utils->floatToStr(varIntgrNow,"%1.5e")
@@ -1390,7 +1397,7 @@ void  ANNZ::getRndMethodBestPDF(
 
       if(canPrint && saveProfileHis) {      
         hisIntgrZmlm->SetTitle((TString)(TString)"RMS[C("+zTrgTitle+")] = "+utils->floatToStr(varIntgrNow,"%1.5e"));
-        hisIntgrZmlm->Write((TString)hisIntgrZmlm->GetName()+"_"+utils->intToStr(nLoops));
+        hisIntgrZmlm->Write((TString)hisIntgrZmlm->GetName()+"_"+utils->intToStr(nLoopNow));
       }
     }
 
@@ -1429,11 +1436,13 @@ void  ANNZ::getRndMethodBestPDF(
     // change one or more of the weights for the next iteration
     // -----------------------------------------------------------------------------------------------------------
     int nRnds(nRnds0);
-    if(rnd->Rndm() < 0.5) nRnds = max(nWgtsIn, nRnds + int(ceil(0.2 * rnd->Rndm() * nWgtsIn)));
+    if(rnd->Rndm() < 0.5) {
+      nRnds = max(nWgtsIn, nRnds + int(ceil(0.2 * rnd->Rndm() * nWgtsIn)));
+    }
     for(int nRndNow=0; nRndNow<nRnds; nRndNow++) {
       while(true) {
-        weightsNow[*indexItr] += 0.1 * rnd->Rndm();
-        if(weightsNow[*indexItr] >= 0 && weightsNow[*indexItr] <= 1) break;
+        weightsNow[*indexItr] += 0.05 * (2*rnd->Rndm() - 1);
+        if(weightsNow[*indexItr] >= 0) break;
       }
       
       indexItr++;
@@ -1446,14 +1455,21 @@ void  ANNZ::getRndMethodBestPDF(
     for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) { weightsNow[nMLMnow] /= sumWeights; }
   }
 
+
+  // -----------------------------------------------------------------------------------------------------------
+  // clip any weights smaller than minPdfWeight, so long as at least minAcptMLMsForPDFs MLMs remain
+  // -----------------------------------------------------------------------------------------------------------
+  weightsBest = clipWeightsPDF(weightsBest, Log::DEBUG_1);
+
   // -----------------------------------------------------------------------------------------------------------
   // final message with the results
   // -----------------------------------------------------------------------------------------------------------
   tmpWeightV.clear();
   for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) {
-    if(weightsBest[nMLMnow] > EPS) tmpWeightV.push_back(pair<int,double>(nMLMnow,weightsBest[nMLMnow]));
+    if(weightsBest[nMLMnow] < EPS) continue;
+    tmpWeightV.push_back(pair<int,double>(nMLMnow,weightsBest[nMLMnow]));
   }
-  
+
   // sort so that the largest element is first
   sort(tmpWeightV.begin(),tmpWeightV.end(),sortFunc::pairID::highToLowBy1);
 
@@ -1462,10 +1478,12 @@ void  ANNZ::getRndMethodBestPDF(
     TString MLMname = getTagName(tmpWeightV[nAcptMLMnow].first);
     weightMsg += (TString)coutGreen+MLMname+":"+coutYellow+utils->floatToStr(tmpWeightV[nAcptMLMnow].second,"%1.3f")+" ";
   }
-  
-  aLOG(Log::INFO)  <<coutPurple<<" - finished PDF optimization! - final minimization parameter: " <<coutRed
-                   <<utils->floatToStr(varIntgrBest,"%1.5e")<<coutPurple<<" , PDF weights: "<<weightMsg<<coutDef<<endl;
-  aLOG(Log::DEBUG) <<coutGreen<<" ----------------------------------------------------------------------------- "<<coutDef<<endl;
+
+  aLOG(Log::INFO)  <<coutPurple<<" - finished PDF optimization! --> final minimization parameter: "
+                   <<coutRed<<utils->floatToStr(varIntgrBest,"%1.5e")<<coutDef<<endl;
+  aLOG(Log::INFO)  <<coutPurple<<"   final PDF weights: "<<weightMsg<<coutDef<<endl;
+  aLOG(Log::DEBUG) <<coutGreen<<" ----------------------------------------------------------------------------- "
+                   <<coutDef<<endl;
 
   // cleanup
   DELNULL(var_1); DELNULL(intgrZchain);
@@ -1543,10 +1561,10 @@ void  ANNZ::getRndMethodBestPDF(
   weightV.clear();    mlmSkipPdf.clear();  updateIndexV.clear();
   weightsNow.clear(); weightsPrev.clear(); weightsBest.clear();
   excRange.clear();   intgrZ_valV.clear(); intgrZmlm_nEvtV.clear();
-  tmpWeightV.clear();
+  tmpWeightV.clear(); weightsClipped.clear();
 
   // -----------------------------------------------------------------------------------------------------------
-  // call the old-style pdf function is needed
+  // call the old-style pdf function if needed
   // -----------------------------------------------------------------------------------------------------------
   if(nPDFs > 1) {
     getOldStyleRndMethodBestPDF(
@@ -1556,6 +1574,118 @@ void  ANNZ::getRndMethodBestPDF(
   }
 
   return;
+}
+
+
+// ===========================================================================================================
+/**
+ * @brief                    - clip a vector of weights.
+ * 
+ * @details                  - clip a vector of weights, keeping weights above minPdfWeight, with the constraint that
+ *                           the minimal number of elements in the vector remains no smaller than minAcptMLMsForPDFs
+ *                           
+ * @param weightsIn          - vector of input weights (is not modified within the function)
+ * @param logLevel           - new vector of output weights, after clipping
+ */
+// ===========================================================================================================
+vector < double >  ANNZ::clipWeightsPDF(vector < double > & weightsIn, Log::LOGtypes logLevel) {
+// ===========================================================================================================
+  int     nMLMs              = glob->GetOptI("nMLMs");
+  double  minPdfWeight       = glob->GetOptF("minPdfWeight");
+  int     minAcptMLMsForPDFs = glob->GetOptI("minAcptMLMsForPDFs");
+  bool    printFullWeightV   = false; // debugging flag
+
+  vector < pair<int,double> > tmpWeightV;
+  vector < double >           weightsClipped(weightsIn);
+  
+  // -----------------------------------------------------------------------------------------------------------
+  // only proceed if the minPdfWeight threshold is defined
+  // -----------------------------------------------------------------------------------------------------------
+  if(minPdfWeight < EPS || minPdfWeight >= 1) return weightsClipped;
+
+  // -----------------------------------------------------------------------------------------------------------
+  // just in case, normalize the original weights + do a sanity chekc, before getting started
+  // -----------------------------------------------------------------------------------------------------------
+  double sumWeights(0);
+  for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) { sumWeights += weightsClipped[nMLMnow]; }
+  if(sumWeights < EPS) {
+    aLOG(Log::WARNING) <<coutRed<<"Clipping attempted with sumWeights=0 !!! Something is horribly "
+                       <<"wrong !!! - ANNZ::clipWeightsPDF() aborted ..."<<coutDef<<endl;
+    
+    return weightsClipped;
+  }
+  for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) { weightsClipped[nMLMnow] /= sumWeights; }
+
+  // sort the weights
+  for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) {
+    if(weightsClipped[nMLMnow] < EPS) continue;
+    tmpWeightV.push_back(pair<int,double>(nMLMnow,weightsClipped[nMLMnow]));
+  }
+
+  // sort so that the largest element is first
+  sort(tmpWeightV.begin(),tmpWeightV.end(),sortFunc::pairID::highToLowBy1);
+
+  // -----------------------------------------------------------------------------------------------------------
+  // consecutively clip weights smaller than minPdfWeight, so long as at least minAcptMLMsForPDFs MLMs remain
+  // -----------------------------------------------------------------------------------------------------------
+  while(true) {
+    bool canClip(false);
+    for(int nAcptMLMnow=0; nAcptMLMnow<(int)tmpWeightV.size(); nAcptMLMnow++) {
+      if(tmpWeightV[nAcptMLMnow].second < minPdfWeight) {
+        canClip = true;
+        break;
+      }
+    }
+    if(!canClip) break;
+
+    if((int)tmpWeightV.size() <= minAcptMLMsForPDFs) {
+      aLOG(logLevel) <<coutRed<<" - can not clip the next least-significant MLMs from "
+                     <<"PDF ... need at least "<<coutYellow<<minAcptMLMsForPDFs<<coutRed
+                     <<" to survive ..."<<coutDef<<endl;
+      break;
+    }
+
+    int nMLMminWgt = tmpWeightV.back().first;
+    aLOG(logLevel) <<coutYellow<<" - clipping least-significant MLMs from PDF: " <<coutGreen
+                   <<getTagName(nMLMminWgt)<<coutYellow<<" with weight "<<coutRed
+                   <<utils->floatToStr(tmpWeightV.back().second,"%1.5e")<<coutYellow
+                   <<" has been removed ... "<<coutDef<<endl;
+
+    weightsClipped[nMLMminWgt] = 0;
+    tmpWeightV.pop_back();
+    
+    sumWeights = 0;
+    for(int nAcptMLMnow=0; nAcptMLMnow<(int)tmpWeightV.size(); nAcptMLMnow++) {
+      sumWeights += tmpWeightV[nAcptMLMnow].second;
+    }
+    if(sumWeights < EPS) {
+      weightsClipped = weightsIn;
+
+      aLOG(Log::WARNING) <<coutRed<<"Clipping resulted in sumWeights=0 !!! try adjusting the values "
+                         <<"of \"minPdfWeight\" and/or \"minAcptMLMsForPDFs\". "
+                         <<"ANNZ::clipWeightsPDF() aborted ..."<<coutDef<<endl;
+      break;
+    }
+
+    for(int nAcptMLMnow=0; nAcptMLMnow<(int)tmpWeightV.size(); nAcptMLMnow++) {
+      tmpWeightV[nAcptMLMnow].second /= sumWeights;
+      weightsClipped[tmpWeightV[nAcptMLMnow].first] = tmpWeightV[nAcptMLMnow].second;
+    }
+
+    if(inLOG(logLevel) && printFullWeightV) {
+      for(int nMLMnow=0; nMLMnow<nMLMs; nMLMnow++) {
+        aLOG(logLevel) <<coutGreen<<" - clipWeightsPDF:  "<<coutBlue
+                       <<nMLMnow<<CT<<coutGreen<<TString::Format("%1.4f",weightsIn[nMLMnow])<<" -> "
+                       <<coutYellow<<TString::Format("%1.4f",weightsClipped[nMLMnow])
+                       <<coutRed<<(TString)(nMLMnow == nMLMminWgt ? " CLIPPED" : "")<<coutDef<<endl;
+      }
+    }
+  }
+  if(printFullWeightV) aLOG(logLevel) << endl;
+
+  tmpWeightV.clear();
+
+  return weightsClipped;
 }
 
 

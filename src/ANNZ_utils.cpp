@@ -321,6 +321,17 @@ void ANNZ::Init() {
     if(glob->GetOptC("MLMsToStore") == "") glob->SetOptC("MLMsToStore","BEST");
   }
 
+  // check for errors in addOutputVars
+  vector<TString> addOutputVarsV = utils->splitStringByChar(glob->GetOptC("addOutputVars"),';');
+  for(int nOutputVarNow=0; nOutputVarNow<(int)addOutputVarsV.size(); nOutputVarNow++) {
+    TString outputVar(addOutputVarsV[nOutputVarNow]);
+
+    VERIFY(LOCATION,(TString)"Can not include "+outputVar+" in \"addOutputVars\", as "
+                            +"it begins with \""+glob->GetOptC("basePrefix")+"\" ... "
+                            +"did you mean to add it to \"MLMsToStore\" ???",
+                            !(outputVar.BeginsWith(glob->GetOptC("basePrefix"))));
+  }
+
   if(!glob->GetOptB("doRegression")) glob->SetOptB("doBiasCorPDF",false);
 
   // number of PDF types - either generate no PDF, or choose up to two types
@@ -408,11 +419,17 @@ void ANNZ::Init() {
       
       glob->SetOptC("optimCondReg","sig68");
     }
+   
     if     (glob->GetOptC("optimCondReg") == "sig68")     glob->NewOptC("optimCondRegtitle", "#sigma_{68}");
     else if(glob->GetOptC("optimCondReg") == "bias")      glob->NewOptC("optimCondRegtitle", "Bias");
     else if(glob->GetOptC("optimCondReg") == "fracSig68") glob->NewOptC("optimCondRegtitle", "f(2,3#sigma_{68})");
     else VERIFY(LOCATION,(TString)"Configuration problem... \"optimCondReg\" should have one of the "+
                                   "following values: \"sig68\", \"bias\" or \"fracSig68\" options ...",false);
+    
+    if(glob->GetOptF("minPdfWeight") > 1 || glob->GetOptF("minPdfWeight") < EPS) {
+      aLOG(Log::WARNING) <<coutRed<<" - found minPdfWeight > 1 ... minPdfWeight will be ignored"<<coutDef<<endl;
+      glob->SetOptF("minPdfWeight", -1);
+    }
   }
 
   // set flag for generating uncertainty estimators for classification MLMs (needed for the second PDF in binned classification)
@@ -429,7 +446,7 @@ void ANNZ::Init() {
 
   // a lower acceptance bound to check if too few MLMs are trained or if something went wrong with the optimization procedure
   // (e.g., not enough trained MLMs have 'good' combinations of scatter, bias and outlier-fraction metrics).
-  int minAcptMLMsForPDFs(5);
+  int minAcptMLMsForPDFs(3);
   if(glob->GetOptI("minAcptMLMsForPDFs") < minAcptMLMsForPDFs) {
     aLOG(Log::WARNING) <<coutRed <<" - Found minAcptMLMsForPDFs = "
                        <<coutBlue<<glob->GetOptI("minAcptMLMsForPDFs")

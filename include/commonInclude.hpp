@@ -65,6 +65,7 @@
 #include <TGraphAsymmErrors.h>
 #include <TLine.h>
 #include <TKey.h>
+#include <TXMLEngine.h>
 
 #include "TMVA/Tools.h"
 #include "TMVA/Config.h"
