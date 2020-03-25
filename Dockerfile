@@ -1,6 +1,6 @@
 FROM kngenie/trusty-python2 
 
-MANTAINER Priscila Gutierres <priscila.gutierres@usp.br>
+MAINTAINER Priscila Gutierres <priscila.gutierres@usp.br>
 
 ENV PYTHONPATH=/software/ANNZ/examples
 
