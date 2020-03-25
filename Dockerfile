@@ -8,7 +8,13 @@ ENV  ROOTSYS=/software/root
 
 ENV LD_LIBRARY_PATH=/software/root/lib
 
-RUN apt-get update && apt-get install gcc wget libfreetype6 libssl-dev git -y
+ENV TERM=xterm
+
+RUN apt-get update && apt-get install gcc wget libfreetype6 libssl-dev git python-pip -y
+
+RUN pip install --upgrade pip
+
+RUN pip install numpy
 
 WORKDIR /lib/x86_64-linux-gnu
 
@@ -27,6 +33,8 @@ RUN tar -xzvf root_v5.34.11.Linux-slc6_amd64-gcc4.6.tar.gz
 RUN git clone https://github.com/IftachSadeh/ANNZ.git
 
 WORKDIR /software/ANNZ
+
+
 
 RUN python examples/scripts/annz_singleReg_quick.py --make
 
