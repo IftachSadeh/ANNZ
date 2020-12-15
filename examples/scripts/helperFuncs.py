@@ -285,7 +285,7 @@ def runANNZ():
   # --------------------------------------------------------------------------------------------------
   if glob.annz["doTrain"]:
     # set random seed if not already set
-    setSeed = (not glob.annz.has_key("initSeedRnd"))
+    setSeed = "initSeedRnd" not in glob.annz.keys()
     if not setSeed: setSeed = (glob.annz["initSeedRnd"] < 1)
     if setSeed: glob.annz["initSeedRnd"]  = 198876
 

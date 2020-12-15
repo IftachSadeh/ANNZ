@@ -482,6 +482,11 @@ if glob.annz["doOptim"] or glob.annz["doEval"]:
   glob.annz["max_bias_PDF"]    = 0.01
   glob.annz["max_frac68_PDF"]  = 0.10
 
+  # --------------------------------------------------------------------------------------------------
+  # set the minimal acceptable number of MLMs used to generate PDFs
+  # (in practice, it's recommended to keep this number high...)
+  # --------------------------------------------------------------------------------------------------
+  glob.annz["minAcptMLMsForPDFs"]  = 3
 
   # --------------------------------------------------------------------------------------------------
   # optimization

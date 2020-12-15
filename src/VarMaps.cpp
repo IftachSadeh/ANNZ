@@ -1057,7 +1057,7 @@ void VarMaps::connectTreeBranches(TTree * tree, vector <TString> * excludedBranc
         TString brnchTitle = aBranch->GetTitle();
         TString brnchType  = (brnchTitle.Length() > 2) ? brnchTitle(brnchTitle.Length()-2,brnchTitle.Length()) : (TString)"";
 
-        bool skipBranch(false);
+        bool skipBranch(false), registerBranch(true);
         // cout <<"XXXXXXXXXX "<< nBrnchNow <<CT<< brnchName<<endl;
 
         // test for array variables, which e.g., have the format "varName[4]/D"
@@ -1084,15 +1084,6 @@ void VarMaps::connectTreeBranches(TTree * tree, vector <TString> * excludedBranc
           skipBranch = true;
         }
 
-        if(!skipBranch) {
-          // count number of times a branch is accepted
-          nBranchesVar[brnchName]++;
-          // exclude repeate variables from tree friends
-          // -----------------------------------------------------------------------------------------------------------
-          if(nTreeNow > 0 && nBranchesVar[brnchName] > 1) {
-            skipBranch = true; nBranchesVar[brnchName]--; assert(nBranchesVar[brnchName] == 1);
-          }
-        }
         if(debug) {
           if(skipBranch) {
             aCustomLOG("connectTreeBranches()") <<coutPurple<<"Skip connect branch: "<<coutRed<<std::setw(width)<<brnchName
@@ -1103,16 +1094,26 @@ void VarMaps::connectTreeBranches(TTree * tree, vector <TString> * excludedBranc
                                                 <<CT<<coutBlue<<std::setw(width)<<brnchTitle<<CT<<brnchType<<coutDef<<endl;
           }
         }
-        
-        if(skipBranch) treeNow->SetBranchStatus(brnchName,0);
-        else           treeNow->SetBranchStatus(brnchName,1);
+
+        treeNow->SetBranchStatus(brnchName, skipBranch ? 0 : 1);
+
+        // -----------------------------------------------------------------------------------------------------------
+        // exclude repeate variables from being registered multiple times
+        // -----------------------------------------------------------------------------------------------------------
+        if(!skipBranch) {
+          // count number of times a branch is accepted
+          nBranchesVar[brnchName]++;
+          if(nTreeNow > 0 && nBranchesVar[brnchName] > 1) {
+            registerBranch = false; nBranchesVar[brnchName]--; assert(nBranchesVar[brnchName] == 1);
+          }
+        }
 
         // -----------------------------------------------------------------------------------------------------------
         // make sure all variables which will be connected to the tree are declared first. this is done
         // before actually setting any branch address in order to avoid changes of variable address as
         // the maps are filled up.
         // -----------------------------------------------------------------------------------------------------------
-        if(!skipBranch) {
+        if(registerBranch) {
           if     (brnchType == "/I") NewVarI_ (brnchName,DefOpts::DefI);
           else if(brnchType == "/F") NewVarF_ (brnchName,DefOpts::DefF);
           else if(brnchType == "/O") NewVarB_ (brnchName,DefOpts::DefB);
@@ -1131,8 +1132,9 @@ void VarMaps::connectTreeBranches(TTree * tree, vector <TString> * excludedBranc
             }
             NewVarC_(brnchName,DefOpts::DefC);
           }
+          
+          registeredBranches[nTreeNow].push_back(brnchName);
         }
-        if(!skipBranch) registeredBranches[nTreeNow].push_back(brnchName);
       }
     }
   }

@@ -1,5 +1,9 @@
 # Changelog
 
+## ANNZ v2.3.2 (15/12/2020)
+
+- Fixed bugs related to ROOT v6.22/06 upgrade.
+
 ## ANNZ v2.3.1 (12/12/2018)
 
 - Updated `py/ANNZ.py` and `scripts/annz_evalWrapper.py` for `python-3.6` compatibility.

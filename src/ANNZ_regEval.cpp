@@ -194,9 +194,10 @@ void ANNZ::evalRegSetup() {
       for(int nBinXnow=1; nBinXnow<nPDFbins+1; nBinXnow++) {
         hisName = (TString)hisPdfBiasCorV[nPDFnow]->GetName()+"_"+utils->intToStr(nBinXnow);
 
-        double intgr = hisPdfBiasCorV[nPDFnow]->Integral(nBinXnow,nBinXnow);  if(intgr < EPS) continue;
-
         TH1 * his1 = (TH1*)hisPdfBiasCorV[nPDFnow]->ProjectionY(hisName,nBinXnow,nBinXnow,"e");
+
+        double intgr = his1->Integral();  if(intgr < EPS) continue;
+
         his1->Scale(1/intgr);
 
         for(int nBinYnow=1; nBinYnow<his1->GetNbinsX()+1; nBinYnow++) {

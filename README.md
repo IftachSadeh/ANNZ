@@ -1,4 +1,4 @@
-# ANNZ v2.3.1
+# ANNZ v2.3.2
 
 ## Introduction
 ANNZ uses both regression and classification techniques for estimation of single-value photo-z (or any regression problem) solutions and PDFs. In addition it is suitable for classification problems, such as star/galaxy classification.
@@ -81,7 +81,7 @@ useDefinedROOTSYS = True
 
 It is also recommended to add the installation directory to the `PYTHONPATH` system variable:
 ```bash
-export PYTHONPATH=/home/work/annz:$PYTHONPATH
+export PYTHONPATH=/home/work/annz:/home/work/annz/examples:$PYTHONPATH
 ```
 This may be needed for `python` to recognize the sub-directory package structure, where scripts are imported with e.g., `from scripts.helperFuncs import *` statements.
 
